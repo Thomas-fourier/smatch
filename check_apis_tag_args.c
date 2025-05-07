@@ -91,8 +91,6 @@ static void match_func_end(struct symbol *sym)
       in_interesting_function--;
       assert(in_interesting_function >= 0);
       printf("END API function %s\n", get_function());
-   } else {
-      printf("END SUB function %s\n", get_function());
    }
    // callchain_rm_fun(get_function(), my_id);
 }
