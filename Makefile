@@ -145,7 +145,7 @@ HAVE_GCC_DEP:=$(shell touch .gcc-test.c && 				\
 		$(CC) -c -Wp,-MP,-MMD,.gcc-test.d .gcc-test.c 2>/dev/null && \
 		echo 'yes'; rm -f .gcc-test.d .gcc-test.o .gcc-test.c)
 ifeq ($(HAVE_GCC_DEP),yes)
-cflags += -Wp,-MP,-MMD,$(@D)/.$(@F).d
+cflags += -Wp,-MP,-MMD,$(@D)/.$(@F).d -I  /usr/include/glib-2.0/ -I /usr/lib/x86_64-linux-gnu/glib-2.0/include/
 endif
 
 # Can we use libxml (needed for c2xml)?
@@ -398,7 +398,7 @@ SMATCH_SCRIPTS=smatch_scripts/add_gfp_to_allocations.sh \
 	smatch_scripts/trace_params.pl smatch_scripts/unlocked_paths.pl \
 	smatch_scripts/whitespace_only.sh smatch_scripts/wine_checker.sh \
 
-SMATCH_LDFLAGS := -lsqlite3  -lssl -lcrypto -lm
+SMATCH_LDFLAGS := -lsqlite3  -lssl -lcrypto -lm -lglib-2.0
 
 smatch: smatch.o $(SMATCH_OBJS) $(SMATCH_CHECKS) $(LIBS)
 	$(Q)$(LD) -o $@ $< $(SMATCH_OBJS) $(SMATCH_CHECKS) $(LIBS) $(SMATCH_LDFLAGS)

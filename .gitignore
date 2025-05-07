@@ -62,3 +62,8 @@ cscope.out
 
 #python
 *.pyc
+
+#cache
+.cache
+
+smatch_data
