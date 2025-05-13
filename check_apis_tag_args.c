@@ -5,9 +5,15 @@
 #include <assert.h>
 #include <stdio.h>
 
+// #define DEBUG
 
-//#define debug(...) fprintf(stderr, __VA_ARGS__)
+#ifdef DEBUG
+#define debug(...) fprintf(debug, __VA_ARGS__)
+#define debug_std(...) fprintf(out, __VA_ARGS__)
+#else
 #define debug(...)
+#define debug_std(...)
+#endif
 
 /* Avoid parsing the same line/statement twice */
 static int my_id;
@@ -21,6 +27,7 @@ static GHashTable *arg_states = NULL;
 
 /* Stream for output */
 static FILE *out = NULL;
+static FILE *debug = NULL;
 
 /* How is a variable used? */
 struct usage_context {
@@ -55,7 +62,7 @@ static void build_function_list(void) {
         k = &kernel_api_funcs[i];
         if (!is_same_driver(k->api_file, base_file))
             continue;
-        // fprintf(out, "Function %s added\n", k->api_func);
+        debug("Function %s added\n", k->api_func);
         if (!g_hash_table_lookup(previously_found_funcs, k->api_func)) {
             g_hash_table_insert(previously_found_funcs, (void *)k->api_func, k);
         }
@@ -83,10 +90,10 @@ static void match_fundef(struct symbol *sym)
    if(k) {
       in_interesting_function++; 
       if(in_interesting_function > 1) {
-         fprintf(out, "Nested API function %s -> %s\n", current_api_func->api_func, get_function()); 
+         debug_std("Nested API function %s -> %s\n", current_api_func->api_func, get_function()); 
       }
       current_api_func = k;
-      fprintf(out, "API function %s (%s.%s) basefile %s\n", get_function(), current_api_func->api_name, current_api_func->api_field, get_base_file());
+      debug_std("API function %s (%s.%s) basefile %s\n", get_function(), current_api_func->api_name, current_api_func->api_field, get_base_file());
       {
          struct symbol *arg;
          int i = 0;
@@ -123,7 +130,7 @@ static void match_func_end(struct symbol *sym)
    if(k) {
       in_interesting_function--;
       assert(in_interesting_function >= 0);
-      fprintf(out, "END API function %s\n", get_function());
+      debug_std("END API function %s\n", get_function());
    }
    // callchain_rm_fun(get_function(), my_id);
 }
@@ -134,7 +141,6 @@ static struct api_arg *get_arg_from_tag(struct expression *expr) {
 
 	sm = get_sm_state_expr(my_id, expr);
 	if (!sm) {
-      // fprintf(stderr, "Trying to get arg of possible non-arg\n");
       return NULL;
    }
 
@@ -158,7 +164,7 @@ static void print_arg(struct api_arg *arg) {
             get_filename(),
             get_lineno()
    );
-   }
+}
 
 static void match_deref(struct expression *expr) {
 
@@ -270,20 +276,13 @@ void check_apis_tag_args(int id)
 	if(!getenv("CHECK_DEREF"))
 		return;
 
-   if (!out) {
-      char *outfile = getenv("OUTFILE"); 
-      if(outfile) {
-         out = fopen(outfile, "a");
-         if (!out) {
-            fprintf(stderr, "Error opening file %s", outfile);
-         }
-      } else {
-         out = stdout;
-      }
-   }
+   set_output_channel("OUTFILE", &out, stdout);
+   set_output_channel("DEBUG", &debug, stderr);
 
 	my_id = id;
 	add_hook(&match_fundef, FUNC_DEF_HOOK);
 	add_hook(&match_func_end, FUNC_DEF_HOOK);
    add_dereference_hook(&match_deref);
+
+   add_hook(&stmt_fn, STMT_HOOK);
 }
