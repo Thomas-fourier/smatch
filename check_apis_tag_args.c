@@ -226,7 +226,10 @@ static bool recurse_match_expression(struct expression *expr, int recurs) {
          debug("Tested against null: %s\n", expr_to_str(expr));
          return recurse_match_expression(expr->left, recurs);
       }
-	} else if(expr->type == EXPR_BINOP || expr->type == EXPR_LOGICAL) { // a == b or a & x or ...
+	} else if(expr->type == EXPR_BINOP) { // a == b or a & x or ...
+} else if(expr->type == EXPR_LOGICAL) {
+         return recurse_match_expression(expr->left, recurs)
+             || recurse_match_expression(expr->right, recurs);
 	} else if(expr->type == EXPR_CONDITIONAL || expr->type == EXPR_SELECT) {
 	} else if(expr->type == EXPR_INITIALIZER) {
 	} else if(expr->type == EXPR_STATEMENT) {
