@@ -3,6 +3,7 @@
 #include "kernel_apis.h"
 #include <glib.h>
 #include <assert.h>
+#include <stdio.h>
 
 
 //#define debug(...) fprintf(stderr, __VA_ARGS__)
@@ -17,6 +18,9 @@ static int in_interesting_function = 0;
 static struct kernel_api_func *current_api_func = NULL;
 static GHashTable *previously_found_funcs = NULL;
 static GHashTable *arg_states = NULL;
+
+/* Stream for output */
+static FILE *out = NULL;
 
 /* How is a variable used? */
 struct usage_context {
@@ -51,7 +55,7 @@ static void build_function_list(void) {
         k = &kernel_api_funcs[i];
         if (!is_same_driver(k->api_file, base_file))
             continue;
-        // printf("Function %s added\n", k->api_func);
+        // fprintf(out, "Function %s added\n", k->api_func);
         if (!g_hash_table_lookup(previously_found_funcs, k->api_func)) {
             g_hash_table_insert(previously_found_funcs, (void *)k->api_func, k);
         }
@@ -79,10 +83,10 @@ static void match_fundef(struct symbol *sym)
    if(k) {
       in_interesting_function++; 
       if(in_interesting_function > 1) {
-         printf("Nested API function %s -> %s\n", current_api_func->api_func, get_function()); 
+         fprintf(out, "Nested API function %s -> %s\n", current_api_func->api_func, get_function()); 
       }
       current_api_func = k;
-      printf("API function %s (%s.%s) basefile %s\n", get_function(), current_api_func->api_name, current_api_func->api_field, get_base_file());
+      fprintf(out, "API function %s (%s.%s) basefile %s\n", get_function(), current_api_func->api_name, current_api_func->api_field, get_base_file());
       {
          struct symbol *arg;
          int i = 0;
@@ -119,7 +123,7 @@ static void match_func_end(struct symbol *sym)
    if(k) {
       in_interesting_function--;
       assert(in_interesting_function >= 0);
-      printf("END API function %s\n", get_function());
+      fprintf(out, "END API function %s\n", get_function());
    }
    // callchain_rm_fun(get_function(), my_id);
 }
@@ -150,7 +154,7 @@ static void match_deref(struct expression *expr) {
 
    struct api_arg *arg = get_arg_from_tag(expr);
    if (arg) {
-      printf("deref of (%s.%s.%d) %s:%d\n", 
+      fprintf(out, "deref of (%s.%s.%d) %s:%d\n", 
             arg->api_func->api_func,
             arg->api_func->api_field,
             arg->arg_id,
@@ -163,6 +167,18 @@ void check_apis_tag_args(int id)
 {
 	if(!getenv("CHECK_DEREF"))
 		return;
+
+   if (!out) {
+      char *outfile = getenv("OUTFILE"); 
+      if(outfile) {
+         out = fopen(outfile, "a");
+         if (!out) {
+            fprintf(stderr, "Error opening file %s", outfile);
+         }
+      } else {
+         out = stdout;
+      }
+   }
 
 	my_id = id;
 	add_hook(&match_fundef, FUNC_DEF_HOOK);
