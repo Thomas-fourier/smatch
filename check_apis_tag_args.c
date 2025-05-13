@@ -159,12 +159,20 @@ static struct api_arg *get_arg_from_tag(struct expression *expr) {
 }
 
 static void print_arg(struct api_arg *arg) {
-   fprintf(out, "(%s.%s.%d) %s:%d", 
-            arg->api_func->api_func,
+   fprintf(out, "(%s.%s.%d) (%s)"
+            #ifdef DEBUG
+            "%s:%d"
+            #endif
+, 
+            arg->api_func->api_name,
             arg->api_func->api_field,
             arg->arg_id,
+arg->api_func->api_func
+            #ifdef DEBUG
+            ,
             get_filename(),
             get_lineno()
+#endif
    );
 }
 
@@ -172,7 +180,7 @@ static void match_deref(struct expression *expr) {
 
    struct api_arg *arg = get_arg_from_tag(expr);
    if (arg) {
-      fprintf(out, "deref of");
+      fprintf(out, "deref of ");
       print_arg(arg);
       fprintf(out, "\n");
    }
