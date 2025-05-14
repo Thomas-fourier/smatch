@@ -3,6 +3,8 @@
 #include "smatch_slist.h"
 #include "smatch_extra.h"
 #include <glib.h>
+#include <stdio.h>
+#include "output_infra.c"
 
 /*
 Find all kernel APIs.
@@ -42,7 +44,7 @@ static bool is_maybe_api(struct symbol *sym)
       struct_type = sym;
 
    // Either the struct is named ..._ops
-   if(struct_type->ident && struct_type->ident->name) {
+   if(struct_type->ident) {
       char *struct_name = struct_type->ident->name;
       if(strlen(struct_name) < 4)
          return false;
@@ -86,17 +88,17 @@ static __attribute__((unused)) void print_api_members(struct symbol *sym)
       base_type = get_real_base_type(base_type); // ... to a function
       if(base_type->type != SYM_FN) // some ..._ops also have pointers to structs (payload)
          continue;
-      printf("\t%s.%s = %s is a function pointer (%s)\n", sym->ident->name, tmp->ident->name, "", type_to_str(base_type));
+      debug("\t%s.%s = %s is a function pointer (%s)\n", sym->ident->name, tmp->ident->name, "", type_to_str(base_type));
 	} END_FOR_EACH_PTR(tmp);
 	FOR_EACH_PTR(struct_type->arguments, tmp) {
-      printf("Something!!\n");
+      debug("Something!!\n");
 	} END_FOR_EACH_PTR(tmp);
 }
 
 static void print_found_assignements(char *api) {
    struct field_assignement *f = g_hash_table_lookup(found_global_assignments, api);
    while(f) {
-      printf("API - %s.%s = %s\n", api, f->field, f->value);
+      fprintf(out, "API - %s.%s = %s\n", api, f->field, f->value);
       f = f->next;
    }
 }
@@ -119,7 +121,7 @@ static bool match_sym(struct expression *expr)
                return true;
             g_hash_table_insert(found_apis, api, &sym);
 
-            printf("API '%s' '%s' decl %d to %d file %s\n", api, expr_to_var(expr), sym->pos.line, sym->endpos.line, get_filename());
+            fprintf(out, "API '%s' '%s' decl %d to %d file %s\n", api, expr_to_var(expr), sym->pos.line, sym->endpos.line, get_filename());
             //print_api_members(sym);
             print_found_assignements(expr_to_var(expr));
             return true;
@@ -156,6 +158,9 @@ void check_apis(int id)
 {
 	if(!getenv("CHECK_APIS"))
 		return;
+   
+
+   init_output();
 
    found_apis = g_hash_table_new (g_str_hash, g_str_equal);
    found_global_assignments = g_hash_table_new (g_str_hash, g_str_equal);

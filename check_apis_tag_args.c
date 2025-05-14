@@ -6,16 +6,8 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include "output_infra.h"
 
-// #define DEBUG
-
-#ifdef DEBUG
-#define debug(...) fprintf(debug, __VA_ARGS__)
-#define debug_std(...) fprintf(out, __VA_ARGS__)
-#else
-#define debug(...)
-#define debug_std(...)
-#endif
 
 /* Avoid parsing the same line/statement twice */
 static int my_id;
@@ -27,9 +19,6 @@ static struct kernel_api_func *current_api_func = NULL;
 static GHashTable *previously_found_funcs = NULL;
 static GHashTable *arg_states = NULL;
 
-/* Stream for output */
-static FILE *out = NULL;
-static FILE *debug = NULL;
 
 /* How is a variable used? */
 struct usage_context {
@@ -163,16 +152,16 @@ static void print_arg(struct api_arg *arg) {
             #ifdef DEBUG
             "%s:%d"
             #endif
-, 
+            ,
             arg->api_func->api_name,
             arg->api_func->api_field,
             arg->arg_id,
-arg->api_func->api_func
+            arg->api_func->api_func
             #ifdef DEBUG
             ,
             get_filename(),
             get_lineno()
-#endif
+            #endif
    );
 }
 
@@ -227,7 +216,7 @@ static bool recurse_match_expression(struct expression *expr, int recurs) {
          return recurse_match_expression(expr->left, recurs);
       }
 	} else if(expr->type == EXPR_BINOP) { // a == b or a & x or ...
-} else if(expr->type == EXPR_LOGICAL) {
+   } else if(expr->type == EXPR_LOGICAL) {
          return recurse_match_expression(expr->left, recurs)
              || recurse_match_expression(expr->right, recurs);
 	} else if(expr->type == EXPR_CONDITIONAL || expr->type == EXPR_SELECT) {
@@ -271,40 +260,14 @@ static void stmt_fn(struct statement* stmt) {
    
 }
 
-static void set_output_channel(const char *varname, FILE **channel, FILE *def_chan) {
-   char *outdir = getenv(varname); 
-   if (!outdir) {
-      *channel = def_chan;
-   }
 
-// create directory if needed
-   struct stat st = {0};
-   if (stat(outdir, &st) == -1) {
-      mkdir(outdir, 0700);
-   }
-
-   // generate a unique file per process
-   int i = getpid();
-   char *outfile = malloc(strlen(outdir) + 1 + 2*sizeof(pid_t)); // one byte is two hex chars
-   snprintf(outfile, strlen(outdir) + 1 + 2*sizeof(pid_t), "%s/%x", outdir, i);
-
-
-   *channel = fopen(outfile, "a");
-   if (!*channel) {
-      fprintf(stderr, "Error opening file %s", outdir);
-   }
-
-}
 
 void check_apis_tag_args(int id)
 {
 	if(!getenv("CHECK_DEREF"))
 		return;
 
-   set_output_channel("OUTFILE", &out, stdout);
-#ifdef DEBUG
-   set_output_channel("DEBUG", &debug, stderr);
-#endif
+   init_output();
 
 	my_id = id;
 	add_hook(&match_fundef, FUNC_DEF_HOOK);
