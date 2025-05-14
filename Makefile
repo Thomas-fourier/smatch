@@ -94,6 +94,8 @@ LIB_OBJS += macro_table.o
 LIB_OBJS += token_store.o
 LIB_OBJS += cwchash/hashtable.o
 LIB_OBJS += version.o
+LIB_OBJS += output_infra.o
+
 
 PROGRAMS :=
 PROGRAMS += compile
