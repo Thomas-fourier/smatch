@@ -147,7 +147,7 @@ HAVE_GCC_DEP:=$(shell touch .gcc-test.c && 				\
 		$(CC) -c -Wp,-MP,-MMD,.gcc-test.d .gcc-test.c 2>/dev/null && \
 		echo 'yes'; rm -f .gcc-test.d .gcc-test.o .gcc-test.c)
 ifeq ($(HAVE_GCC_DEP),yes)
-cflags += -Wp,-MP,-MMD,$(@D)/.$(@F).d -I  /usr/include/glib-2.0/ -I /usr/lib/x86_64-linux-gnu/glib-2.0/include/
+cflags += -Wp,-MP,-MMD,$(@D)/.$(@F).d -I  /usr/include/glib-2.0/ -I /usr/lib/x86_64-linux-gnu/glib-2.0/include/ -I /usr/lib64/glib-2.0/include/
 endif
 
 # Can we use libxml (needed for c2xml)?
