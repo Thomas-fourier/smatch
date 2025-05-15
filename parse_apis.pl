@@ -32,34 +32,10 @@ while(<>) {
     }
 }
 
-print "#ifndef KERNEL_APIS_H
-#define KERNEL_APIS_H
-";
 
-=cut
-print "
-static struct kernel_api {
-    int count;
-    const char *api_name;
-} kernel_apis[] = {\n";
-for my $s (sort keys %struct_count) {
-    next if($struct_count{$s} < $min_number_of_instances);
-    print "\t{ $struct_count{$s}, \"$s\" },\n";
-}
-print "};\n\n";
-=cut
-
-print "static struct kernel_api_func {
-    const char *api_name;
-    const char *api_file;
-    const char *api_field;
-    const char *api_func;
-} kernel_api_funcs[] = {\n";
 for my $s (sort keys %struct_to_funcs) {
     next if($struct_count{$s} < $min_number_of_instances);
     for my $f (@{$struct_to_funcs{$s}}) {
         print "\t{ \"$s\", \"$f->[0]\", \"$f->[1]\", \"$f->[2]\"},\n";
     }
 }
-print "};\n";
-print "#endif"
