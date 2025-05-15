@@ -148,10 +148,11 @@ static struct api_arg *get_arg_from_tag(struct expression *expr) {
 }
 
 static void print_arg(struct api_arg *arg) {
-   fprintf(out, "(%s.%s.%d) (%s) %s:%d",
+   fprintf(out, "(%s.%s.%d) (%s.%s) %s:%d",
             arg->api_func->api_name,
             arg->api_func->api_field,
             arg->arg_id,
+            arg->api_func->impl_name,
             arg->api_func->api_func,
             get_filename(),
             get_lineno()
