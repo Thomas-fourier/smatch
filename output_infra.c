@@ -25,7 +25,7 @@ void set_output_channel(const char *varname, FILE **channel, FILE *def_chan) {
    int i = getpid();
    char *outfile = malloc(strlen(outdir) + 1 + 2*sizeof(pid_t)); // one byte is two hex chars
    if (!outfile) {
-      fprintf(stderr, "Could not allocate for pathname");
+      fprintf(stderr, "Could not allocate for pathname\n");
       exit(1);
    }
 
@@ -34,7 +34,7 @@ void set_output_channel(const char *varname, FILE **channel, FILE *def_chan) {
 
    *channel = fopen(outfile, "a");
    if (!*channel) {
-      fprintf(stderr, "Error opening file %s", outdir);
+      fprintf(stderr, "Error opening file %s\n", outdir);
    }
 
 }

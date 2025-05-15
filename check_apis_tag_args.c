@@ -148,20 +148,13 @@ static struct api_arg *get_arg_from_tag(struct expression *expr) {
 }
 
 static void print_arg(struct api_arg *arg) {
-   fprintf(out, "(%s.%s.%d) (%s)"
-            #ifdef DEBUG
-            "%s:%d"
-            #endif
-            ,
+   fprintf(out, "(%s.%s.%d) (%s) %s:%d",
             arg->api_func->api_name,
             arg->api_func->api_field,
             arg->arg_id,
-            arg->api_func->api_func
-            #ifdef DEBUG
-            ,
+            arg->api_func->api_func,
             get_filename(),
             get_lineno()
-            #endif
    );
 }
 
@@ -209,11 +202,15 @@ static bool recurse_match_expression(struct expression *expr, int recurs) {
    } else if(expr->type == EXPR_COMPARE) {
       // If one of the operands is zero, then it is probably a check against 0 so maybe a nullptr test
       if (expr_is_zero(expr->left)) {
-         debug("Tested against null: %s\n", expr_to_str(expr));
-         return recurse_match_expression(expr->right, recurs);
+         if (recurse_match_expression(expr->right, recurs)) {
+            debug("Tested against null: %s\n", expr_to_str(expr));
+            return true;
+         }
       } else if (expr_is_zero(expr->right)) {
-         debug("Tested against null: %s\n", expr_to_str(expr));
-         return recurse_match_expression(expr->left, recurs);
+         if (recurse_match_expression(expr->left, recurs)) {
+            debug("Tested against null: %s\n", expr_to_str(expr));
+            return true;
+         }
       }
 	} else if(expr->type == EXPR_BINOP) { // a == b or a & x or ...
    } else if(expr->type == EXPR_LOGICAL) {
