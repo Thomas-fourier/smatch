@@ -6,5 +6,8 @@ static struct kernel_api_func {
     const char *api_field;
     const char *api_func;
 } kernel_api_funcs[] = {
+#if __has_include("kernel_apis.inc.h")
+#include "kernel_apis.inc.h"
+#endif
 };
 #endif
