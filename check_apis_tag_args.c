@@ -182,7 +182,7 @@ static bool recurse_match_expression(struct expression *expr, int recurs) {
          return false;
       }
 
-      fprintf(out, "test of");
+      fprintf(out, "test of ");
       print_arg(arg);
       fprintf(out, "\n");
       return true;
