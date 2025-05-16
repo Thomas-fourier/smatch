@@ -3,22 +3,19 @@ use strict;
 use warnings;
 use Data::Dumper;
 
-
-sub uniq (@) {
-    my %seen = ();
-    grep { not $seen{$_}++ } @_;
-}
-
 my %derefed = ();
 my %tested = ();
 
 
 
 while(<>) {
-    if(/^deref of \((\w+\.\w+.\d+)\) (\((\w+.\w+)\) [\w.\/]+:\d+)$/) {
-        push(@{$derefed{"$1"}}, $3);
-    } elsif(/^test of\((\w+\.\w+.\d+)\) (\((\w+.\w+)\) [\w.\/]+:\d+)$/) {
-        push(@{$tested{"$1"}}, $3);
+    if(/^deref of \((\w+\.\w+.\d+)\) \((\w+.\w+)\) ([\w.\/]+:\d+)$/) {
+        # We are interested in the first deref
+        next if exists($derefed{$1}{$2});
+        $derefed{$1}{$2} = $3;
+    } elsif(/^test of\((\w+\.\w+.\d+)\) \((\w+.\w+)\) ([\w.\/]+:\d+)$/) {
+        next if exists($tested{$1}{$2});
+        $tested{$1}{$2} = $3;
     }
 }
 
@@ -33,12 +30,12 @@ for my $arg (sort keys %derefed) {
     my $nb_dref = 0;
     my $nb_test = 0;
     my @sus = [];
-    for my $impl (uniq @{$derefed{$arg}}) {
+    for my $impl (keys %{$derefed{$arg}}) {
         $nb_dref++;
-        if (grep(/^$impl$/, @{$tested{$arg}})) {
+        if (exists($tested{$arg}{$impl})) {
             $nb_test++;
         } else {
-            push(@sus, $impl)
+            push(@sus, $impl . " " . $derefed{$arg}{$impl})
         }
     }
 
