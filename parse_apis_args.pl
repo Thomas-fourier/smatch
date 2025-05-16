@@ -12,11 +12,13 @@ sub uniq (@) {
 my %derefed = ();
 my %tested = ();
 
+
+
 while(<>) {
-    if(/deref of \((\w+\.\w+.\d+)\) \((\w+)\)/) {
-        push(@{$derefed{"$1"}}, $2);
-    } elsif(/test of\((\w+\.\w+.\d+)\) \((\w+)\)/) {
-        push(@{$tested{"$1"}}, $2);
+    if(/^deref of \((\w+\.\w+.\d+)\) (\((\w+.\w+)\) [\w.\/]+:\d+)$/) {
+        push(@{$derefed{"$1"}}, $3);
+    } elsif(/^test of\((\w+\.\w+.\d+)\) (\((\w+.\w+)\) [\w.\/]+:\d+)$/) {
+        push(@{$tested{"$1"}}, $3);
     }
 }
 
