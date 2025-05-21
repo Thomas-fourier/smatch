@@ -36,27 +36,13 @@ struct api_arg {
 };
 
 
-static int is_same_driver(const char *api_file, const char *file) {
-	// Do the files belong to the same directory?
-	char *api_dir = g_path_get_dirname(api_file);
-	char *dir = g_path_get_dirname(file);
-	int ret = !strcmp(api_dir, dir);
-	g_free(api_dir);
-	g_free(dir);
-	return ret;
-}
-
 
 static void build_function_list(void) {
     struct kernel_api_func *k;
-    const char *base_file = get_base_file();
     previously_found_funcs = g_hash_table_new (g_str_hash, g_str_equal);
  
     for (size_t i = 0; i < sizeof(kernel_api_funcs) / sizeof(*kernel_api_funcs); i++) {
         k = &kernel_api_funcs[i];
-        if (!is_same_driver(k->api_file, base_file))
-            continue;
-        debug("Function %s added\n", k->api_func);
         if (!g_hash_table_lookup(previously_found_funcs, k->api_func)) {
             g_hash_table_insert(previously_found_funcs, (void *)k->api_func, k);
         }
