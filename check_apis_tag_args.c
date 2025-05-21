@@ -1,5 +1,6 @@
 #include "smatch.h"
 #include "smatch_slist.h"
+#include "smatch_extra.h"
 #include "kernel_apis.h"
 #include <glib.h>
 #include <assert.h>
@@ -8,6 +9,8 @@
 #include <unistd.h>
 #include "output_infra.h"
 
+
+STATE(tested);
 
 /* Avoid parsing the same line/statement twice */
 static int my_id;
@@ -161,6 +164,10 @@ static void print_arg(struct api_arg *arg) {
 
 static void match_deref(struct expression *expr) {
 
+   if (get_state_expr(my_id, expr) == &tested) {
+      return;
+   }
+
    struct api_arg *arg = get_arg_from_tag(expr);
    if (arg) {
       fprintf(out, "deref of ");
@@ -169,96 +176,34 @@ static void match_deref(struct expression *expr) {
    }
 }
 
-static bool recurse_match_expression(struct expression *expr, int recurs) {
-	if(!expr)
-		return false;
-	if(recurs++ > 200)
-		die("Infinite loop!\n");
+static void match_condition(struct expression *expr) {
+  struct api_arg *arg = get_arg_from_tag(expr);
+  if (arg) {
+    if (!is_pointer(expr)) {
+      return;
+    }
 
-   struct api_arg *arg = get_arg_from_tag(expr);
-   if (arg) {
+    if (expr->type == EXPR_ASSIGNMENT) {
+      match_condition(expr->right);
+      match_condition(expr->left);
+    }
 
-      if (!is_pointer(expr)) {
-         return false;
-      }
+    if (implied_not_equal(expr, 0))
+      return;
 
+    if (get_state_expr(my_id, expr)) {
       fprintf(out, "test of ");
       print_arg(arg);
       fprintf(out, "\n");
-      return true;
-   }
 
-	if(expr->type == EXPR_CAST || expr->type == EXPR_FORCE_CAST || expr->type == EXPR_IMPLIED_CAST) {
-		return recurse_match_expression(expr->cast_expression, recurs);
-	} else if(expr->type == EXPR_PREOP ) { // *a, &a, a++, ...
-      if (expr->op == '*')
-         return false;
-		return recurse_match_expression(expr->unop, recurs);
-	} else if(expr->type == EXPR_POSTOP) {
-      if (expr->op == '*')
-         return false;
-		return recurse_match_expression(expr->unop, recurs);
-   } else if(expr->type == EXPR_ASSIGNMENT) {
-	} else if(expr->type == EXPR_CALL) {
-   } else if(expr->type == EXPR_COMPARE) {
-      // If one of the operands is zero, then it is probably a check against 0 so maybe a nullptr test
-      if (expr_is_zero(expr->left)) {
-         if (recurse_match_expression(expr->right, recurs)) {
-            debug("Tested against null: %s\n", expr_to_str(expr));
-            return true;
-         }
-      } else if (expr_is_zero(expr->right)) {
-         if (recurse_match_expression(expr->left, recurs)) {
-            debug("Tested against null: %s\n", expr_to_str(expr));
-            return true;
-         }
+      if (expr->type == EXPR_SYMBOL) {
+        set_true_false_states_expr(my_id, expr, &tested, NULL);
       }
-	} else if(expr->type == EXPR_BINOP) { // a == b or a & x or ...
-   } else if(expr->type == EXPR_LOGICAL) {
-         return recurse_match_expression(expr->left, recurs)
-             || recurse_match_expression(expr->right, recurs);
-	} else if(expr->type == EXPR_CONDITIONAL || expr->type == EXPR_SELECT) {
-	} else if(expr->type == EXPR_INITIALIZER) {
-	} else if(expr->type == EXPR_STATEMENT) {
-	} else if(expr->type == EXPR_VALUE
-			|| expr->type == EXPR_FVALUE
-			|| expr->type == EXPR_STRING
-			|| expr->type == EXPR_SYMBOL
-			|| expr->type == EXPR_TYPE
-			|| expr->type == EXPR_COMMA
-			|| expr->type == EXPR_SLICE // no sure what this is
-			||	expr->type == EXPR_SIZEOF
-			|| expr->type == EXPR_ALIGNOF
-			|| expr->type == EXPR_PTRSIZEOF
-			|| expr->type == EXPR_LABEL
-			|| expr->type == EXPR_IDENTIFIER
-			|| expr->type == EXPR_INDEX
-			|| expr->type == EXPR_POS
-			|| expr->type == EXPR_OFFSETOF
-			|| expr->type == EXPR_GENERIC
-         || expr->type == EXPR_DEREF) {
-		// Nothing to do, no variable
-	} else {
-		die("Unknown type: %s %d\n", expr_to_str(expr), expr->type);
-	}
+    }
 
-   return false;
+    return;
+  }
 }
-
-
-static void stmt_fn(struct statement* stmt) {
-   if (stmt->type != STMT_IF)
-      return;
-
-   struct expression *expr = stmt->if_conditional;
-
-   if (recurse_match_expression(expr, 0)) {
-      debug("Expression %s\n", expr_to_str(expr));
-   }
-   
-}
-
-
 
 void check_apis_tag_args(int id)
 {
@@ -272,5 +217,5 @@ void check_apis_tag_args(int id)
 	add_hook(&match_func_end, FUNC_DEF_HOOK);
    add_dereference_hook(&match_deref);
 
-   add_hook(&stmt_fn, STMT_HOOK);
+   add_hook(&match_condition, CONDITION_HOOK);
 }
