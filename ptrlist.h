@@ -73,6 +73,11 @@ extern void **__add_ptr_list_tag(struct ptr_list **, void *, unsigned long);
 		ptr;							\
 	})
 
+#define empty_ptr_list(l) ({					\
+		ptr_list_empty((struct ptr_list*)(l));	\
+	})
+
+
 extern void __free_ptr_list(struct ptr_list **);
 #define free_ptr_list(list)	do {					\
 		VRFY_PTR_LIST(*(list));					\
