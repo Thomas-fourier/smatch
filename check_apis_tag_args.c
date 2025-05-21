@@ -162,6 +162,22 @@ static void match_deref(struct expression *expr) {
    }
 }
 
+
+static void match_assign(struct expression *expr) {
+    if (expr->type != EXPR_ASSIGNMENT)
+      return;
+
+
+    if (implied_not_equal(expr->right, 0)
+        || get_state_expr(my_id, expr) == &tested) {
+      fprintf(out, "assignment of %s\n", expr_to_str(expr));
+      set_state_expr(my_id, expr->left, &tested);
+      return;
+    }
+
+
+}
+
 static void match_condition(struct expression *expr) {
   struct api_arg *arg = get_arg_from_tag(expr);
   if (arg) {
@@ -202,6 +218,7 @@ void check_apis_tag_args(int id)
 	add_hook(&match_fundef, FUNC_DEF_HOOK);
 	add_hook(&match_func_end, FUNC_DEF_HOOK);
    add_dereference_hook(&match_deref);
+   add_hook(&match_assign, ASSIGNMENT_HOOK);
 
    add_hook(&match_condition, CONDITION_HOOK);
 }
