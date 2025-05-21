@@ -179,6 +179,13 @@ static void match_assign(struct expression *expr) {
       return;
     }
 
+    struct sm_state *lstates = get_sm_state_expr(my_id, expr->right);
+    if (!lstates) {
+      while (!empty_ptr_list(&lstates->possible)) {
+         pop_ptr_list(&lstates->possible);
+      }
+    }
+
     FOR_EACH_PTR(rstates->possible, rstate) {
       debug("\tassignment of tag %s\n", show_state(rstate->state));
       set_state_expr(my_id, expr->left, rstate->state);
