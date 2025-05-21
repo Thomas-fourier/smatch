@@ -5,22 +5,22 @@ use Data::Dumper;
 
 my %derefed = ();
 my %tested = ();
-
+my %all = ();
 
 
 while(<>) {
     if(/^deref of \((\w+\.\w+.\d+)\) \((\w+.\w+)\) ([\w.\/]+:\d+)$/) {
         # We are interested in the first deref
-        next if exists($derefed{$1}{$2});
-        $derefed{$1}{$2} = $3;
-    } elsif(/^test of\((\w+\.\w+.\d+)\) \((\w+.\w+)\) ([\w.\/]+:\d+)$/) {
-        next if exists($tested{$1}{$2});
-        $tested{$1}{$2} = $3;
+        if (! exists($derefed{$1}{$2})) {$derefed{$1}{$2} = $3};
+        if (! exists($all{$1}{$2})) {$all{$1}{$2} = ()};
+    } elsif(/^test of \((\w+\.\w+.\d+)\) \((\w+.\w+)\) ([\w.\/]+:\d+)$/) {
+        if (! exists($tested{$1}{$2})) {$tested{$1}{$2} = $3};
+        if (! exists($all{$1}{$2})) {$all{$1}{$2} = ()};
     }
 }
 
 
-for my $arg (sort keys %derefed) {
+for my $arg (sort keys %all) {
     #print $arg;
     # If never tested, then it is consistent
     next if (not defined $tested{$arg});
@@ -33,13 +33,18 @@ for my $arg (sort keys %derefed) {
     for my $impl (keys %{$derefed{$arg}}) {
         $nb_dref++;
         if (exists($tested{$arg}{$impl})) {
-            $nb_test++;
+            print "Warning: $arg deref and test in same impl, $tested{$arg}{$impl}\n";
+            $nb_dref--;
         } else {
             push(@sus, $impl . " " . $derefed{$arg}{$impl})
         }
     }
 
-    my $prop = $nb_test/$nb_dref;
+    for my $impl (keys %{$tested{$arg}}) {
+        $nb_test++;
+    }
+
+    my $prop = $nb_test/($nb_dref+$nb_test);
 
     next if ($prop <= 0.5 or $prop == 1);
 
