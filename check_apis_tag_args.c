@@ -168,14 +168,21 @@ static void match_assign(struct expression *expr) {
       return;
 
 
-    if (implied_not_equal(expr->right, 0)
-        || get_state_expr(my_id, expr) == &tested) {
-      fprintf(out, "assignment of %s\n", expr_to_str(expr));
+    if (implied_not_equal(expr->right, 0)) {
       set_state_expr(my_id, expr->left, &tested);
       return;
     }
 
+    struct sm_state *rstates = get_sm_state_expr(my_id, expr->right);
+    struct sm_state *rstate;
+    if (!rstates) {
+      return;
+    }
 
+    FOR_EACH_PTR(rstates->possible, rstate) {
+      debug("\tassignment of tag %s\n", show_state(rstate->state));
+      set_state_expr(my_id, expr->left, rstate->state);
+    } END_FOR_EACH_PTR(rstate);
 }
 
 static void match_condition(struct expression *expr) {
