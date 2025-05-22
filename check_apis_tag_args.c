@@ -11,6 +11,7 @@
 
 
 STATE(tested);
+STATE(unknown);
 
 /* Avoid parsing the same line/statement twice */
 static int my_id;
@@ -162,34 +163,48 @@ static void match_deref(struct expression *expr) {
    }
 }
 
+static void clear_state(struct expression *expr) {
+   set_state_expr(my_id, expr, &unknown);
+  struct sm_state *states = get_sm_state_expr(my_id, expr->left);
+  if (states) {
+    while (!empty_ptr_list((states->possible))) {
+      pop_ptr_list(&states->possible);
+    }
+  }
+}
 
 static void match_assign(struct expression *expr) {
-    if (expr->type != EXPR_ASSIGNMENT)
-      return;
+  if (expr->type != EXPR_ASSIGNMENT)
+    return;
+
+  // If it is a value substitution, nullity is not changed
+  // TODO: in this case, propagate subfields
+  if (expr->left->type == EXPR_DEREF
+   || (expr->left->type == EXPR_PREOP && expr->left->op == '*')) {
+    return;
+  }
 
 
-    if (implied_not_equal(expr->right, 0)) {
-      set_state_expr(my_id, expr->left, &tested);
-      return;
-    }
+  // The state of the left is overwritten
+  clear_state(expr->left);
 
-    struct sm_state *rstates = get_sm_state_expr(my_id, expr->right);
-    struct sm_state *rstate;
-    if (!rstates) {
-      return;
-    }
+  // Then transmit the state (inc. if left is an arg)
+  struct sm_state *rstates = get_sm_state_expr(my_id, expr->right);
+  struct sm_state *rstate;
+  if (!rstates) {
+    return;
+  }
 
-    struct sm_state *lstates = get_sm_state_expr(my_id, expr->right);
-    if (!lstates) {
-      while (!empty_ptr_list(&lstates->possible)) {
-         pop_ptr_list(&lstates->possible);
-      }
-    }
+  FOR_EACH_PTR(rstates->possible, rstate) {
+    debug("assignment of the tags of variable %s\n", rstate->name);
+    set_state_expr(my_id, expr->left, rstate->state);
+  } END_FOR_EACH_PTR(rstate);
 
-    FOR_EACH_PTR(rstates->possible, rstate) {
-      debug("\tassignment of tag %s\n", show_state(rstate->state));
-      set_state_expr(my_id, expr->left, rstate->state);
-    } END_FOR_EACH_PTR(rstate);
+  // If it is for sure a valid pointer, mark as tested
+  if (implied_not_equal(expr->right, 0)
+      || get_state_expr(my_id, expr->right) == &tested) {
+    set_state_expr(my_id, expr->left, &tested);
+  }
 }
 
 static void match_condition(struct expression *expr) {
