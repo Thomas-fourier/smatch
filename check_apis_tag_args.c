@@ -36,6 +36,7 @@ struct usage_context {
 struct api_arg {
    struct kernel_api_func *api_func;
    char field_id[MAX_FIELD_LENGTH];
+   bool is_owned; // Is it owned by state_to_arg?
 };
 
 
@@ -93,6 +94,7 @@ static void match_fundef(struct symbol *sym)
             
             struct api_arg *aa = malloc(sizeof(*aa));
             aa->api_func = current_api_func;
+            aa->is_owned = true;
             snprintf(aa->field_id, MAX_FIELD_LENGTH, "%d", i);
 
             g_hash_table_insert(state_to_arg, arg_state, aa);
@@ -155,10 +157,17 @@ static struct api_arg *member_of_arg(struct expression *expr) {
    // Test if if it is a field access of an arg
    if (expr->type == EXPR_DEREF && expr->member) {
       if ((sub_arg = member_of_arg(expr->deref))) {
-         // This is very leaky, hopefully not too bad
-         arg = malloc(sizeof(*arg));
-         memcpy(arg, sub_arg, sizeof(*arg));
-         snprintf(arg->field_id, MAX_FIELD_LENGTH, "%s.%s", sub_arg->field_id, expr->member->name);
+         // If it is a state, it is owned by `state_to_arg`, copy, otherwise modify in place
+         if (sub_arg->is_owned) {
+            arg = malloc(sizeof(*arg));
+            memcpy(arg, sub_arg, sizeof(*arg));
+            arg->is_owned = false;
+         } else {
+            arg = sub_arg;
+         }
+         if (snprintf(arg->field_id, MAX_FIELD_LENGTH, "%s.%s", sub_arg->field_id, expr->member->name) > MAX_FIELD_LENGTH) {
+            debug("Truncated the name of a subfieled (%s.%s)\n", sub_arg->field_id, expr->member->name);
+         }
          return arg;
       }
    }
@@ -189,11 +198,14 @@ static void match_deref(struct expression *expr) {
       fprintf(out, "deref of ");
       print_arg(arg);
       fprintf(out, "\n");
+
+      if (!arg->is_owned)
+         free(arg);
    }
 }
 
 static void clear_state(struct expression *expr) {
-   set_state_expr(my_id, expr, &unknown);
+  set_state_expr(my_id, expr, &unknown);
   struct sm_state *states = get_sm_state_expr(my_id, expr->left);
   if (states) {
     while (!empty_ptr_list((states->possible))) {
@@ -258,6 +270,10 @@ static void match_condition(struct expression *expr) {
       if (expr->type == EXPR_SYMBOL) {
         set_true_false_states_expr(my_id, expr, &tested, NULL);
       }
+    }
+
+    if (!arg->is_owned) {
+      free(arg);
     }
 
     return;
