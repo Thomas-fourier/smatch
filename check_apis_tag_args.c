@@ -13,6 +13,8 @@
 STATE(tested);
 STATE(unknown);
 
+#define MAX_FIELD_LENGTH 64
+
 /* Avoid parsing the same line/statement twice */
 static int my_id;
 
@@ -21,7 +23,7 @@ static int in_interesting_file = 0;
 static int in_interesting_function = 0;
 static struct kernel_api_func *current_api_func = NULL;
 static GHashTable *previously_found_funcs = NULL;
-static GHashTable *arg_states = NULL;
+static GHashTable *state_to_arg = NULL;
 
 
 /* How is a variable used? */
@@ -33,7 +35,7 @@ struct usage_context {
 /* The id of an API argument */
 struct api_arg {
    struct kernel_api_func *api_func;
-   int arg_id;
+   char field_id[MAX_FIELD_LENGTH];
 };
 
 
@@ -64,8 +66,8 @@ static void match_fundef(struct symbol *sym)
    if(previously_found_funcs == NULL)
       build_function_list();
 
-   if(arg_states == NULL)
-      arg_states = g_hash_table_new(&pointer_hash, &pointer_eq);
+   if(state_to_arg == NULL)
+      state_to_arg = g_hash_table_new(&pointer_hash, &pointer_eq);
 
    struct kernel_api_func *k = g_hash_table_lookup(previously_found_funcs, get_function());
    if(k) {
@@ -91,9 +93,9 @@ static void match_fundef(struct symbol *sym)
             
             struct api_arg *aa = malloc(sizeof(*aa));
             aa->api_func = current_api_func;
-            aa->arg_id = i;
+            snprintf(aa->field_id, MAX_FIELD_LENGTH, "%d", i);
 
-            g_hash_table_insert(arg_states, arg_state, aa);
+            g_hash_table_insert(state_to_arg, arg_state, aa);
 
             set_state(my_id, arg->ident->name, arg, arg_state);
 
@@ -130,18 +132,45 @@ static struct api_arg *get_arg_from_tag(struct expression *expr) {
 
 	FOR_EACH_PTR(sm->possible, tmp) {
 
-      res = g_hash_table_lookup(arg_states, tmp->state);
+      res = g_hash_table_lookup(state_to_arg, tmp->state);
       if (res != 0)
          return res;
 	} END_FOR_EACH_PTR(tmp);
 	return NULL;
 }
 
+static struct api_arg *member_of_arg(struct expression *expr) {
+   struct api_arg *arg;
+   struct api_arg *sub_arg;
+
+   if ((expr->type == EXPR_PREOP && expr->op == '*')) {
+      expr = expr->deref;
+   }
+
+   // Test if it is an arg already known
+   if ((arg = get_arg_from_tag(expr))) {
+      return arg;
+   }
+   
+   // Test if if it is a field access of an arg
+   if (expr->type == EXPR_DEREF && expr->member) {
+      if ((sub_arg = member_of_arg(expr->deref))) {
+         // This is very leaky, hopefully not too bad
+         arg = malloc(sizeof(*arg));
+         memcpy(arg, sub_arg, sizeof(*arg));
+         snprintf(arg->field_id, MAX_FIELD_LENGTH, "%s.%s", sub_arg->field_id, expr->member->name);
+         return arg;
+      }
+   }
+
+   return NULL;
+}
+
 static void print_arg(struct api_arg *arg) {
-   fprintf(out, "(%s.%s.%d) (%s.%s) %s:%d",
+   fprintf(out, "(%s.%s.%s) (%s.%s) %s:%d",
             arg->api_func->api_name,
             arg->api_func->api_field,
-            arg->arg_id,
+            arg->field_id,
             arg->api_func->impl_name,
             arg->api_func->api_func,
             get_filename(),
@@ -155,7 +184,7 @@ static void match_deref(struct expression *expr) {
       return;
    }
 
-   struct api_arg *arg = get_arg_from_tag(expr);
+   struct api_arg *arg = member_of_arg(expr);
    if (arg) {
       fprintf(out, "deref of ");
       print_arg(arg);
@@ -179,8 +208,7 @@ static void match_assign(struct expression *expr) {
 
   // If it is a value substitution, nullity is not changed
   // TODO: in this case, propagate subfields
-  if (expr->left->type == EXPR_DEREF
-   || (expr->left->type == EXPR_PREOP && expr->left->op == '*')) {
+  if ((expr->left->type == EXPR_PREOP && expr->left->op == '*')) {
     return;
   }
 
@@ -208,7 +236,7 @@ static void match_assign(struct expression *expr) {
 }
 
 static void match_condition(struct expression *expr) {
-  struct api_arg *arg = get_arg_from_tag(expr);
+  struct api_arg *arg = member_of_arg(expr);
   if (arg) {
     if (!is_pointer(expr)) {
       return;
