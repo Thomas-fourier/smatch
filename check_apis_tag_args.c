@@ -292,7 +292,7 @@ void check_apis_tag_args(int id)
 
 	my_id = id;
 	add_hook(&match_fundef, FUNC_DEF_HOOK);
-	add_hook(&match_func_end, FUNC_DEF_HOOK);
+	add_hook(&match_func_end, END_FUNC_HOOK);
    add_dereference_hook(&match_deref);
    add_hook(&match_assign, ASSIGNMENT_HOOK);
 
