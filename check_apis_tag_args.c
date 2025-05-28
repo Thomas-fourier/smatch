@@ -5,6 +5,7 @@
 #include <glib.h>
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include "output_infra.h"
@@ -165,9 +166,11 @@ static struct api_arg *member_of_arg(struct expression *expr) {
          } else {
             arg = sub_arg;
          }
-         if (snprintf(arg->field_id, MAX_FIELD_LENGTH, "%s.%s", sub_arg->field_id, expr->member->name) > MAX_FIELD_LENGTH) {
-            debug("Truncated the name of a subfieled (%s.%s)\n", sub_arg->field_id, expr->member->name);
+         if (strlen(arg->field_id) + strlen(expr->member->name) + 2 > MAX_FIELD_LENGTH) {
+            debug("Field name too long: %s.%s\n", arg->field_id, expr->member->name);
          }
+         strncat(arg->field_id, ".", MAX_FIELD_LENGTH - strlen(arg->field_id) - 1);
+         strncat(arg->field_id, expr->member->name, MAX_FIELD_LENGTH - strlen(arg->field_id) - 1);
          return arg;
       }
    }
