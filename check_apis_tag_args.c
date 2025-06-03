@@ -73,40 +73,41 @@ static void match_fundef(struct symbol *sym)
 
    struct kernel_api_func *k = g_hash_table_lookup(previously_found_funcs, get_function());
    if(k) {
-      in_interesting_function++; 
+      in_interesting_function++;
       if(in_interesting_function > 1) {
          debug_std("Nested API function %s -> %s\n", current_api_func->api_func, get_function()); 
       }
-      current_api_func = k;
-      debug_std("API function %s (%s.%s) basefile %s\n", get_function(), current_api_func->api_name, current_api_func->api_field, get_base_file());
-      {
-         struct symbol *arg;
-         int i = 0;
-
-         FOR_EACH_PTR(sym->ctype.base_type->arguments, arg) {
-            if (!arg->ident) {
-               continue;
-            }
-
-            // Two states are saved: one to check that the variable is of interest, another to
-            // save the index of the argument
-            struct smatch_state *arg_state = malloc(sizeof(*arg_state));
-            arg_state->name = NULL;
-            
-            struct api_arg *aa = malloc(sizeof(*aa));
-            aa->api_func = current_api_func;
-            aa->is_owned = true;
-            snprintf(aa->field_id, MAX_FIELD_LENGTH, "%d", i);
-
-            g_hash_table_insert(state_to_arg, arg_state, aa);
-
-            set_state(my_id, arg->ident->name, arg, arg_state);
-
-            i++;
-         } END_FOR_EACH_PTR(arg);
-      }
+      debug_std("API function %s (%s.%s) basefile %s\n", get_function(), k->api_name, k->api_field, get_base_file());
    }
-   // callchain_add_fun(get_filename(), get_function(), my_id);
+
+
+   current_api_func = k;
+
+   struct symbol *arg;
+   int i = 0;
+
+   FOR_EACH_PTR(sym->ctype.base_type->arguments, arg) {
+      if (!arg->ident) {
+         continue;
+      }
+
+      // Two states are saved: one to check that the variable is of interest, another to
+      // save the index of the argument
+      struct smatch_state *arg_state = malloc(sizeof(*arg_state));
+      arg_state->name = NULL;
+      
+      struct api_arg *aa = malloc(sizeof(*aa));
+      aa->api_func = current_api_func;
+      aa->is_owned = true;
+      snprintf(aa->field_id, MAX_FIELD_LENGTH, "%d", i);
+
+      g_hash_table_insert(state_to_arg, arg_state, aa);
+
+      set_state(my_id, arg->ident->name, arg, arg_state);
+
+      i++;
+   } END_FOR_EACH_PTR(arg);
+
 }
 
 
@@ -118,28 +119,53 @@ static void match_func_end(struct symbol *sym)
       assert(in_interesting_function >= 0);
       debug_std("END API function %s\n", get_function());
    }
-   // callchain_rm_fun(get_function(), my_id);
+   if (current_api_func) {
+      // TODO: test if current api derefs without testing and if so look
+      // at other implementations and warn if necessary
+      current_api_func = NULL;
+   }
 }
 
 static struct api_arg *get_arg_from_tag(struct expression *expr) {
-
 	struct sm_state *sm;
+   struct sm_state *tmp;
+   struct api_arg *res;
 
 	sm = get_sm_state_expr(my_id, expr);
 	if (!sm) {
       return NULL;
    }
 
-   struct sm_state *tmp;
-   struct api_arg *res;
 
 	FOR_EACH_PTR(sm->possible, tmp) {
-
       res = g_hash_table_lookup(state_to_arg, tmp->state);
       if (res != 0)
          return res;
 	} END_FOR_EACH_PTR(tmp);
+
 	return NULL;
+}
+
+static struct api_arg *append_sub_field(struct api_arg *sub_arg, char *field) {
+   struct api_arg *arg;
+
+   // If it is a state, it is owned by `state_to_arg`, copy, otherwise modify in place
+   if (sub_arg->is_owned) {
+      arg = malloc(sizeof(*arg));
+      memcpy(arg, sub_arg, sizeof(*arg));
+      arg->is_owned = false;
+   } else {
+      arg = sub_arg;
+   }
+   if (strlen(arg->field_id) + strlen(field) + 2 > MAX_FIELD_LENGTH) {
+      sm_warning("Field name too long: %s.%s", arg->field_id, field);
+   }
+
+   // Append the subfield and return
+   strncat(arg->field_id, ".", MAX_FIELD_LENGTH - strlen(arg->field_id) - 1);
+   strncat(arg->field_id, field, MAX_FIELD_LENGTH - strlen(arg->field_id) - 1);
+
+   return arg;
 }
 
 static struct api_arg *member_of_arg(struct expression *expr) {
@@ -154,23 +180,11 @@ static struct api_arg *member_of_arg(struct expression *expr) {
    if ((arg = get_arg_from_tag(expr))) {
       return arg;
    }
-   
+
    // Test if if it is a field access of an arg
    if (expr->type == EXPR_DEREF && expr->member) {
       if ((sub_arg = member_of_arg(expr->deref))) {
-         // If it is a state, it is owned by `state_to_arg`, copy, otherwise modify in place
-         if (sub_arg->is_owned) {
-            arg = malloc(sizeof(*arg));
-            memcpy(arg, sub_arg, sizeof(*arg));
-            arg->is_owned = false;
-         } else {
-            arg = sub_arg;
-         }
-         if (strlen(arg->field_id) + strlen(expr->member->name) + 2 > MAX_FIELD_LENGTH) {
-            debug("Field name too long: %s.%s\n", arg->field_id, expr->member->name);
-         }
-         strncat(arg->field_id, ".", MAX_FIELD_LENGTH - strlen(arg->field_id) - 1);
-         strncat(arg->field_id, expr->member->name, MAX_FIELD_LENGTH - strlen(arg->field_id) - 1);
+         arg = append_sub_field(sub_arg, expr->member->name);
          return arg;
       }
    }
@@ -178,16 +192,28 @@ static struct api_arg *member_of_arg(struct expression *expr) {
    return NULL;
 }
 
-static void print_arg(struct api_arg *arg) {
-   fprintf(out, "(%s.%s.%s) (%s.%s) %s:%d",
-            arg->api_func->api_name,
-            arg->api_func->api_field,
-            arg->field_id,
-            arg->api_func->impl_name,
-            arg->api_func->api_func,
-            get_filename(),
-            get_lineno()
-   );
+static void print_arg(const char *msg,struct api_arg *arg) {
+   if (!arg) return;
+   if (arg->api_func) {
+      fprintf(out, "%s (%s.%s.%s) (%s.%s) %s:%d\n",
+               msg,
+               arg->api_func->api_name,
+               arg->api_func->api_field,
+               arg->field_id,
+               arg->api_func->impl_name,
+               arg->api_func->api_func,
+               get_filename(),
+               get_lineno()
+      );
+   } else {
+      fprintf(out, "%s (%s.%s) %s:%d\n",
+               msg,
+               get_function(),
+               arg->field_id,
+               get_filename(),
+               get_lineno()
+      );
+   }
 }
 
 static void match_deref(struct expression *expr) {
@@ -198,13 +224,52 @@ static void match_deref(struct expression *expr) {
 
    struct api_arg *arg = member_of_arg(expr);
    if (arg) {
-      fprintf(out, "deref of ");
-      print_arg(arg);
-      fprintf(out, "\n");
+      print_arg("deref of", arg);
+
+      // Save arg in database
+      sql_insert_deref_fn_args(
+              arg->field_id, arg->api_func ? arg->api_func->api_name : "",
+              get_filename(), get_lineno());
 
       if (!arg->is_owned)
          free(arg);
    }
+}
+
+
+static int read_deref_line(void* expr, int nb_fields, char **values, char **fields) {
+   struct expression *_expr = expr;
+   int arg_id;
+   char field[MAX_FIELD_LENGTH] = "\0";
+   struct api_arg *arg;
+
+   sscanf(values[0], "%d.%s", &arg_id, field);
+
+   if ((arg = member_of_arg(get_argument_from_call_expr(_expr->args, arg_id)))) {
+      arg = append_sub_field(arg, field);
+      print_arg("deref of", arg);
+
+      // Save arg in database
+      sql_insert_deref_fn_args(
+              arg->field_id, arg->api_func ? arg->api_func->api_name : "",
+              get_filename(), get_lineno());
+
+   }
+   
+   return 0;
+}
+
+static void match_call(struct expression *expr) {
+
+   if (expr->type != EXPR_CALL || !expr->fn) {
+      return;
+   }
+
+   mem_sql(read_deref_line, expr,
+           "SELECT param_num FROM deref_fn_args "
+           "WHERE fn_name = '%s'",
+           expr_to_str(expr->fn)
+         );
 }
 
 static void clear_state(struct expression *expr) {
@@ -218,11 +283,15 @@ static void clear_state(struct expression *expr) {
 }
 
 static void match_assign(struct expression *expr) {
+   struct api_arg *arg;
+
+   if (is_fake_var_assign(expr))
+      return;
+
   if (expr->type != EXPR_ASSIGNMENT)
     return;
 
   // If it is a value substitution, nullity is not changed
-  // TODO: in this case, propagate subfields
   if ((expr->left->type == EXPR_PREOP && expr->left->op == '*')) {
     return;
   }
@@ -231,17 +300,15 @@ static void match_assign(struct expression *expr) {
   // The state of the left is overwritten
   clear_state(expr->left);
 
-  // Then transmit the state (inc. if left is an arg)
-  struct sm_state *rstates = get_sm_state_expr(my_id, expr->right);
-  struct sm_state *rstate;
-  if (!rstates) {
-    return;
-  }
+  if ((arg = member_of_arg(expr->right))) {
+      struct smatch_state *arg_state = malloc(sizeof(*arg_state));
+      arg_state->name = NULL;
 
-  FOR_EACH_PTR(rstates->possible, rstate) {
-    debug("assignment of the tags of variable %s\n", rstate->name);
-    set_state_expr(my_id, expr->left, rstate->state);
-  } END_FOR_EACH_PTR(rstate);
+      // The arg is now owned by the hashtable
+      arg->is_owned = true;
+      g_hash_table_insert(state_to_arg, arg_state, arg);
+      set_state_expr(my_id, expr->left, arg_state);
+  }
 
   // If it is for sure a valid pointer, mark as tested
   if (implied_not_equal(expr->right, 0)
@@ -266,9 +333,10 @@ static void match_condition(struct expression *expr) {
       return;
 
     if (get_state_expr(my_id, expr)) {
-      fprintf(out, "test of ");
-      print_arg(arg);
-      fprintf(out, "\n");
+      print_arg("test of", arg);
+
+      // test if it is derefed and issue a warning
+      // add to tested_pointer table
 
       if (expr->type == EXPR_SYMBOL) {
         set_true_false_states_expr(my_id, expr, &tested, NULL);
@@ -295,6 +363,6 @@ void check_apis_tag_args(int id)
 	add_hook(&match_func_end, END_FUNC_HOOK);
    add_dereference_hook(&match_deref);
    add_hook(&match_assign, ASSIGNMENT_HOOK);
-
+   add_hook(&match_call, FUNCTION_CALL_HOOK_BEFORE);
    add_hook(&match_condition, CONDITION_HOOK);
 }

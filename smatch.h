@@ -1198,6 +1198,7 @@ void sql_insert_mtag_about(mtag_t tag, const char *left_name, const char *right_
 void sql_insert_mtag_info(mtag_t tag, int type, const char *value);
 void sql_insert_mtag_map(mtag_t container, int container_offset, mtag_t tag, int tag_offset);
 void sql_insert_mtag_alias(mtag_t orig, mtag_t alias);
+void sql_insert_deref_fn_args(const char *field, const char *api_func, const char *base_file, int base_lineo);
 int mtag_map_select_container(mtag_t tag, int container_offset, mtag_t *container);
 int mtag_map_select_tag(mtag_t container, int offset, mtag_t *tag);
 struct smatch_state *get_mtag_return(struct expression *expr, struct smatch_state *state);

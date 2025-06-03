@@ -1,0 +1,1 @@
+CREATE TABLE deref_fn_args (file TEXT, line INTEGER, fn_name TEXT, param_num, field_id TEXT, deref_file TEXT, deref_line INTEGER);

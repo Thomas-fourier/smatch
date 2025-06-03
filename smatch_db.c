@@ -513,6 +513,14 @@ void sql_insert_mtag_alias(mtag_t orig, mtag_t alias)
 	sql_insert(mtag_alias, "%lld, %lld", orig, alias);
 }
 
+void sql_insert_deref_fn_args(const char *field, const char *api_func, const char *base_file, int base_line)
+{
+	sql_insert(deref_fn_args,
+              "'%s', %d, '%s', '%s', '%s', '%s', %d",
+			  get_filename(), get_lineno(), get_function(),
+			  field, api_func, base_file, base_line);
+}
+
 static int save_mtag(void *_tag, int argc, char **argv, char **azColName)
 {
 	mtag_t *saved_tag = _tag;
@@ -2805,6 +2813,7 @@ static void init_memdb(void)
 		"db/mtag_map.schema",
 		"db/mtag_data.schema",
 		"db/mtag_alias.schema",
+		"db/deref_fn_args.schema"
 	};
 	static char buf[4096];
 	int fd;

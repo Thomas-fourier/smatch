@@ -66,5 +66,4 @@ cscope.out
 #cache
 .cache
 
-smatch_data
 kernel_apis.inc.h
