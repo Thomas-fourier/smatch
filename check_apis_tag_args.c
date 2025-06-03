@@ -246,7 +246,11 @@ static int read_deref_line(void* expr, int nb_fields, char **values, char **fiel
    sscanf(values[0], "%d.%s", &arg_id, field);
 
    if ((arg = member_of_arg(get_argument_from_call_expr(_expr->args, arg_id)))) {
-      arg = append_sub_field(arg, field);
+      // If the field is empty, do not add a dot
+      if (field[0] != '\0') {
+         arg = append_sub_field(arg, field);
+      }
+
       print_arg("deref of", arg);
 
       // Save arg in database
