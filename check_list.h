@@ -221,6 +221,7 @@ CK(check_no_increment)
 /* <- your test goes here */
 CK(check_apis)
 CK(check_apis_tag_args)
+CK(check_dma)
 /* CK(register_template) */
 
 /* kernel specific */
