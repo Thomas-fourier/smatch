@@ -69,6 +69,10 @@ static void match_call(struct expression *expr) {
     if (!fn_name)
         return;
 
+    if (strstr(fn_name, "dma_map_sg") ||
+        strstr(fn_name, "rdma"))
+        return;
+
     if (strstr(fn_name, "dma_mapping_error")) {
         match_dma_error(expr);
         goto free;
@@ -99,6 +103,9 @@ void check_dma(int id)
     if (option_project != PROJ_KERNEL) {
         return;
     }
+
+    // TODO: ignore map_sg
+    // TODO: ignore rdma
 
     add_hook(match_call, FUNCTION_CALL_HOOK);
     add_hook(match_func_end, END_FUNC_HOOK);
