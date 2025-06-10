@@ -71,7 +71,7 @@ static void match_call(struct expression *expr) {
 
     if (strstr(fn_name, "dma_map_sg") ||
         strstr(fn_name, "rdma"))
-        return;
+        goto free;
 
     if (strstr(fn_name, "dma_mapping_error")) {
         match_dma_error(expr);
