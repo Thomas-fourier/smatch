@@ -90,6 +90,10 @@ static void match_call(struct expression *expr) {
 
 
 static void match_func_end(struct symbol *sym) {
+    if (__inline_fn) {
+        return;
+    }
+
     if (untested_dma_count && !strstr(get_function(), "dma_map")) {
         sm_warning("Function %s has %d untested dma_map calls", get_function(), untested_dma_count);
     }
