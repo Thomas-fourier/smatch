@@ -46,21 +46,24 @@ static void match_dma_error(const char *fn, struct expression *expr, void *unuse
     struct expression *arg = get_argument_from_call_expr(expr->args, 1);
 
     if (strcmp(get_function(), "svm_is_valid_dma_mapping_addr") == 0 ||
-        strcmp(get_function(), "gve_free_page"))
+        strcmp(get_function(), "gve_free_page") == 0)
         return;
 
     if (get_state_expr(my_id, arg) == &tested_dma) {
         sm_warning("dma_mapping_error called on an already tested dma pointer.");
     }
 
+    char *arg_str = expr_to_str(arg);
     if (!(expr_has_possible_state(my_id, arg, &untested_dma) ||
-        (last_dma_map && strcmp(last_dma_map, expr_to_str(arg)) == 0))) {
-        sm_warning("dma_mapping_error called with %s which is not dma'd", expr_to_str(arg));
+        (last_dma_map && strcmp(last_dma_map, arg_str) == 0))) {
+        sm_warning("dma_mapping_error called with %s which is not dma'd", arg_str);
+        free_string(arg_str);
         return;
     }
 
     set_state_expr(my_id, arg, &tested_dma);
     free_string(last_dma_map);
+    free_string(arg_str);
     last_dma_map = NULL;
     untested_dma_count--;
 }
@@ -85,7 +88,7 @@ static void match_func_end(struct symbol *sym) {
 
 
     if (!found_untested && untested_dma_count && !strstr(get_function(), "dma_map")) {
-        sm_warning("Function %s has %d untested dma_map calls", get_function(), untested_dma_count);
+        sm_warning("Function %s has %d untested dma_map calls, including %s", get_function(), untested_dma_count, last_dma_map);
     }
     untested_dma_count = 0;
 
