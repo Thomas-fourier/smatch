@@ -22,6 +22,7 @@ static const char *dma_mapping_functions[] = {
     "dma_map_page",
     "dma_map_page_attrs",
     "dma_map_area",
+    "dma_map_resource",
 };
 
 static void match_dma_map(const char *fn, struct expression *expr, void *unused) {
@@ -44,6 +45,10 @@ static void match_dma_map(const char *fn, struct expression *expr, void *unused)
 static void match_dma_error(const char *fn, struct expression *expr, void *unused) {
     struct expression *arg = get_argument_from_call_expr(expr->args, 1);
 
+    if (strcmp(get_function(), "svm_is_valid_dma_mapping_addr") == 0 ||
+        strcmp(get_function(), "gve_free_page"))
+        return;
+
     if (get_state_expr(my_id, arg) == &tested_dma) {
         sm_warning("dma_mapping_error called on an already tested dma pointer.");
     }
@@ -63,9 +68,8 @@ static void match_dma_error(const char *fn, struct expression *expr, void *unuse
 
 
 static void match_func_end(struct symbol *sym) {
-    if (__inline_fn) {
+    if (__inline_fn)
         return;
-    }
 
     struct stree *stree;
 	struct sm_state *tmp;
