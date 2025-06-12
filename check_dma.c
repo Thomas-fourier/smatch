@@ -23,6 +23,13 @@ static const char *dma_mapping_functions[] = {
     "dma_map_page_attrs",
     "dma_map_area",
     "dma_map_resource",
+    "ib_dma_map_single",
+    "ib_dma_map_page",
+};
+
+static const char *dma_mapping_test_funcs[] = {
+    "dma_mapping_error",
+    "ib_dma_mapping_error",
 };
 
 static void match_dma_map(const char *fn, struct expression *expr, void *unused) {
@@ -105,7 +112,8 @@ void check_dma(int id)
         return;
     }
 
-    add_function_hook("dma_mapping_error", match_dma_error, NULL);
+    for (int i = 0; i < ARRAY_SIZE(dma_mapping_test_funcs); i++)
+        add_function_hook(dma_mapping_test_funcs[i], match_dma_error, NULL);
 
     for (int i = 0; i < ARRAY_SIZE(dma_mapping_functions); i++)
         add_function_hook(dma_mapping_functions[i], match_dma_map, NULL);
