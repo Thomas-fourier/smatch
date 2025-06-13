@@ -123,6 +123,9 @@ static void match_dma_error(const char *fn, struct expression *expr, void *unuse
 }
 
 static void match_assign(struct expression *expr) {
+    if (is_fake_var_assign(expr))
+        return;
+
     char *arg_str = expr_to_str(expr->right);
     if (is_dma_untested(expr->right, arg_str)) {
         set_untested(expr->left);
