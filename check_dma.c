@@ -32,24 +32,58 @@ static const char *dma_mapping_test_funcs[] = {
     "ib_dma_mapping_error",
 };
 
+static bool str_in_array(char *str, char *array[], int array_size) {
+    for (int i = 0; i < array_size; i++) {
+        if (strcmp(str, array[i]) == 0)
+            return true;
+    }
+
+    return false;
+}
+
+static void set_untested(struct expression *expr) {
+    set_state_expr(my_id, expr, &untested_dma);
+
+    if (last_dma_map)
+        free_string(last_dma_map);
+    last_dma_map = expr_to_str(expr);
+
+}
+
 static void match_dma_map(const char *fn, struct expression *expr, void *unused) {
+    if (__inline_fn)
+        return;
+
+    if (str_in_array(get_function(), (char **) dma_mapping_functions, ARRAY_SIZE(dma_mapping_functions)))
+        return;
+
     struct expression *parent = expr_get_parent_expr(expr);
 
     set_state_expr(my_id, expr, &untested_dma);
 
-    if (parent && parent->type != EXPR_ASSIGNMENT)
+    if (!parent || parent->type != EXPR_ASSIGNMENT){
+        char *str_expr = expr_to_str(expr);
+        sm_warning("Calling DMA_MAP but not assigned in %s\n", str_expr);
+        free_string(str_expr);
         return;
-    
-    set_state_expr(my_id, parent->left, &untested_dma);
+    }
 
-    if (last_dma_map)
-        free_string(last_dma_map);
-    last_dma_map = expr_to_str(parent->left);
-
+    set_untested(parent->left);
     untested_dma_count++;
 }
 
+static bool is_dma_untested(struct expression *arg, char arg_str[]) {
+    return !(expr_has_possible_state(my_id, arg, &untested_dma) ||
+        (last_dma_map && arg_str && strcmp(last_dma_map, arg_str) == 0));
+}
+
 static void match_dma_error(const char *fn, struct expression *expr, void *unused) {
+    if (__inline_fn)
+        return;
+
+    if (str_in_array(get_function(), (char **) dma_mapping_test_funcs, ARRAY_SIZE(dma_mapping_test_funcs)))
+        return;
+
     struct expression *arg = get_argument_from_call_expr(expr->args, 1);
 
     if (strcmp(get_function(), "svm_is_valid_dma_mapping_addr") == 0 ||
@@ -61,8 +95,7 @@ static void match_dma_error(const char *fn, struct expression *expr, void *unuse
     }
 
     char *arg_str = expr_to_str(arg);
-    if (!(expr_has_possible_state(my_id, arg, &untested_dma) ||
-        (last_dma_map && strcmp(last_dma_map, arg_str) == 0))) {
+    if (is_dma_untested(arg, arg_str)) {
         sm_warning("dma_mapping_error called with %s which is not dma'd", arg_str);
         free_string(arg_str);
         return;
@@ -75,7 +108,13 @@ static void match_dma_error(const char *fn, struct expression *expr, void *unuse
     untested_dma_count--;
 }
 
-
+static void match_assign(struct expression *expr) {
+    char *arg_str = expr_to_str(expr->right);
+    if (is_dma_untested(expr->right, arg_str)) {
+        set_untested(expr->left);
+    }
+    free_string(arg_str);
+}
 
 static void match_func_end(struct symbol *sym) {
     if (__inline_fn)
@@ -118,5 +157,6 @@ void check_dma(int id)
     for (int i = 0; i < ARRAY_SIZE(dma_mapping_functions); i++)
         add_function_hook(dma_mapping_functions[i], match_dma_map, NULL);
 
+    add_hook(match_assign, ASSIGNMENT_HOOK);
     add_hook(match_func_end, END_FUNC_HOOK);
 }
