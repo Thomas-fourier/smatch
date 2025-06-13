@@ -25,6 +25,8 @@ static const char *dma_mapping_functions[] = {
     "dma_map_resource",
     "ib_dma_map_single",
     "ib_dma_map_page",
+    "__skb_frag_dma_map",
+    "__skb_frag_dma_map1",
 };
 
 static const char *dma_mapping_test_funcs[] = {
