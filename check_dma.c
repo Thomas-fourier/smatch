@@ -87,7 +87,7 @@ static void match_dma_map(const char *fn, struct expression *expr, void *unused)
 }
 
 static bool is_dma_untested(struct expression *arg, char arg_str[]) {
-    return !(expr_has_possible_state(my_id, arg, &untested_dma) ||
+    return (expr_has_possible_state(my_id, arg, &untested_dma) ||
         (last_dma_map && arg_str && strcmp(last_dma_map, arg_str) == 0));
 }
 
@@ -109,7 +109,7 @@ static void match_dma_error(const char *fn, struct expression *expr, void *unuse
     }
 
     char *arg_str = expr_to_str(arg);
-    if (is_dma_untested(arg, arg_str)) {
+    if (!is_dma_untested(arg, arg_str)) {
         sm_warning("dma_mapping_error called with %s which is not dma'd", arg_str);
         free_string(arg_str);
         return;
