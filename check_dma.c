@@ -25,11 +25,22 @@ static const char *dma_mapping_functions[] = {
     "dma_map_resource",
     "ib_dma_map_single",
     "ib_dma_map_page",
+    "__skb_frag_dma_map",
+    "__skb_frag_dma_map1",
+    "fc_dma_map_single",
+    "nfp_net_dma_map_rx",
+    "hmm_dma_map_pfn",
+    "vring_map_single",
+    "virtqueue_dma_map_single_attrs",
 };
 
 static const char *dma_mapping_test_funcs[] = {
     "dma_mapping_error",
     "ib_dma_mapping_error",
+    "fc_dma_mapping_error",
+    "enic_dma_map_check",
+    "vring_mapping_error",
+    "virtqueue_dma_mapping_error",
 };
 
 static bool str_in_array(char *str, char *array[], int array_size) {
