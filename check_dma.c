@@ -53,6 +53,9 @@ static bool str_in_array(char *str, char *array[], int array_size) {
 }
 
 static void set_untested(struct expression *expr) {
+    if (is_fake_var(expr))
+        return;
+
     set_state_expr(my_id, expr, &untested_dma);
 
     if (last_dma_map)
