@@ -106,6 +106,7 @@ static void match_dma_error(const char *fn, struct expression *expr, void *unuse
 
     if (get_state_expr(my_id, arg) == &tested_dma) {
         sm_warning("dma_mapping_error called on an already tested dma pointer.");
+        return;
     }
 
     char *arg_str = expr_to_str(arg);
