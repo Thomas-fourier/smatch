@@ -3,6 +3,7 @@
 #include "smatch_extra.h"
 #include "smatch_slist.h"
 #include "string.h"
+#include <string.h>
 
 static int my_id;
 
@@ -61,6 +62,23 @@ static void set_untested(struct expression *expr) {
     if (last_dma_map)
         free_string(last_dma_map);
     last_dma_map = expr_to_str(expr);
+
+
+    // We remove the preops
+    // TODO: check that they are preops
+    char *pp;
+    if (!(pp = strstr(last_dma_map, "++"))) {
+        return;
+    }
+    char *tmp = malloc(strlen(last_dma_map));
+    strcpy(tmp, last_dma_map);
+    free_string(last_dma_map);
+    last_dma_map = tmp;
+    memmove(pp, pp+2, strlen(pp+2)+1);
+
+    while ((pp = strstr(last_dma_map, "++"))) {
+        memmove(pp, pp+2, strlen(pp+2)+1);
+    }
 
 }
 
