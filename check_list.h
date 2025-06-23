@@ -219,6 +219,7 @@ CK(check_always_true)
 CK(check_no_increment)
 
 /* <- your test goes here */
+CK(check_dma_sg)
 CK(check_dma)
 /* CK(register_template) */
 
