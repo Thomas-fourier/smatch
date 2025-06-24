@@ -4,19 +4,28 @@
 
 static int my_id;
 
-static const char *dma_sg_mapping_funcs[] = {
-    "dma_map_sg_attrs",
-    "dma_map_sgtable",
-    "dma_map_sg",
+struct dma_sg_func {
+    const char *fn;
+    int arg_pos;
 };
 
-static const char *dma_sg_unmap_funcs[] = {
-    "dma_unmap_sg_attrs",
-    "dma_unmap_sgtable",
-    "dma_unmap_sg",
+static struct dma_sg_func dma_sg_mapping_funcs[] = {
+    {"dma_map_sg_attrs", 2},
+    {"dma_map_sgtable", 2},
+    {"dma_map_sg", 2},
 };
 
-static struct string_list *sg;      // arg 2
+static struct dma_sg_func dma_sg_unmap_funcs[] = {
+    {"dma_unmap_sg_attrs", 2}, 
+    {"dma_unmap_sgtable", 2},
+    {"dma_unmap_sg", 2},
+    {"sg_copy_buffer", 1},
+    {"sg_copy_from_buffer", 1},
+    {"sg_copy_to_buffer", 1},
+    {"sg_pcopy_from_buffer", 1},
+    {"sg_pcopy_to_buffer", 1},
+};
+
 static struct string_list *nents;   // arg 3, number of entries
 static struct string_list *nmaped;  // ret value: number of mapped regions
 
@@ -55,21 +64,18 @@ static void add_expr_to_list(struct expression *expr, struct string_list **list)
 }
 
 
-static void generic_dma_sg(struct expression *expr)
+static void generic_dma_sg(struct expression *expr, int arg_pos)
 {
-    struct expression *this_sg = get_argument_from_call_expr(expr->args, 1);
-    add_expr_to_list(this_sg, &sg);
-
-    struct expression *this_nents = get_argument_from_call_expr(expr->args, 2);
+    struct expression *this_nents = get_argument_from_call_expr(expr->args, arg_pos);
     if (is_expr_in_list(this_nents, nmaped))
         sm_warning("Possibly mixing nents and number of mapped regions.");
     add_expr_to_list(this_nents, &nents);   
 }
 
 
-static void match_dma_sg_map(const char *name, struct expression *expr, void *_)
+static void match_dma_sg_map(const char *name, struct expression *expr, void *arg_pos)
 {
-    generic_dma_sg(expr);
+    generic_dma_sg(expr, *(int *)arg_pos);
 
     struct expression *parent = expr_get_parent_expr(expr);
     if (!parent)
@@ -86,9 +92,9 @@ static void match_dma_sg_map(const char *name, struct expression *expr, void *_)
 }
 
 
-static void match_dma_sg_unmap(const char *name, struct expression *expr, void *_)
+static void match_dma_sg_unmap(const char *name, struct expression *expr, void *arg_pos)
 {
-    generic_dma_sg(expr);
+    generic_dma_sg(expr, *(int *)arg_pos);
 }
 
 void check_dma_sg(int id) {
@@ -96,9 +102,9 @@ void check_dma_sg(int id) {
 
 
     for (int i = 0; i < ARRAY_SIZE(dma_sg_unmap_funcs); i++)
-        add_function_hook(dma_sg_unmap_funcs[i], match_dma_sg_unmap, NULL);
+        add_function_hook(dma_sg_unmap_funcs[i].fn, match_dma_sg_unmap, &(dma_sg_unmap_funcs[i].arg_pos));
 
     for (int i = 0; i < ARRAY_SIZE(dma_sg_mapping_funcs); i++)
-        add_function_hook(dma_sg_mapping_funcs[i], match_dma_sg_map, NULL);
+        add_function_hook(dma_sg_mapping_funcs[i].fn, match_dma_sg_map, &(dma_sg_mapping_funcs[i].arg_pos));
 
 }
