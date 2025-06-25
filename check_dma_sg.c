@@ -24,6 +24,8 @@ static struct dma_sg_func dma_sg_unmap_funcs[] = {
     {"sg_copy_to_buffer", 1},
     {"sg_pcopy_from_buffer", 1},
     {"sg_pcopy_to_buffer", 1},
+    {"dma_sync_sg_for_cpu", 2},
+    {"dma_sync_sg_for_device", 2}
 };
 
 static struct string_list *nents;   // arg 3, number of entries
