@@ -69,8 +69,11 @@ static void set_untested(struct expression *expr) {
 
     set_state_expr(my_id, expr, &untested_dma);
 
-    if (last_dma_map)
+    if (last_dma_map){
+        sm_warning("possible dma mapping not tested of %s",
+                   last_dma_map);
         free_string(last_dma_map);
+    }
     last_dma_map = expr_to_str(expr);
 
 
