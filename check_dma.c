@@ -139,13 +139,15 @@ static void match_dma_error(const char *fn, struct expression *expr, void *unuse
         if (strcmp(arg_str, last_dma_map) == 0) {
             goto ok;
         }
-        sm_warning("dma_mapping_error called on an already tested dma pointer.");
+        if (option_spammy)
+            sm_warning("dma_mapping_error called on an already tested dma pointer.");
         return;
     }
 
     arg_str = expr_to_str(arg);
     if (!is_dma_untested(arg, arg_str)) {
-        sm_warning("dma_mapping_error called with %s which is not dma'd", arg_str);
+        if (option_spammy)
+            sm_warning("dma_mapping_error called with %s which is not dma'd", arg_str);
         free_string(arg_str);
         return;
     }
@@ -187,11 +189,11 @@ static void match_func_end(struct symbol *sym) {
 	} END_FOR_EACH_SM(tmp);
 
 
-    if (!found_untested && untested_dma_count) {
+    if (!found_untested && untested_dma_count && (last_dma_map || option_spammy))
         sm_warning("%d untested dma_map call%s, including %s",
                    untested_dma_count, untested_dma_count > 1 ? "s" : "",
                    last_dma_map);
-    }
+
     untested_dma_count = 0;
 
     free_string(last_dma_map);
