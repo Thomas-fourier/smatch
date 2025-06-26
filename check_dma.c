@@ -187,8 +187,10 @@ static void match_func_end(struct symbol *sym) {
 	} END_FOR_EACH_SM(tmp);
 
 
-    if (!found_untested && untested_dma_count && !strstr(get_function(), "dma_map")) {
-        sm_warning("Function %s has %d untested dma_map calls, including %s", get_function(), untested_dma_count, last_dma_map);
+    if (!found_untested && untested_dma_count) {
+        sm_warning("%d untested dma_map call%s, including %s",
+                   untested_dma_count, untested_dma_count > 1 ? "s" : "",
+                   last_dma_map);
     }
     untested_dma_count = 0;
 
