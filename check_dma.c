@@ -53,6 +53,16 @@ static bool str_in_array(char *str, char *array[], int array_size) {
     return false;
 }
 
+static bool in_implementation() {
+    return (str_in_array(get_function(),
+                        (char **) dma_mapping_test_funcs,
+                        ARRAY_SIZE(dma_mapping_test_funcs)) ||
+            str_in_array(get_function(),
+                         (char **) dma_mapping_functions,
+                         ARRAY_SIZE(dma_mapping_functions))
+            );
+}
+
 static void set_untested(struct expression *expr) {
     if (is_fake_var(expr))
         return;
@@ -86,7 +96,7 @@ static void match_dma_map(const char *fn, struct expression *expr, void *unused)
     if (__inline_fn)
         return;
 
-    if (str_in_array(get_function(), (char **) dma_mapping_functions, ARRAY_SIZE(dma_mapping_functions)))
+    if (in_implementation())
         return;
 
     struct expression *parent = expr_get_parent_expr(expr);
@@ -115,7 +125,7 @@ static void match_dma_error(const char *fn, struct expression *expr, void *unuse
     if (__inline_fn)
         return;
 
-    if (str_in_array(get_function(), (char **) dma_mapping_test_funcs, ARRAY_SIZE(dma_mapping_test_funcs)))
+    if (in_implementation())
         return;
 
     struct expression *arg = get_argument_from_call_expr(expr->args, 1);
