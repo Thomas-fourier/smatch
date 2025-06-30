@@ -36,7 +36,8 @@ static bool is_expr_in_list(struct expression *expr, struct string_list *list)
     char *ptr;
     if (expr->type == EXPR_DEREF && expr->member) {
         FOR_EACH_PTR(list, ptr) {
-            if (strcmp(expr->member->name, ptr) == 0)
+            if (ptr[0] == '.' &&
+                (strcmp(expr->member->name, ptr + 1) == 0))
                 return true;
         } END_FOR_EACH_PTR(ptr);
     } else {
@@ -58,11 +59,12 @@ static void add_expr_to_list(struct expression *expr, struct string_list **list)
         return;
 
     if (expr->type == EXPR_DEREF && expr->member) {
-        insert_string(list, expr->member->name);
+        char *name = malloc(strlen(expr->member->name) + 2);
+        sprintf(name, ".%s", expr->member->name);
+        insert_string(list, name);
     } else {
         insert_string(list, expr_to_str(expr));
     }
-
 }
 
 
