@@ -17,36 +17,48 @@ int untested_dma_count = 0;
 // actually the same.
 char *last_dma_map = NULL;
 
-static const char *dma_mapping_functions[] = {
-    "dma_map_single",
-    "dma_map_single_attrs",
-    "dma_map_page",
-    "dma_map_page_attrs",
-    "dma_map_area",
-    "dma_map_resource",
-    "ib_dma_map_single",
-    "ib_dma_map_page",
-    "__skb_frag_dma_map",
-    "__skb_frag_dma_map1",
-    "fc_dma_map_single",
-    "nfp_net_dma_map_rx",
-    "hmm_dma_map_pfn",
-    "vring_map_single",
-    "virtqueue_dma_map_single_attrs",
+
+struct dma_test_func {
+    const char *fn;
+    int arg_pos;
 };
 
-static const char *dma_mapping_test_funcs[] = {
-    "dma_mapping_error",
-    "ib_dma_mapping_error",
-    "fc_dma_mapping_error",
-    "enic_dma_map_check",
-    "vring_mapping_error",
-    "virtqueue_dma_mapping_error",
+
+static const struct dma_test_func dma_mapping_functions[] = {
+    {"dma_map_single", 0},
+    {"dma_map_single_attrs", 0},
+    {"dma_map_page", 0},
+    {"dma_map_page_attrs", 0},
+    {"dma_map_area", 0},
+    {"dma_map_resource", 0},
+    {"ib_dma_map_single", 0},
+    {"ib_dma_map_page", 0},
+    {"__skb_frag_dma_map", 0},
+    {"__skb_frag_dma_map1", 0},
+    {"fc_dma_map_single", 0},
+    {"nfp_net_dma_map_rx", 0},
+    {"hmm_dma_map_pfn", 0},
+    {"vring_map_single", 0},
+    {"virtqueue_dma_map_single_attrs", 0},
+    {"map_descbuffer", 0},
+    {"owl_emac_dma_map_rx", 0},
+    {"owl_emac_dma_map_tx", 0},
 };
 
-static bool str_in_array(char *str, char *array[], int array_size) {
+static const struct dma_test_func dma_mapping_test_funcs[] = {
+    {"dma_mapping_error", 1},
+    {"ib_dma_mapping_error", 1},
+    {"fc_dma_mapping_error", 1},
+    {"enic_dma_map_check", 1},
+    {"vring_mapping_error", 1},
+    {"virtqueue_dma_mapping_error", 1},
+    {"b43_dma_mapping_error", 1},
+    {"iwl_txq_gen2_set_tb_with_wa", 3},
+};
+
+static bool str_in_array(const char *str, const struct dma_test_func array[], int array_size) {
     for (int i = 0; i < array_size; i++) {
-        if (strcmp(str, array[i]) == 0)
+        if (strcmp(str, array[i].fn) == 0)
             return true;
     }
 
@@ -55,10 +67,10 @@ static bool str_in_array(char *str, char *array[], int array_size) {
 
 static bool in_implementation() {
     return (str_in_array(get_function(),
-                        (char **) dma_mapping_test_funcs,
-                        ARRAY_SIZE(dma_mapping_test_funcs)) ||
+                         dma_mapping_test_funcs,
+                         ARRAY_SIZE(dma_mapping_test_funcs)) ||
             str_in_array(get_function(),
-                         (char **) dma_mapping_functions,
+                         dma_mapping_functions,
                          ARRAY_SIZE(dma_mapping_functions))
             );
 }
@@ -122,7 +134,8 @@ static bool is_dma_untested(struct expression *arg, char arg_str[]) {
         (last_dma_map && arg_str && strcmp(last_dma_map, arg_str) == 0));
 }
 
-static void match_dma_error(const char *fn, struct expression *expr, void *unused) {
+static void match_dma_error(const char *fn, struct expression *expr,
+                            void *arg_pos) {
     char *arg_str;
 
     if (__inline_fn)
@@ -131,7 +144,7 @@ static void match_dma_error(const char *fn, struct expression *expr, void *unuse
     if (in_implementation())
         return;
 
-    struct expression *arg = get_argument_from_call_expr(expr->args, 1);
+    struct expression *arg = get_argument_from_call_expr(expr->args,*(int *)arg_pos);
 
     if (strcmp(get_function(), "svm_is_valid_dma_mapping_addr") == 0 ||
         strcmp(get_function(), "gve_free_page") == 0)
@@ -213,10 +226,10 @@ void check_dma(int id)
     }
 
     for (int i = 0; i < ARRAY_SIZE(dma_mapping_test_funcs); i++)
-        add_function_hook(dma_mapping_test_funcs[i], match_dma_error, NULL);
+        add_function_hook(dma_mapping_test_funcs[i].fn, match_dma_error, (void *)&dma_mapping_test_funcs[i].arg_pos);
 
     for (int i = 0; i < ARRAY_SIZE(dma_mapping_functions); i++)
-        add_function_hook(dma_mapping_functions[i], match_dma_map, NULL);
+        add_function_hook(dma_mapping_functions[i].fn, match_dma_map, NULL);
 
     add_hook(match_assign, ASSIGNMENT_HOOK);
     add_hook(match_func_end, END_FUNC_HOOK);
