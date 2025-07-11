@@ -219,7 +219,7 @@ CK(check_always_true)
 CK(check_no_increment)
 
 /* <- your test goes here */
-CK(check_generic_arg)
+CK(check_generic_args)
 /* CK(register_template) */
 
 /* kernel specific */
