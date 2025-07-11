@@ -11,14 +11,10 @@ struct dma_sg_func {
 
 static struct dma_sg_func dma_sg_mapping_funcs[] = {
     {"dma_map_sg_attrs", 2},
-    {"dma_map_sgtable", 2},
-    {"dma_map_sg", 2},
 };
 
 static struct dma_sg_func dma_sg_unmap_funcs[] = {
-    {"dma_unmap_sg_attrs", 2}, 
-    {"dma_unmap_sgtable", 2},
-    {"dma_unmap_sg", 2},
+    {"dma_unmap_sg_attrs", 2},
     {"sg_copy_buffer", 1},
     {"sg_copy_from_buffer", 1},
     {"sg_copy_to_buffer", 1},
