@@ -366,7 +366,7 @@ void check_generic_args(int id) {
     my_id = id;
 
     // manual_init();
-    parse_file("/home/tfourier/Documents/smatches/smatch-api-nullptr/dma_sg_nents_test");
+    parse_file(option_generic_args_file);
     print_arg_pos();
 
     arg_name = malloc(sizeof(*arg_name));
