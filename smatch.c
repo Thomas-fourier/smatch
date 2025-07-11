@@ -48,6 +48,7 @@ int option_mem;
 char *option_datadir_str;
 int option_fatal_checks;
 int option_succeed;
+char *option_generic_args_file;
 int SMATCH_EXTRA;
 
 FILE *sm_outfd;
@@ -153,6 +154,7 @@ static void help(void)
 	printf("--two-passes:  use a two pass system for each function.\n");
 	printf("--file-output:  instead of printing stdout, print to \"file.c.smatch_out\".\n");
 	printf("--fatal-checks: check output is treated as an error.\n");
+	printf("--generic-arg-file=<filename>: definition of API of which to test args.\n");
 	printf("--help:  print this helpful message.\n");
 	exit(1);
 }
@@ -245,6 +247,12 @@ void parse_args(int *argcp, char ***argvp)
 		}
 		if (!found && strncmp((*argvp)[1], "--function=", 11) == 0) {
 			option_process_function = (*argvp)[1] + 11;
+			(*argvp)[1] = (*argvp)[0];
+			found = 1;
+		}
+
+		if (!found && strncmp((*argvp)[1], "--generic-arg-file=", 19) == 0) {
+			option_generic_args_file = (*argvp)[1] + 19;
 			(*argvp)[1] = (*argvp)[0];
 			found = 1;
 		}

@@ -1225,6 +1225,7 @@ extern char *option_process_function;
 extern char *option_project_str;
 extern char *bin_dir;
 extern char *data_dir;
+extern char *option_generic_args_file;
 extern int option_no_data;
 extern int option_full_path;
 extern int option_call_tree;

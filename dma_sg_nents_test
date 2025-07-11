@@ -1,0 +1,13 @@
+var sg
+var nents
+var dma_nents
+
+dma_nents = dma_map_sg_attrs(_, sg, nents)
+dma_sync_sg_for_device(_, sg, nents)
+dma_unmap_sg_attrs(_, sg, nents)
+sg_copy_buffer(sg, nents)
+sg_copy_from_buffer(sg, nents)
+sg_copy_to_buffer(sg, nents)
+sg_pcopy_from_buffer(sg, nents)
+sg_pcopy_to_buffer(sg, nents)
+dma_sync_sg_for_cpu(sg, nents)
