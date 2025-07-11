@@ -220,6 +220,7 @@ CK(check_no_increment)
 
 /* <- your test goes here */
 CK(check_api_resemblance)
+CK(check_generic_args)
 /* CK(register_template) */
 
 /* kernel specific */
