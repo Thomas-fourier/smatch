@@ -117,17 +117,20 @@ static void print_arg_name() {
 }
 
 static void print_arg_pos() {
-    printf("\t\t");
-    for (int j = 0; func_name[j]; j++) {
-        printf("%s\t", func_name[j]);
+    printf("\t\t\t\t");
+    for (int j = 0; arg_cat[j]; j++) {
+        printf("%s", arg_cat[j]);
+        for (int i = 0; i < (16 - strlen(arg_cat[j])); i++)
+            putc(' ', stdout);
     }
     printf("\n");
 
-    for (int i = 0; arg_cat[i]; i++) {
-        printf("%s\t\t", arg_cat[i]);
-        for (int j = 0; func_name[j]; j++) {
-            printf("%d\t\t\t", arg_pos[j][i]);
-        }
+    for (int i = 0; func_name[i]; i++) {
+        printf("%24s\t", func_name[i]);
+
+        for (int j = 0; arg_cat[j]; j++)
+            printf("%d\t\t", arg_pos[i][j]);
+
         printf("\n");
     }
 }
