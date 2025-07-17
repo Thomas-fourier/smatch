@@ -328,7 +328,12 @@ static void parse_file(const char *filename) {
     }
     char *line = NULL;
     size_t line_size;
+    char *comment_start;
+
     while (-1 != getline(&line, &line_size, file)) {
+        if ((comment_start = strstr(line, "//")))
+            comment_start[0] = '\0';
+
         if (isempty(line)) continue;
         if (parse_decl(line)) continue;
         if (parse_equal(line)) continue;
