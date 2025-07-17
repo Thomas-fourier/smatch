@@ -3,6 +3,7 @@
 #include "smatch_extra.h"
 #include "smatch_slist.h"
 #include "string.h"
+#include <stdbool.h>
 #include <string.h>
 
 static int my_id;
@@ -75,15 +76,16 @@ static bool in_implementation() {
             );
 }
 
-static void set_untested(struct expression *expr) {
+static void set_untested(struct expression *expr, bool assign) {
     if (is_fake_var(expr))
         return;
 
     set_state_expr(my_id, expr, &untested_dma);
 
     if (last_dma_map){
-        sm_warning("possible dma mapping not tested of %s",
-                   last_dma_map);
+        if (!assign)
+            sm_warning("possible dma mapping not tested of %s",
+                       last_dma_map);
         free_string(last_dma_map);
     }
     last_dma_map = expr_to_str(expr);
@@ -125,7 +127,7 @@ static void match_dma_map(const char *fn, struct expression *expr, void *unused)
         return;
     }
 
-    set_untested(parent->left);
+    set_untested(parent->left, false);
     untested_dma_count++;
 }
 
@@ -183,7 +185,7 @@ static void match_assign(struct expression *expr) {
 
     char *arg_str = expr_to_str(expr->right);
     if (is_dma_untested(expr->right, arg_str)) {
-        set_untested(expr->left);
+        set_untested(expr->left, true);
     }
     free_string(arg_str);
 }
