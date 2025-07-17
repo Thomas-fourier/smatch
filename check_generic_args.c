@@ -108,9 +108,9 @@ static char *get_arg_from_call_expr(struct expression *expr, int arg_position) {
 
 static void print_arg_name() {
     for (int i = 0; arg_cat[i]; i++) {
-        printf("%s\t\t\t", arg_cat[i]);
+        printf("%16s\t", arg_cat[i]);
         for (int j = 0; arg_name[j]; j++) {
-            printf("%s\t\t\t", arg_name[j][i]);
+            printf("%24s\t", arg_name[j][i]);
         }
         printf("\n");
     }
