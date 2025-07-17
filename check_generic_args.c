@@ -95,7 +95,7 @@ static char *get_arg_from_call_expr(struct expression *expr, int arg_position) {
         struct expression *arg;
         if (arg_position == -1) {
             struct expression *parent = expr_get_parent_expr(expr);
-            if (parent->type == EXPR_ASSIGNMENT && parent->left)
+            if (parent && parent->type == EXPR_ASSIGNMENT && parent->left)
                 arg = parent->left;
             else // Maybe warning as well
                 return NULL;
