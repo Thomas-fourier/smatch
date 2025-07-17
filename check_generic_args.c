@@ -247,7 +247,13 @@ static bool parse_call(char *line)
     }
 
     if (is_expr_in_list(buffer, func_name, nb_func_name, &i)) {
-        parse_error("Function %s defined multiple times", buffer);
+        parse_error("Function %s defined multiple times, ignoring", buffer);
+        return false;
+    }
+
+    current = strchr(line, '(');
+    if (!current) {
+        parse_error("Line %s could not be parsed", line);
         return false;
     }
 
@@ -259,9 +265,6 @@ static bool parse_call(char *line)
         arg_pos[nb_func_name - 1][i] = -2;
 
 
-    current = strchr(line, '(');
-    if (!current)
-        parse_error("Line %s could not be parsed", line);
     i = 0;
     do {
         current++;
