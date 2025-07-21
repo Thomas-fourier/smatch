@@ -1,6 +1,7 @@
 #include "smatch.h"
 #include "smatch_extra.h"
 #include <ctype.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,6 +12,13 @@ static int my_id;
 struct func_arg {
     const char *fn;
     int arg_pos;
+};
+
+enum section {
+    SEC_NORMAL,
+    SEC_AFTER,
+    SEC_DO,
+    SEC_IGNORE,
 };
 
 
@@ -32,7 +40,17 @@ static char **func_name;    // function name
 static int nb_func_name;
 static int **arg_pos;       // For each function, for each arg, position of the
                             // arg  (-1 is return value, -2 not present)
+static char **ignore_funcs;
+static int nb_ignore_funcs;
 
+static char ***to_test;     // List of things to test:
+                            // [after funcname, test vartype, with func]
+                            // if with func is null, then with
+static int nb_to_test;
+
+
+static char **sec_func;
+static int nb_sec_func;
 
 // Maintained and updated
 static char ***arg_name; // name of the arguments for each category
@@ -59,12 +77,13 @@ static char *stringify(struct expression *expr) {
 
 /* Tests if a string is in a list. If it is, write index with the index in the
 list if found */
-static bool is_expr_in_list(char *expr, char **list, int len, int *index)
+static bool is_expr_in_list(const char *expr, char **list, int len, int *index)
 {
     int i;
-    for (i = 0; i < len; i++) {
-        if (list[i] && strcmp(expr, list[i]) == 0) {
-            *index = i;
+    for (i = 0; i < len && list[i]; i++) {
+        if (strcmp(expr, list[i]) == 0) {
+            if (index)
+                *index = i;
             return true;
         }
     }
@@ -126,7 +145,7 @@ static void print_arg_name() {
 }
 
 static void print_arg_pos() {
-    printf("\t\t\t\t");
+    printf("Arg positions:\t\t");
     for (int j = 0; arg_cat[j]; j++) {
         printf("%s", arg_cat[j]);
         for (int i = 0; i < (16 - strlen(arg_cat[j])); i++)
@@ -142,11 +161,26 @@ static void print_arg_pos() {
 
         printf("\n");
     }
+    printf("\n");
+
+    printf("Ignore functions:\n");
+    for (int i = 0; ignore_funcs[i]; i++)
+        printf("%s ", ignore_funcs[i]);
+    printf("\n");
+
+    printf("Variables to test:\n");
+    for (int i = 0; to_test[i]; i++)
+        printf("func: %s, var: %s, test function: %s\n", to_test[i][0],
+               to_test[i][1], to_test[i][2]);
 }
 
 
 static void match_func(const char *fn_name, struct expression *expr, void *_fn_id)
 {
+    if (is_expr_in_list(fn_name, func_name, nb_func_name, NULL) ||
+        is_expr_in_list(fn_name, ignore_funcs, nb_ignore_funcs, NULL))
+        return;
+
     int index = -1;
     int fn_id = (int)(long) _fn_id;
 
@@ -240,7 +274,7 @@ static bool add_to_arg_pos(char *expr, char *line, int pos)
     return true;
 }
 
-static bool parse_call(char *line)
+static bool parse_call(char *line, enum section sec)
 {
     char buffer[varname_size + 1];
     char *current;
@@ -248,6 +282,10 @@ static bool parse_call(char *line)
     int i;
     if (1 != sscanf(line, label, buffer))
         parse_error("Impossible to parse line %s", line);
+
+    if (sec == SEC_AFTER) {
+        push_array((void ***)&sec_func, &nb_sec_func, alloc_string(buffer));
+    }
 
     if (is_expr_in_list(buffer, func_name, nb_func_name, &i))
         parse_error("Function %s defined multiple times, ignoring", buffer);
@@ -281,14 +319,14 @@ static bool parse_call(char *line)
     return true;
 }
 
-static bool parse_equal(char *line)
+static bool parse_equal(char *line, enum section sec)
 {
     char *sep;
     char ret_val[varname_size + 1];
     if (!(sep = strchr(line, '=')))
         return false;
 
-    if (!parse_call(sep + 1))
+    if (!parse_call(sep + 1, sec))
         parse_error("Weird line '%s'", line);
 
     sscanf(line, label, ret_val);
@@ -314,9 +352,85 @@ bool isempty(const char *s)
 }
 
 
+bool is_label(char *line, enum section *sec) {
+    char buffer[varname_size + 1];
+    if (!strchr(line, ':')) {
+        return false;
+    }
+
+    if (1 != sscanf(line, label":", buffer))
+        return false;
+
+
+    sm_warning("Label %s found", buffer);
+
+    if (*sec == SEC_AFTER) {
+        if (0 == strcmp(buffer, "do")) {
+            *sec = SEC_DO;
+            return true;
+        } else {
+            parse_error("do: section must be after after: section.");
+        }
+    }
+
+    if (*sec == SEC_DO) {
+        free(sec_func);
+        sec_func = NULL;
+    }
+
+    if (0 == strcmp(buffer, "after")) {
+        sec_func = calloc(1, sizeof(*sec_func));
+        nb_sec_func = 0;
+        *sec = SEC_AFTER;
+    } else if (0 == strcmp(buffer, "then")) {
+        *sec = SEC_NORMAL;
+    } else if (0 == strcmp(buffer, "ignore")) {
+        *sec = SEC_IGNORE;
+    }
+    return true;
+}
+
+static void add_test(char *var, char *test_func) {
+    for (int i = 0; sec_func[i]; i++) {
+        char **line = malloc(3 * sizeof(*line));
+        line[0] = sec_func[i];
+        line[1] = var;
+        line[2] = test_func;
+
+        push_array((void ***)&to_test, &nb_to_test, line);
+    }
+}
+
+static bool parse_do_test(char *line) {
+    char var_test[varname_size + 1];
+    char var_func_test[varname_size + 1];
+
+    if (2 == sscanf(line, "test "label"with"label, var_test, var_func_test)) {
+        add_test(alloc_string(var_test), alloc_string(var_func_test));
+        return true;
+    } else if (1 == sscanf(line, "test "label, var_test)) {
+        add_test(alloc_string(var_test), NULL);
+        return true;
+    }
+
+    return false;
+}
+
+static bool parse_ignore(char *line) {
+    char buffer[varname_size + 1];
+    if (1 == sscanf(line, label, buffer)) {
+        push_array((void ***)&ignore_funcs, &nb_ignore_funcs, alloc_string(buffer));
+        return true;
+    }
+
+    return false;
+}
+
 static bool parse_file(const char *filename) {
     init_array((void ***)&arg_cat, &nb_arg_cat);
     init_array((void ***)&func_name, &nb_func_name);
+    init_array((void ***)&to_test, &nb_to_test);
+    ignore_funcs = calloc(1, sizeof(*ignore_funcs));
     arg_pos = NULL;
 
     FILE *file = fopen(filename, "r");
@@ -327,15 +441,29 @@ static bool parse_file(const char *filename) {
     char *line = NULL;
     size_t line_size;
     char *comment_start;
+    enum section sec = SEC_NORMAL;
 
     while (-1 != getline(&line, &line_size, file)) {
         if ((comment_start = strstr(line, "//")))
             comment_start[0] = '\0';
 
         if (isempty(line)) continue;
+        if (is_label(line, &sec)) continue;
         if (parse_decl(line)) continue;
-        if (parse_equal(line)) continue;
-        if (parse_call(line)) continue;
+
+        switch (sec) {
+            case SEC_NORMAL:
+            case SEC_AFTER:
+                if (parse_equal(line, sec)) { sm_warning("parsed equal"); break; }
+                if (parse_call(line, sec)) break;
+                break;
+            case SEC_DO:
+                parse_do_test(line);
+                break;
+            case SEC_IGNORE:
+                parse_ignore(line);
+        }
+
     }
 
     return true;
