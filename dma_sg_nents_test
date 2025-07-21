@@ -1,13 +1,59 @@
+var dev
 var sg
 var nents
 var dma_nents
+var dir
+var attrs
 
-dma_nents = dma_map_sg_attrs(_, sg, nents)
-dma_sync_sg_for_device(_, sg, nents)
-dma_unmap_sg_attrs(_, sg, nents)
+
+/////////////////////////////////////////
+// DMA SG interface
+
+// Mapping funcitons
+dma_nents = dma_map_sg_attrs(dev, sg, nents, dir, attrs)
+dma_nents = ib_dma_map_sg_attrs(dev, sg, nents, dir, attrs)
+dma_nents = ib_dma_map_sg(dev, sg, nents, dir)
+
+// Unmapping
+dma_unmap_sg_attrs(dev, sg, nents, dir, attrs)
+ib_dma_unmap_sg_attrs(dev, sg, nents, dir, attrs)
+ib_dma_unmap_sg(dev, sg, nents, dir)
+
+// Syncing 
+dma_sync_sg_for_device(dev, sg, nents, dir)
+dma_sync_sg_for_cpu(sg, nents, dir)
+
 sg_copy_buffer(sg, nents)
 sg_copy_from_buffer(sg, nents)
 sg_copy_to_buffer(sg, nents)
 sg_pcopy_from_buffer(sg, nents)
 sg_pcopy_to_buffer(sg, nents)
-dma_sync_sg_for_cpu(sg, nents)
+
+
+
+/////////////////////////////////
+// DMA map api
+
+var dma_add
+var buf
+var size
+
+after:
+dma_add = dma_map_single_attrs(dev, buf, size, dir, attrs)
+dma_add = dma_map_page_attrs(dev, buf, size, dir, attrs)
+dma_add = dma_map_resource(dev, buf, size, dir, attrs)
+dma_add = ib_dma_map_single(dev, buf, size, dir, attrs)
+dma_add = ib_dma_map_page(dev, buf, size, dir, attrs)
+dma_add = __skb_frag_dma_map(dev, buf, size, dir, attrs)
+dma_add = fc_dma_map_single(dev, buf, size, dir)
+
+do:
+test dma_add with dma_mapping_error
+
+
+
+
+ignore:
+dma_map_area
+
+
