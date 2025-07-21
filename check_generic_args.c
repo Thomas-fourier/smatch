@@ -211,10 +211,8 @@ static bool parse_decl(char *line)
     if (1 != sscanf(line, "var "label, buffer))
         return false;
 
-    if (is_expr_in_list(buffer, arg_cat, nb_arg_cat, &i)) {
+    if (is_expr_in_list(buffer, arg_cat, nb_arg_cat, &i))
         parse_error("Double declaration of %s", buffer);
-        return true;
-    }
 
     push_array((void ***)&arg_cat, &nb_arg_cat, alloc_string(buffer));
 
@@ -232,14 +230,12 @@ static bool add_to_arg_pos(char *expr, char *line, int pos)
     if (strcmp("_", expr) == 0)
         return true;
 
-    if (!is_expr_in_list(expr, arg_cat, nb_arg_cat, &index)) {
+    if (!is_expr_in_list(expr, arg_cat, nb_arg_cat, &index))
         parse_error("Argument %s not declared.", expr);
-        return false;
-    }
-    if (arg_pos[nb_func_name - 1][index] != -2) {
+
+    if (arg_pos[nb_func_name - 1][index] != -2)
         parse_error("Argument %s used multiple time in %s", expr, line);
-        return false;
-    }
+
     arg_pos[nb_func_name - 1][index] = pos;
     return true;
 }
@@ -250,21 +246,15 @@ static bool parse_call(char *line)
     char *current;
     char *last;
     int i;
-    if (1 != sscanf(line, label, buffer)) {
+    if (1 != sscanf(line, label, buffer))
         parse_error("Impossible to parse line %s", line);
-        return false;
-    }
 
-    if (is_expr_in_list(buffer, func_name, nb_func_name, &i)) {
+    if (is_expr_in_list(buffer, func_name, nb_func_name, &i))
         parse_error("Function %s defined multiple times, ignoring", buffer);
-        return false;
-    }
 
     current = strchr(line, '(');
-    if (!current) {
+    if (!current)
         parse_error("Line %s could not be parsed", line);
-        return false;
-    }
 
     push_array((void ***)&func_name, &nb_func_name, alloc_string(buffer));
     arg_pos = realloc(arg_pos, nb_func_name * sizeof(*arg_pos));
@@ -298,10 +288,9 @@ static bool parse_equal(char *line)
     if (!(sep = strchr(line, '=')))
         return false;
 
-    if (!parse_call(sep + 1)) {
+    if (!parse_call(sep + 1))
         parse_error("Weird line '%s'", line);
-        return false;
-    }
+
     sscanf(line, label, ret_val);
     add_to_arg_pos(ret_val, line, -1);
 
@@ -325,15 +314,15 @@ bool isempty(const char *s)
 }
 
 
-static void parse_file(const char *filename) {
+static bool parse_file(const char *filename) {
     init_array((void ***)&arg_cat, &nb_arg_cat);
     init_array((void ***)&func_name, &nb_func_name);
     arg_pos = NULL;
 
     FILE *file = fopen(filename, "r");
     if (!file) {
-        parse_error("File %s could not be opened.", filename);
-        return;
+        sm_warning("File %s could not be opened.", filename);
+        return false;
     }
     char *line = NULL;
     size_t line_size;
@@ -348,6 +337,8 @@ static void parse_file(const char *filename) {
         if (parse_equal(line)) continue;
         if (parse_call(line)) continue;
     }
+
+    return true;
 }
 
 void manual_init()
@@ -386,7 +377,8 @@ void check_generic_args(int id) {
     my_id = id;
 
     // manual_init();
-    parse_file(option_generic_args_file);
+    if (!parse_file(option_generic_args_file))
+        return;
     print_arg_pos();
 
     arg_name = malloc(sizeof(*arg_name));
