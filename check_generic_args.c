@@ -13,8 +13,17 @@ struct func_arg {
     int arg_pos;
 };
 
-#define parse_error(...) sm_warning("Parsing error: " __VA_ARGS__)
-#define label " %[a-zA-Z_] "
+
+#undef STRINGIFY
+#define parse_error(...) do { \
+    sm_warning("Parsing error: " __VA_ARGS__);\
+    exit(1);\
+} while (0)
+#define STRINGIFY2(X) #X
+#define STRINGIFY(X) STRINGIFY2(X)
+#define stringify_macro(x) #x
+#define varname_size 63
+#define label " %" STRINGIFY(varname_size) "[a-zA-Z_] "
 
 // Initially created
 static char **arg_cat;      // category of argument (sg, nents,...)
@@ -197,7 +206,7 @@ static void match_func(const char *fn_name, struct expression *expr, void *_fn_i
 
 static bool parse_decl(char *line)
 {
-    char buffer[64];
+    char buffer[varname_size + 1];
     int i;
     if (1 != sscanf(line, "var "label, buffer))
         return false;
@@ -237,7 +246,7 @@ static bool add_to_arg_pos(char *expr, char *line, int pos)
 
 static bool parse_call(char *line)
 {
-    char buffer[64];
+    char buffer[varname_size + 1];
     char *current;
     char *last;
     int i;
@@ -285,7 +294,7 @@ static bool parse_call(char *line)
 static bool parse_equal(char *line)
 {
     char *sep;
-    char ret_val[64];
+    char ret_val[varname_size + 1];
     if (!(sep = strchr(line, '=')))
         return false;
 
