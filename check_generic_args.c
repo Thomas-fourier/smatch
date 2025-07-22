@@ -48,7 +48,11 @@ static int **to_test;       // List of things to test:
                             // if with func is -1, then with
 static int nb_to_test;
 
+static char **var_to_test;
+static int var_to_test_type;
+static int test_func;
 
+// This is only used for parsing
 static char **sec_func;
 static int nb_sec_func;
 
@@ -181,11 +185,72 @@ static void print_arg_pos() {
     printf("\n");
 }
 
+static void free_var_to_test()
+{
+    for (int i = 0; var_to_test[i]; i++) {
+        free_string(var_to_test[i]);
+    }
+    free(var_to_test);
+    var_to_test = NULL;
+}
+
+static void is_requirement(int fn_id, struct expression *expr)
+{
+    char *test;
+    if (!var_to_test)
+        return;
+
+    if (fn_id != test_func)
+        return;
+
+    if ((test = get_arg_from_call_expr(expr,
+                                       arg_pos[fn_id][var_to_test_type]))) {
+        for (int i = 0; var_to_test[i]; i++) {
+            if (strcmp(test, var_to_test[i]) == 0) {
+                free_var_to_test();
+                free_string(test);
+                return;
+            }
+        }
+        free_string(test);
+    }
+
+}
+
+static void add_test_requirements(int fn_id, struct expression *expr)
+{
+    if (var_to_test) {
+        if (test_func != -1) {
+            sm_warning("Possibly not testing %s with %s", var_to_test[0],
+                       func_name[test_func]);
+        } else {
+            sm_warning("Possibly not testing %s", var_to_test[0]);
+        }
+        free_var_to_test();
+    }
+
+    for (int i = 0; to_test[i]; i++) {
+        if (to_test[i][0] == fn_id) {
+            if (var_to_test) {
+                sm_warning(
+                    "Testing two variables from the same func is not currently supported"
+                );
+                free_var_to_test();
+            }
+            var_to_test = malloc(2 * sizeof(var_to_test));
+            var_to_test[0] =
+                get_arg_from_call_expr(expr,arg_pos[fn_id][to_test[i][1]]);
+
+            var_to_test[1] = NULL;
+        }
+    }
+}
+
 
 static void match_func(const char *fn_name, struct expression *expr, void *_fn_id)
 {
-    if (is_expr_in_list(fn_name, func_name, nb_func_name, NULL) ||
-        is_expr_in_list(fn_name, ignore_funcs, nb_ignore_funcs, NULL))
+    if (is_expr_in_list(get_function(), func_name, nb_func_name, NULL) ||
+        is_expr_in_list(get_function(), ignore_funcs, nb_ignore_funcs, NULL))
         return;
 
     int index = -1;
@@ -236,10 +301,13 @@ static void match_func(const char *fn_name, struct expression *expr, void *_fn_i
                        arg_name[index][cur_arg_cat]);
     }
 
+    is_requirement(fn_id, expr);
+    add_test_requirements(fn_id, expr);
+
     if (new_arg_name)
         push_array((void ***)&arg_name, &nb_arg_name, new_arg_name);
 
-    if (true)
+    if (false)
         print_arg_name();
 
 }
@@ -526,7 +594,7 @@ void check_generic_args(int id) {
     // manual_init();
     if (!parse_file(option_generic_args_file))
         return;
-    print_arg_pos();
+    if (false) print_arg_pos();
 
     arg_name = malloc(sizeof(*arg_name));
     arg_name[0] = NULL;
