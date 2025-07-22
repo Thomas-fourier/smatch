@@ -49,6 +49,7 @@ static int **to_test;       // List of things to test:
 static int nb_to_test;
 
 static char **var_to_test;
+static int nb_var_to_test;
 static int var_to_test_type;
 static int test_func;
 static int test_from_line;
@@ -67,6 +68,12 @@ static void push_array(void ***array, int *len, void *elt) {
     (*len)++;
     *array = realloc(*array, (*len + 1) * sizeof(**array));
     (*array)[*len] = NULL;
+}
+
+static void init_array(void ***list, int *len) {
+    *list = malloc(sizeof(**list));
+    (*list)[0] = NULL;
+    *len = 0;
 }
 
 static char *stringify(struct expression *expr) {
@@ -195,31 +202,45 @@ static void free_var_to_test()
     var_to_test = NULL;
 }
 
+static bool is_expr_to_test(char *expr) {
+    if (!expr)
+        return false;
+
+    for (int i = 0; var_to_test[i]; i++) {
+        if (strcmp(expr, var_to_test[i]) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 static void is_requirement(int fn_id, struct expression *expr)
 {
     char *test;
-    if (!var_to_test)
-        return;
-
-    if (fn_id != test_func)
-        return;
+    if (!var_to_test || fn_id != test_func)
+        goto exit;
 
     if ((test = get_arg_from_call_expr(expr,
                                        arg_pos[fn_id][var_to_test_type]))) {
-        for (int i = 0; var_to_test[i]; i++) {
-            if (strcmp(test, var_to_test[i]) == 0) {
+        if (is_expr_to_test(test)) {
                 free_var_to_test();
                 free_string(test);
                 return;
-            }
         }
+        
         free_string(test);
     }
-
+exit:
+    for (int i = 0; to_test[i]; i++) {
+        if (to_test[i][2] == fn_id) {
+            sm_warning("Testing function %s is not run on a variable to test.",
+                       func_name[fn_id]);
+            return;
+        }
+    }
 }
 
-static void add_test_requirements(int fn_id, struct expression *expr)
-{
+static void warn_if_var_to_test() {
     if (var_to_test) {
         if (test_func != -1) {
             sm_warning_line(test_from_line,
@@ -231,26 +252,38 @@ static void add_test_requirements(int fn_id, struct expression *expr)
         }
         free_var_to_test();
     }
+}
+
+static void add_test_requirements(int fn_id, struct expression *expr)
+{
+    char *str_arg;
+    warn_if_var_to_test();
 
     for (int i = 0; to_test[i]; i++) {
-        if (to_test[i][0] == fn_id) {
-            if (var_to_test) {
-                sm_warning(
-                    "Testing two variables from the same func is not currently supported"
-                );
-                free_var_to_test();
-            }
-            var_to_test = malloc(2 * sizeof(var_to_test));
-            var_to_test[0] =
-                get_arg_from_call_expr(expr,arg_pos[fn_id][to_test[i][1]]);
+        if (to_test[i][0] != fn_id)
+            continue;
 
-            var_to_test[1] = NULL;
-
-            var_to_test_type = to_test[i][1];
-            test_func = to_test[i][2];
-            test_from_line = get_lineno();
+        if (var_to_test) {
+            sm_warning(
+                "Testing two variables from the same func is not currently supported"
+            );
+            free_var_to_test();
         }
-    }
+
+        str_arg = get_arg_from_call_expr(expr, arg_pos[fn_id][to_test[i][1]]);
+        if (!str_arg) {
+            sm_warning("Not assigning dma address, cannot be tested");
+            continue;
+        }
+
+        init_array((void ***)&var_to_test, &nb_var_to_test);
+        push_array((void ***)&var_to_test, &nb_var_to_test, str_arg);
+
+
+        var_to_test_type = to_test[i][1];
+        test_func = to_test[i][2];
+        test_from_line = get_lineno();
+        }
 }
 
 
@@ -258,6 +291,9 @@ static void match_func(const char *fn_name, struct expression *expr, void *_fn_i
 {
     if (is_expr_in_list(get_function(), func_name, nb_func_name, NULL) ||
         is_expr_in_list(get_function(), ignore_funcs, nb_ignore_funcs, NULL))
+        return;
+
+    if (__inline_fn)
         return;
 
     int index = -1;
@@ -318,6 +354,55 @@ static void match_func(const char *fn_name, struct expression *expr, void *_fn_i
         print_arg_name();
 
 }
+
+static void match_assign(struct expression *expr)
+{
+    if (is_fake_var_assign(expr))
+        return;
+
+    if (__inline_fn)
+        return;
+
+    if (!var_to_test)
+        return;
+
+    char *right_str = stringify(expr->right);
+    for (int i = 0; var_to_test[i]; i++) {
+        if (strcmp(var_to_test[i], right_str) == 0) {
+            push_array((void ***)&var_to_test, &nb_var_to_test, right_str);
+            return;
+        }
+    }
+
+    free_string(right_str);
+}
+
+static void match_func_end() {
+    if (__inline_fn)
+        return;
+
+    warn_if_var_to_test();
+}
+
+static void match_test(struct expression *expr) {
+    if (__inline_fn)
+        return;
+
+    if (test_func != -1)
+        return;
+
+    char *str_expr = stringify(expr);
+    if (is_expr_to_test(str_expr)) {
+        free_var_to_test();
+    }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+//                                PARSER                                      //
+////////////////////////////////////////////////////////////////////////////////
+
+
 
 static bool parse_decl(char *line)
 {
@@ -414,12 +499,6 @@ static bool parse_equal(char *line, enum section sec)
     add_to_arg_pos(ret_val, line, -1);
 
     return true;
-}
-
-static void init_array(void ***list, int *len) {
-    *list = malloc(sizeof(**list));
-    (*list)[0] = NULL;
-    *len = 0;
 }
 
 bool isempty(const char *s)
@@ -607,7 +686,11 @@ void check_generic_args(int id) {
     arg_name[0] = NULL;
     nb_arg_name = 0;
     int i;
-    for (i = 0; func_name[i]; i++) {
+    for (i = 0; func_name[i]; i++)
         add_function_hook(func_name[i], match_func, (void *)(long)i);
-    }
+
+
+    add_hook(match_assign, ASSIGNMENT_HOOK);
+    add_hook(match_func_end, END_FUNC_HOOK);
+    add_hook(match_test, CONDITION_HOOK);
 }
