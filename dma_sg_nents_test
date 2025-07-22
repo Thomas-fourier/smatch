@@ -38,6 +38,8 @@ var dma_add
 var buf
 var size
 
+dma_mapping_error(dev, dma_add)
+
 after:
 dma_add = dma_map_single_attrs(dev, buf, size, dir, attrs)
 dma_add = dma_map_page_attrs(dev, buf, size, dir, attrs)
@@ -50,10 +52,25 @@ dma_add = fc_dma_map_single(dev, buf, size, dir)
 do:
 test dma_add with dma_mapping_error
 
-
-
-
 ignore:
 dma_map_area
 
+then:
+
+////////////////////////////////////
+// Malloc and free
+var a
+var page
+after:
+a = kmalloc(_)
+do:
+test a
+then:
+
+kfree(a)
+
+a = kmap(page)
+a = kmap_atomic(page)
+kunmap(page)
+kunmap_atomic(page)
 
