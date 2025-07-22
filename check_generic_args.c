@@ -377,6 +377,8 @@ bool is_label(char *line, enum section *sec) {
     }
 
     if (*sec == SEC_DO) {
+        for (int i = 0; sec_func[i]; i++)
+            free_string(sec_func[i]);
         free(sec_func);
         sec_func = NULL;
     }
@@ -482,6 +484,7 @@ static bool parse_file(const char *filename) {
 
     }
 
+    free(line);
     return true;
 }
 
