@@ -51,6 +51,7 @@ static int nb_to_test;
 static char **var_to_test;
 static int var_to_test_type;
 static int test_func;
+static int test_from_line;
 
 // This is only used for parsing
 static char **sec_func;
@@ -221,10 +222,12 @@ static void add_test_requirements(int fn_id, struct expression *expr)
 {
     if (var_to_test) {
         if (test_func != -1) {
-            sm_warning("Possibly not testing %s with %s", var_to_test[0],
-                       func_name[test_func]);
+            sm_warning_line(test_from_line,
+                            "Possibly not testing %s with %s", var_to_test[0],
+                            func_name[test_func]);
         } else {
-            sm_warning("Possibly not testing %s", var_to_test[0]);
+            sm_warning_line(test_from_line,"Possibly not testing %s",
+                            var_to_test[0]);
         }
         free_var_to_test();
     }
@@ -242,6 +245,10 @@ static void add_test_requirements(int fn_id, struct expression *expr)
                 get_arg_from_call_expr(expr,arg_pos[fn_id][to_test[i][1]]);
 
             var_to_test[1] = NULL;
+
+            var_to_test_type = to_test[i][1];
+            test_func = to_test[i][2];
+            test_from_line = get_lineno();
         }
     }
 }
