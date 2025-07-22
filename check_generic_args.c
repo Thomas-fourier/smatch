@@ -145,7 +145,7 @@ static void print_arg_name() {
 }
 
 static void print_arg_pos() {
-    printf("Arg positions:\t\t");
+    printf("Arg positions:\t\t\t");
     for (int j = 0; arg_cat[j]; j++) {
         printf("%s", arg_cat[j]);
         for (int i = 0; i < (16 - strlen(arg_cat[j])); i++)
@@ -166,12 +166,17 @@ static void print_arg_pos() {
     printf("Ignore functions:\n");
     for (int i = 0; ignore_funcs[i]; i++)
         printf("%s ", ignore_funcs[i]);
-    printf("\n");
+    printf("\n\n");
 
     printf("Variables to test:\n");
-    for (int i = 0; to_test[i]; i++)
-        printf("func: %s, var: %s, test function: %s\n", to_test[i][0],
-               to_test[i][1], to_test[i][2]);
+    for (int i = 0; to_test[i]; i++) {
+        if (to_test[i][2])
+            printf("func: %s, var: %s, test function: %s\n", to_test[i][0],
+                   to_test[i][1], to_test[i][2]);
+        else
+            printf("func: %s, var: %s\n", to_test[i][0], to_test[i][1]);
+    }
+    printf("\n");
 }
 
 
@@ -192,7 +197,6 @@ static void match_func(const char *fn_name, struct expression *expr, void *_fn_i
 
         char *str_arg = get_arg_from_call_expr(expr, arg_pos[fn_id][cur_arg_cat]);
         if (!str_arg) continue;
-
 
         int prev_arg_cat, cur_index;
         find_previous_arg_name(str_arg, &prev_arg_cat, &cur_index);
@@ -224,10 +228,10 @@ static void match_func(const char *fn_name, struct expression *expr, void *_fn_i
 
         if (index == -1)
             index = cur_index;
-
-        if (index != cur_index) {
-            sm_warning("Possibly mixing arguments");
-        }
+        else if (index != cur_index)
+            sm_warning("Possibly mixing arguments %s and %s",
+                       arg_name[cur_index][prev_arg_cat],
+                       arg_name[index][cur_arg_cat]);
     }
 
     if (new_arg_name)
@@ -361,9 +365,6 @@ bool is_label(char *line, enum section *sec) {
     if (1 != sscanf(line, label":", buffer))
         return false;
 
-
-    sm_warning("Label %s found", buffer);
-
     if (*sec == SEC_AFTER) {
         if (0 == strcmp(buffer, "do")) {
             *sec = SEC_DO;
@@ -454,7 +455,7 @@ static bool parse_file(const char *filename) {
         switch (sec) {
             case SEC_NORMAL:
             case SEC_AFTER:
-                if (parse_equal(line, sec)) { sm_warning("parsed equal"); break; }
+                if (parse_equal(line, sec)) break;
                 if (parse_call(line, sec)) break;
                 break;
             case SEC_DO:
