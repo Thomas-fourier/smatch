@@ -43,9 +43,9 @@ static int **arg_pos;       // For each function, for each arg, position of the
 static char **ignore_funcs;
 static int nb_ignore_funcs;
 
-static char ***to_test;     // List of things to test:
-                            // [after funcname, test vartype, with func]
-                            // if with func is null, then with
+static int **to_test;       // List of things to test:
+                            // [after fn_id, test var_id, with fn_id]
+                            // if with func is -1, then with
 static int nb_to_test;
 
 
@@ -170,11 +170,13 @@ static void print_arg_pos() {
 
     printf("Variables to test:\n");
     for (int i = 0; to_test[i]; i++) {
-        if (to_test[i][2])
-            printf("func: %s, var: %s, test function: %s\n", to_test[i][0],
-                   to_test[i][1], to_test[i][2]);
+        if (to_test[i][2] != -1)
+            printf("func: %s, var: %s, test function: %s\n",
+                   func_name[to_test[i][0]], arg_cat[to_test[i][1]],
+                   func_name[to_test[i][2]]);
         else
-            printf("func: %s, var: %s\n", to_test[i][0], to_test[i][1]);
+            printf("func: %s, var: %s\n", func_name[to_test[i][0]],
+                   arg_cat[to_test[i][1]]);
     }
     printf("\n");
 }
@@ -392,11 +394,24 @@ bool is_label(char *line, enum section *sec) {
 }
 
 static void add_test(char *var, char *test_func) {
+    int var_id, test_func_id;
+    if (!is_expr_in_list(var, arg_cat, nb_arg_cat, &var_id))
+        parse_error("Variable %s not declared.", var);
+
+    if (test_func) {
+        if (!is_expr_in_list(test_func, func_name, nb_func_name, &test_func_id))
+            parse_error("Function %s not declared", test_func);
+    } else {
+        test_func_id = -1;
+    }
+
     for (int i = 0; sec_func[i]; i++) {
-        char **line = malloc(3 * sizeof(*line));
-        line[0] = sec_func[i];
-        line[1] = var;
-        line[2] = test_func;
+        int *line = malloc(3 * sizeof(*line));
+        if (!is_expr_in_list(sec_func[i], func_name, nb_func_name, &line[0]))
+            parse_error("Unexpected error.");
+
+        line[1] = var_id;
+        line[2] = test_func_id;
 
         push_array((void ***)&to_test, &nb_to_test, line);
     }
@@ -407,10 +422,10 @@ static bool parse_do_test(char *line) {
     char var_func_test[varname_size + 1];
 
     if (2 == sscanf(line, "test "label"with"label, var_test, var_func_test)) {
-        add_test(alloc_string(var_test), alloc_string(var_func_test));
+        add_test(var_test, var_func_test);
         return true;
     } else if (1 == sscanf(line, "test "label, var_test)) {
-        add_test(alloc_string(var_test), NULL);
+        add_test(var_test, NULL);
         return true;
     }
 
