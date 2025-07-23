@@ -605,11 +605,8 @@ static void add_test(char *var, char *test_func) {
             parse_error("Unexpected error.");
 
         line[1] = var_id;
-        for (int j = 0; j <= nb_test_func_id; j++) {
+        for (int j = 0; j <= nb_test_func_id; j++)
             line[2 + j] = test_func_id[j];
-            printf("Asinging %d", test_func_id[j]);
-        }
-        printf("\n");
 
         push_array((void ***)&to_test, &nb_to_test, line);
     }
