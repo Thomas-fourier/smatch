@@ -31,7 +31,7 @@ enum section {
 #define STRINGIFY(X) STRINGIFY2(X)
 #define stringify_macro(x) #x
 #define varname_size 63
-#define label " %" STRINGIFY(varname_size) "[a-zA-Z_] "
+#define label " %" STRINGIFY(varname_size) "[a-zA-Z0-9_] "
 
 // Initially created
 static char **arg_cat;      // category of argument (sg, nents,...)
