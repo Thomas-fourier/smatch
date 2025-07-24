@@ -1,27 +1,24 @@
-var dev
 var sg
 var nents
 var dma_nents
 var dir
-var attrs
-
 
 /////////////////////////////////////////
 // DMA SG interface
 
 // Mapping funcitons
-dma_nents = dma_map_sg_attrs(dev, sg, nents, dir, attrs)
-dma_nents = ib_dma_map_sg_attrs(dev, sg, nents, dir, attrs)
-dma_nents = ib_dma_map_sg(dev, sg, nents, dir)
+dma_nents = dma_map_sg_attrs(_, sg, nents, dir, _)
+dma_nents = ib_dma_map_sg_attrs(_, sg, nents, dir, _)
+dma_nents = ib_dma_map_sg(_, sg, nents, dir)
 
 // Unmapping
-dma_unmap_sg_attrs(dev, sg, nents, dir, attrs)
-ib_dma_unmap_sg_attrs(dev, sg, nents, dir, attrs)
-ib_dma_unmap_sg(dev, sg, nents, dir)
+dma_unmap_sg_attrs(_, sg, nents, dir, _)
+ib_dma_unmap_sg_attrs(_, sg, nents, dir, _)
+ib_dma_unmap_sg(_, sg, nents, dir)
 
 // Syncing 
-dma_sync_sg_for_device(dev, sg, nents, dir)
-dma_sync_sg_for_cpu(dev, sg, nents, dir)
+dma_sync_sg_for__ice(_, sg, nents, dir)
+dma_sync_sg_for_cpu(_, sg, nents, dir)
 
 sg_copy_buffer(sg, nents)
 sg_copy_from_buffer(sg, nents)
@@ -38,46 +35,51 @@ var dma_add
 var buf
 var size
 
-dma_mapping_error(dev, dma_add)
+dma_mapping_error(_, dma_add)
 enic_dma_map_check(_, dma_add)
 iwl_txq_gen2_set_tb_with_wa(_,_,_,dma_add)
-ib_dma_mapping_error(dev, dma_add)
-fc_dma_mapping_error(dev, dma_add)
-vring_mapping_error(dev, dma_add)
-virtqueue_dma_mapping_error(dev, dma_add)
+ib_dma_mapping_error(_, dma_add)
+fc_dma_mapping_error(_, dma_add)
+vring_mapping_error(_, dma_add)
+virtqueue_dma_mapping_error(_, dma_add)
 b43legacy_dma_mapping_error(_, dma_add, size)
 b43_dma_mapping_error(_, dma_add, size)
 
 
 after:
-dma_add = dma_map_single_attrs(dev, buf, size, dir, attrs)
-dma_add = dma_map_page_attrs(dev, buf, size, dir, attrs)
-dma_add = dma_map_resource(dev, buf, size, dir, attrs)
-dma_add = __skb_frag_dma_map(dev, buf, size, dir, attrs)
+dma_add = dma_map_single_attrs(_, buf, size, dir, _)
+dma_add = dma_map_page_attrs(_, buf, size, dir, _)
+dma_add = dma_map_resource(_, buf, size, dir, _)
+dma_add = __skb_frag_dma_map(_, buf, size, dir, _)
+dma_add = niu_pci_map_page(_, buf, _, size, dir)
+dma_add = niu_pci_map_single(_, buf, _, size, dir)
+dma_add = mtk_star_dma_map_rx(_)
+dma_add = mtk_star_dma_map_tx(_)
 dma_add = owl_emac_dma_map_rx(_)
 dma_add = owl_emac_dma_map_tx(_)
-
+dma_add = nfp_net_dma_map_rx(_)
 do:
-test dma_add with dma_mapping_error or enic_dma_map_check or iwl_txq_gen2_set_tb_with_wa
+test dma_add with dma_mapping_error or enic_dma_map_check or iwl_txq_gen2_set_tb_with_wa or b43legacy_dma_mapping_error or b43_dma_mapping_error
 
 after:
-dma_add = ib_dma_map_single(dev, buf, size, dir, attrs)
-dma_add = ib_dma_map_page(dev, buf, size, dir, attrs)
+dma_add = ib_dma_map_single(_, buf, size, dir, _)
+dma_add = ib_dma_map_page(_, buf, size, dir, _)
+dma_add = hmm_dma_map_pfn(_)
 do:
 test dma_add with ib_dma_mapping_error
 
 after:
-dma_add = fc_dma_map_single(dev, buf, size, dir)
+dma_add = fc_dma_map_single(_, buf, size, dir)
 do:
 test dma_add with fc_dma_mapping_error
 
 after:
-dma_add = vring_map_single(dev, buf, size, dir)
+dma_add = vring_map_single(_, buf, size, dir)
 do:
 test dma_add with vring_mapping_error
 
 after:
-dma_add = virtqueue_dma_map_single_attrs(dev, buf, size, dir, attrs)
+dma_add = virtqueue_dma_map_single_attrs(_, buf, size, dir, _)
 do:
 test dma_add with virtqueue_dma_mapping_error
 
