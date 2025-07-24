@@ -50,6 +50,7 @@ static int nb_to_test;
 
 static char **var_to_test;
 static int nb_var_to_test;
+static struct statement *parent_if;
 static int var_to_test_type;
 static int *test_func;
 static int test_from_line;
@@ -74,6 +75,16 @@ static void init_array(void ***list, int *len) {
     *list = malloc(sizeof(**list));
     (*list)[0] = NULL;
     *len = 0;
+}
+
+static bool comp_list(int *array1, int* array2)
+{
+    int i;
+    for (i = 0; array1[i] != -1 && array2[i] != -1; i++) {
+        if (array1[i] != array2[i])
+            return false;
+    }
+    return array1[i] == array2[i];
 }
 
 static bool is_cast(struct expression *expr) {
@@ -231,6 +242,7 @@ static void free_var_to_test()
     }
     free(var_to_test);
     var_to_test = NULL;
+    parent_if = NULL;
 }
 
 static bool is_expr_to_test(char *expr) {
@@ -291,9 +303,37 @@ static void warn_if_var_to_test() {
     }
 }
 
+static bool other_member_if(int fn_id, struct expression *expr)
+{
+    if (!var_to_test || !parent_if)
+        return false;
+
+    for (int i = 0; to_test[i]; i++) {
+        if (to_test[i][0] != fn_id)
+            continue;
+
+        char *new_var_to_test = get_arg_from_call_expr(expr, arg_pos[fn_id][to_test[i][1]]);
+        if (strcmp(var_to_test[0], new_var_to_test) != 0) {
+            free_string(new_var_to_test);
+            continue;
+        }
+        free_string(new_var_to_test);
+
+        if (!comp_list(test_func, &(to_test[i][2])))
+            continue;
+
+        return true;
+    }
+
+    return false;
+}
+
 static void add_test_requirements(int fn_id, struct expression *expr)
 {
     char *str_arg;
+    if (other_member_if(fn_id, expr))
+        return;
+
     warn_if_var_to_test();
 
     for (int i = 0; to_test[i]; i++) {
@@ -320,7 +360,12 @@ static void add_test_requirements(int fn_id, struct expression *expr)
         var_to_test_type = to_test[i][1];
         test_func = &(to_test[i][2]);
         test_from_line = get_lineno();
-        }
+
+        struct statement *stmt = get_parent_stmt(expr);
+        if (stmt && stmt->parent && stmt->parent->type == STMT_IF &&
+            stmt == stmt->parent->if_true)
+            parent_if = stmt->parent;
+    }
 }
 
 
