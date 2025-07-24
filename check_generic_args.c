@@ -396,7 +396,8 @@ static void match_assign(struct expression *expr)
     char *right_str = stringify(expr->right);
     for (int i = 0; var_to_test[i]; i++) {
         if (strcmp(var_to_test[i], right_str) == 0) {
-            push_array((void ***)&var_to_test, &nb_var_to_test, right_str);
+            push_array((void ***)&var_to_test, &nb_var_to_test,
+                       stringify(expr->left));
             return;
         }
     }
