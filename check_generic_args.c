@@ -77,6 +77,9 @@ static void init_array(void ***list, int *len) {
 }
 
 static bool is_cast(struct expression *expr) {
+    if (!expr)
+        return false;
+
     switch (expr->type) {
         case EXPR_CAST:
         case EXPR_FORCE_CAST:
@@ -89,6 +92,7 @@ static bool is_cast(struct expression *expr) {
 
 static char *stringify(struct expression *expr) {
     char *res;
+    char *pp;
 
     while (is_cast(expr)) {
         expr = expr->cast_expression;
@@ -99,7 +103,13 @@ static char *stringify(struct expression *expr) {
         sprintf(res, ".%s", expr->member->name);
     } else {
         res = expr_to_str(expr);
+
+        pp = res;
+        while (pp && (pp = strstr(pp, "++"))) {
+            memmove(pp, pp+2, strlen(pp+2)+1);
+        }
     }
+
     return res;
 }
 
