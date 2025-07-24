@@ -76,8 +76,24 @@ static void init_array(void ***list, int *len) {
     *len = 0;
 }
 
+static bool is_cast(struct expression *expr) {
+    switch (expr->type) {
+        case EXPR_CAST:
+        case EXPR_FORCE_CAST:
+        case EXPR_IMPLIED_CAST:
+            return true;
+        default:
+            return false;
+    }
+}
+
 static char *stringify(struct expression *expr) {
     char *res;
+
+    while (is_cast(expr)) {
+        expr = expr->cast_expression;
+    }
+
     if (expr->type == EXPR_DEREF && expr->member) {
         res = malloc(strlen(expr->member->name) + 2);
         sprintf(res, ".%s", expr->member->name);
@@ -135,6 +151,8 @@ static char *get_arg_from_call_expr(struct expression *expr, int arg_position) {
         struct expression *arg;
         if (arg_position == -1) {
             struct expression *parent = expr_get_parent_expr(expr);
+            if (parent && is_cast(parent))
+                return get_arg_from_call_expr(parent, -1);
             if (parent && parent->type == EXPR_ASSIGNMENT && parent->left)
                 arg = parent->left;
             else // Maybe warning as well
