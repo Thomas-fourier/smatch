@@ -105,8 +105,11 @@ static char *stringify(struct expression *expr) {
     char *res;
     char *pp;
 
-    while (is_cast(expr)) {
-        expr = expr->cast_expression;
+    while (is_cast(expr) || expr->type == EXPR_ASSIGNMENT) {
+        if (expr->type == EXPR_ASSIGNMENT)
+            expr = expr->left;
+        else
+            expr = expr->cast_expression;
     }
 
     if (expr->type == EXPR_DEREF && expr->member) {
