@@ -55,6 +55,9 @@ static int var_to_test_type;
 static int *test_func;
 static int test_from_line;
 
+static char **all_vars_to_test_in_func;
+static char nb_all_vars_to_test_in_func;
+
 // This is only used for parsing
 static char **sec_func;
 static int nb_sec_func;
@@ -240,9 +243,12 @@ static void print_arg_pos() {
 
 static void free_var_to_test()
 {
-    for (int i = 0; var_to_test[i]; i++) {
-        free_string(var_to_test[i]);
-    }
+    if (!all_vars_to_test_in_func)
+        init_array((void *)&all_vars_to_test_in_func, (void *)&nb_all_vars_to_test_in_func);
+    for (int i = 0; var_to_test[i]; i++)
+        push_array((void *)&all_vars_to_test_in_func,
+                   (void *)&nb_all_vars_to_test_in_func, var_to_test[i]);
+
     free(var_to_test);
     var_to_test = NULL;
     parent_if = NULL;
@@ -289,8 +295,13 @@ static void is_requirement(int fn_id, struct expression *expr)
         free_string(test);
     }
 exit:
-    for (int i = 0; to_test[i]; i++) {
+     for (int i = 0; to_test[i]; i++) {
         if (to_test[i][2] == fn_id) {
+            if (all_vars_to_test_in_func &&
+                (test = get_arg_from_call_expr(expr, arg_pos[fn_id][to_test[i][1]])) &&
+                (is_expr_in_list(test, all_vars_to_test_in_func, nb_all_vars_to_test_in_func, NULL)))
+                    return;
+
             sm_warning("Testing function %s is not run on a variable to test.",
                        func_name[fn_id]);
             return;
@@ -468,6 +479,15 @@ static void match_func_end() {
         return;
 
     warn_if_var_to_test();
+
+    if (!all_vars_to_test_in_func)
+        return;
+
+    for (int i = 0; all_vars_to_test_in_func[i]; i++)
+        free_string(all_vars_to_test_in_func[i]);
+
+    free(all_vars_to_test_in_func);
+    all_vars_to_test_in_func = NULL;
 }
 
 static void match_test(struct expression *expr) {
