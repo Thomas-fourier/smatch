@@ -317,6 +317,24 @@ static void warn_if_var_to_test() {
     }
 }
 
+static struct statement *get_parent_if(struct expression *expr, bool member)
+{
+    struct expression *parent_expr = NULL;
+    while ((parent_expr = expr_get_parent_expr(expr)) && parent_expr != expr)
+        expr = parent_expr;
+
+    struct statement *stmt = expr_get_parent_stmt(expr);
+    while (stmt && stmt->parent) {
+        if (stmt->parent->type == STMT_IF &&
+            ((member && stmt == stmt->parent->if_true) ||
+             (!member && stmt == stmt->parent->if_false))) {
+            return stmt->parent;
+        }
+        stmt = stmt->parent;
+    }
+    return NULL;
+}
+
 static bool other_member_if(int fn_id, struct expression *expr)
 {
     if (!var_to_test || !parent_if)
@@ -334,6 +352,9 @@ static bool other_member_if(int fn_id, struct expression *expr)
         free_string(new_var_to_test);
 
         if (!comp_list(test_func, &(to_test[i][2])))
+            continue;
+
+        if (parent_if != get_parent_if(expr, false))
             continue;
 
         return true;
@@ -375,10 +396,7 @@ static void add_test_requirements(int fn_id, struct expression *expr)
         test_func = &(to_test[i][2]);
         test_from_line = get_lineno();
 
-        struct statement *stmt = get_parent_stmt(expr);
-        if (stmt && stmt->parent && stmt->parent->type == STMT_IF &&
-            stmt == stmt->parent->if_true)
-            parent_if = stmt->parent;
+        parent_if = get_parent_if(expr, true);
     }
 }
 
