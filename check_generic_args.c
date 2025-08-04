@@ -53,7 +53,7 @@ static int nb_var_to_test;
 static struct statement *parent_if;
 static int var_to_test_type;
 static int *test_func;
-static int test_from_line;
+static int *test_from_line; // All the lines concerned with the test
 
 static char **all_vars_to_test_in_func;
 static char nb_all_vars_to_test_in_func;
@@ -175,20 +175,20 @@ static void try_merge(int index, char **new_arg_name) {
 }
 
 static char *get_arg_from_call_expr(struct expression *expr, int arg_position) {
-        struct expression *arg;
-        if (arg_position == -1) {
-            struct expression *parent = expr_get_parent_expr(expr);
-            if (parent && is_cast(parent))
-                return get_arg_from_call_expr(parent, -1);
-            if (parent && parent->type == EXPR_ASSIGNMENT && parent->left)
-                arg = parent->left;
-            else // Maybe warning as well
-                return NULL;
-        } else {
-            arg = get_argument_from_call_expr(expr->args, arg_position);
-        }
+    struct expression *arg;
+    if (arg_position == -1) {
+        struct expression *parent = expr_get_parent_expr(expr);
+        if (parent && is_cast(parent))
+            return get_arg_from_call_expr(parent, -1);
+        if (parent && parent->type == EXPR_ASSIGNMENT && parent->left)
+            arg = parent->left;
+        else // Maybe warning as well
+            return NULL;
+    } else {
+        arg = get_argument_from_call_expr(expr->args, arg_position);
+    }
 
-        return stringify(arg);
+    return stringify(arg);
 }
 
 static void print_arg_name() {
@@ -250,6 +250,7 @@ static void free_var_to_test()
                    (void *)&nb_all_vars_to_test_in_func, var_to_test[i]);
 
     free(var_to_test);
+    free(test_from_line);
     var_to_test = NULL;
     parent_if = NULL;
 }
@@ -311,8 +312,9 @@ exit:
 
 static void warn_if_var_to_test() {
     if (var_to_test) {
-        sm_warning_line(test_from_line,
-                        "Possibly not testing %s", var_to_test[0]);
+        for (int i = 0; test_from_line[i]; i++)
+            sm_warning_line(test_from_line[i],
+                            "Possibly not testing %s", var_to_test[0]);
         free_var_to_test();
     }
 }
@@ -366,8 +368,14 @@ static bool other_member_if(int fn_id, struct expression *expr)
 static void add_test_requirements(int fn_id, struct expression *expr)
 {
     char *str_arg;
-    if (other_member_if(fn_id, expr))
+    if (other_member_if(fn_id, expr)) {
+        int i;
+        for (i = 0; test_from_line[i]; i++) {}
+        test_from_line[i] = get_lineno();
+        test_from_line = realloc(test_from_line, (i + 1) * sizeof(*test_from_line));
+        test_from_line[i + 1] = 0;
         return;
+    }
 
     warn_if_var_to_test();
 
@@ -394,7 +402,9 @@ static void add_test_requirements(int fn_id, struct expression *expr)
 
         var_to_test_type = to_test[i][1];
         test_func = &(to_test[i][2]);
-        test_from_line = get_lineno();
+        test_from_line = malloc(2 * sizeof(*test_from_line));
+        test_from_line[0] = get_lineno();
+        test_from_line[1] = 0;
 
         parent_if = get_parent_if(expr, true);
     }
