@@ -39,7 +39,9 @@ static int nb_arg_cat;
 static char **func_name;    // function name
 static int nb_func_name;
 static int **arg_pos;       // For each function, for each arg, position of the
-                            // arg  (-1 is return value, -2 not present)
+                            // arg (-1 is return value, -2 not present)
+static int *key_arg;        // key_arg[i] is the type of argument which is the
+                            // key
 static char **ignore_funcs;
 static int nb_ignore_funcs;
 
@@ -192,13 +194,18 @@ static char *get_arg_from_call_expr(struct expression *expr, int arg_position) {
 }
 
 static void print_arg_name() {
-    for (int i = 0; arg_cat[i]; i++) {
+    for (int i = 0; arg_cat[i]; i++)
         printf("%16s\t", arg_cat[i]);
-        for (int j = 0; arg_name[j]; j++) {
-            printf("%24s\t", arg_name[j][i]);
+
+    printf("\n");
+
+    for (int i = 0; arg_name[i]; i++) {
+        for (int j = 0; arg_cat[j]; j++) {
+            printf("%16s\t", arg_name[i][j]);
         }
         printf("\n");
     }
+    printf("\n\n");
 }
 
 static void print_arg_pos() {
@@ -213,9 +220,13 @@ static void print_arg_pos() {
     for (int i = 0; func_name[i]; i++) {
         printf("%24s\t", func_name[i]);
 
-        for (int j = 0; arg_cat[j]; j++)
+        for (int j = 0; arg_cat[j]; j++) {
+            if (key_arg[i] == j) 
+                printf("\033[91m");
             printf("%d\t\t", arg_pos[i][j]);
-
+            if (key_arg[i] == j) 
+                printf("\033[0m");
+        }
         printf("\n");
     }
     printf("\n");
@@ -411,6 +422,24 @@ static void add_test_requirements(int fn_id, struct expression *expr)
 }
 
 
+static int find_arg_name(int fn_id, struct expression *expr) {
+    if (key_arg[fn_id] == -1)
+        return -1;
+
+    char *key_param = get_arg_from_call_expr(expr, arg_pos[fn_id][key_arg[fn_id]]);
+
+    int prev_arg_cat, index;
+    find_previous_arg_name(key_param, &prev_arg_cat, &index);
+    free_string(key_param);
+
+    if (prev_arg_cat == key_arg[fn_id])
+        return index;
+
+    return -1;
+
+}
+
+
 static void match_func(const char *fn_name, struct expression *expr, void *_fn_id)
 {
     if (is_expr_in_list(get_function(), func_name, nb_func_name, NULL) ||
@@ -420,8 +449,8 @@ static void match_func(const char *fn_name, struct expression *expr, void *_fn_i
     if (__inline_fn)
         return;
 
-    int index = -1;
     int fn_id = (int)(long) _fn_id;
+    int index = find_arg_name(fn_id, expr);
 
 
     char **new_arg_name = NULL;
@@ -431,6 +460,10 @@ static void match_func(const char *fn_name, struct expression *expr, void *_fn_i
 
         char *str_arg = get_arg_from_call_expr(expr, arg_pos[fn_id][cur_arg_cat]);
         if (!str_arg) continue;
+
+        if (index != -1 && arg_name[index][cur_arg_cat] && 
+            strcmp(arg_name[index][cur_arg_cat], str_arg) == 0)
+            continue;
 
         int prev_arg_cat, cur_index;
         find_previous_arg_name(str_arg, &prev_arg_cat, &cur_index);
@@ -557,7 +590,7 @@ static bool parse_decl(char *line)
     return true;
 }
 
-static bool add_to_arg_pos(char *expr, char *line, int pos)
+static bool add_to_arg_pos(char *expr, char *line, int pos, bool key)
 {
     int index;
 
@@ -568,9 +601,11 @@ static bool add_to_arg_pos(char *expr, char *line, int pos)
         parse_error("Argument %s not declared.", expr);
 
     if (arg_pos[nb_func_name - 1][index] != -2)
-        parse_error("Argument %s used multiple time in %s", expr, line);
+        parse_error("Argument %s used multiple times in %s", expr, line);
 
     arg_pos[nb_func_name - 1][index] = pos;
+    if (key)
+        key_arg[nb_func_name - 1] = index;
     return true;
 }
 
@@ -579,6 +614,7 @@ static bool parse_call(char *line, enum section sec)
     char buffer[varname_size + 1];
     char *current;
     char *last;
+    bool key = false;
     int i;
     if (1 != sscanf(line, label, buffer))
         parse_error("Impossible to parse line %s", line);
@@ -597,6 +633,8 @@ static bool parse_call(char *line, enum section sec)
     push_array((void ***)&func_name, &nb_func_name, alloc_string(buffer));
     arg_pos = realloc(arg_pos, nb_func_name * sizeof(*arg_pos));
     arg_pos[nb_func_name - 1] = malloc(nb_arg_cat * sizeof(**arg_pos));
+    key_arg = realloc(key_arg, nb_func_name * sizeof(nb_func_name));
+    key_arg[nb_func_name - 1] = -1;
 
     for (i = 0; i < nb_arg_cat; i++)
         arg_pos[nb_func_name - 1][i] = -2;
@@ -604,12 +642,16 @@ static bool parse_call(char *line, enum section sec)
     i = 0;
     do {
         current++;
-        if (1 != sscanf(current, label, buffer))
+        if (1 == sscanf(current, " key "label, buffer))
+            key = true;
+        else if (1 != sscanf(current, label, buffer))
             parse_error("Could not read variable in %s", current);
-        if (!add_to_arg_pos(buffer, line, i))
+
+        if (!add_to_arg_pos(buffer, line, i, key))
             return false;
         i++;
         last = current;
+        key = false;
     } while ((current = strchr(last, ',')));
 
     if (!strchr(last, ')'))
@@ -622,14 +664,19 @@ static bool parse_equal(char *line, enum section sec)
 {
     char *sep;
     char ret_val[varname_size + 1];
+    bool key = false;
     if (!(sep = strchr(line, '=')))
         return false;
 
     if (!parse_call(sep + 1, sec))
         parse_error("Weird line '%s'", line);
 
-    sscanf(line, label, ret_val);
-    add_to_arg_pos(ret_val, line, -1);
+    if (1 == sscanf(line, " key " label, ret_val))
+        key = true;
+    else if (1 != sscanf(line, label, ret_val))
+        parse_error("Could not parse affectation statement %s", line);
+
+    add_to_arg_pos(ret_val, line, -1, key);
 
     return true;
 }

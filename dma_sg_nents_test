@@ -7,24 +7,24 @@ var dir
 // DMA SG interface
 
 // Mapping funcitons
-dma_nents = dma_map_sg_attrs(_, sg, nents, dir, _)
-dma_nents = ib_dma_map_sg_attrs(_, sg, nents, dir, _)
-dma_nents = ib_dma_map_sg(_, sg, nents, dir)
+dma_nents = dma_map_sg_attrs(_, key sg, nents, dir, _)
+dma_nents = ib_dma_map_sg_attrs(_, key sg, nents, dir, _)
+dma_nents = ib_dma_map_sg(_, key sg, nents, dir)
 
 // Unmapping
-dma_unmap_sg_attrs(_, sg, nents, dir, _)
-ib_dma_unmap_sg_attrs(_, sg, nents, dir, _)
-ib_dma_unmap_sg(_, sg, nents, dir)
+dma_unmap_sg_attrs(_, key sg, nents, dir, _)
+ib_dma_unmap_sg_attrs(_, key sg, nents, dir, _)
+ib_dma_unmap_sg(_, sg, key nents, dir)
 
 // Syncing 
-dma_sync_sg_for__ice(_, sg, nents, dir)
-dma_sync_sg_for_cpu(_, sg, nents, dir)
+dma_sync_sg_for__ice(_, key sg, nents, dir)
+dma_sync_sg_for_cpu(_, key sg, nents, dir)
 
-sg_copy_buffer(sg, nents)
-sg_copy_from_buffer(sg, nents)
-sg_copy_to_buffer(sg, nents)
-sg_pcopy_from_buffer(sg, nents)
-sg_pcopy_to_buffer(sg, nents)
+sg_copy_buffer(key sg, nents)
+sg_copy_from_buffer(key sg, nents)
+sg_copy_to_buffer(key sg, nents)
+sg_pcopy_from_buffer(key sg, nents)
+sg_pcopy_to_buffer(key sg, nents)
 
 
 
