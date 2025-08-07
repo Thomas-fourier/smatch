@@ -137,8 +137,8 @@ list if found */
 static bool is_expr_in_list(const char *expr, char **list, int len, int *index)
 {
     int i;
-    for (i = 0; i < len && list[i]; i++) {
-        if (strcmp(expr, list[i]) == 0) {
+    for (i = 0; i < len; i++) {
+        if (list[i] && strcmp(expr, list[i]) == 0) {
             if (index)
                 *index = i;
             return true;
