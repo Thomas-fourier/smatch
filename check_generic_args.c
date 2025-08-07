@@ -150,9 +150,17 @@ static bool is_expr_in_list(const char *expr, char **list, int len, int *index)
 /* Find string in a matrix of strings, if no
  *
  */
-static void find_previous_arg_name(char *expr, int *this_arg_cat, int *index) {
-
+static void find_previous_arg_name(char *expr, int *this_arg_cat, int *index)
+{
     int i;
+    for (i = 0; arg_name[i]; i++) {
+        if (arg_name[i][*this_arg_cat] &&
+            strcmp(arg_name[i][*this_arg_cat], expr)) {
+            *index = i;
+            return;
+        }
+    }
+
     for (i = 0; arg_name[i]; i++) {
         if (is_expr_in_list(expr, arg_name[i], nb_arg_cat, this_arg_cat)) {
             *index = i;
@@ -435,7 +443,7 @@ static int find_arg_name(int fn_id, struct expression *expr) {
 
     char *key_param = get_arg_from_call_expr(expr, arg_pos[fn_id][key_arg[fn_id]]);
 
-    int prev_arg_cat, index;
+    int prev_arg_cat = key_arg[fn_id], index;
     find_previous_arg_name(key_param, &prev_arg_cat, &index);
     free_string(key_param);
 
@@ -474,7 +482,12 @@ static void match_func(const char *fn_name, struct expression *expr, void *_fn_i
             continue;
         }
 
-        int prev_arg_cat, cur_index;
+        if (index != -1 && !arg_name[index][cur_arg_cat]) {
+            arg_name[index][cur_arg_cat] = str_arg;
+            continue;
+        }
+
+        int prev_arg_cat = cur_arg_cat, cur_index;
         find_previous_arg_name(str_arg, &prev_arg_cat, &cur_index);
 
         if (prev_arg_cat == -1) {
