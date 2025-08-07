@@ -118,8 +118,8 @@ static char *stringify(struct expression *expr) {
     }
 
     if (expr->type == EXPR_DEREF && expr->member) {
-        res = malloc(strlen(expr->member->name) + 2);
-        sprintf(res, ".%s", expr->member->name);
+        res = malloc(strlen(expr->member->name) + 1);
+        sprintf(res, "%s", expr->member->name);
     } else {
         res = expr_to_str(expr);
 
