@@ -462,8 +462,10 @@ static void match_func(const char *fn_name, struct expression *expr, void *_fn_i
         if (!str_arg) continue;
 
         if (index != -1 && arg_name[index][cur_arg_cat] && 
-            strcmp(arg_name[index][cur_arg_cat], str_arg) == 0)
+            strcmp(arg_name[index][cur_arg_cat], str_arg) == 0) {
+            free_string(str_arg);
             continue;
+        }
 
         int prev_arg_cat, cur_index;
         find_previous_arg_name(str_arg, &prev_arg_cat, &cur_index);
