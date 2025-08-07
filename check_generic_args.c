@@ -165,7 +165,13 @@ static void find_previous_arg_name(char *expr, int *this_arg_cat, int *index) {
     *index = i;
 }
 
-static void try_merge(int index, char **new_arg_name) {
+static bool try_merge(int index, char **new_arg_name, int fn_id) {
+    if (new_arg_name[key_arg[fn_id]] && arg_name[index][key_arg[fn_id]] &&
+        strcmp(new_arg_name[key_arg[fn_id]],
+               arg_name[index][key_arg[fn_id]]) != 0)
+        return false;
+
+
     for (int i = 0; i < nb_arg_cat; i++) {
         if (arg_name[index][i] == NULL) {
             arg_name[index][i] = new_arg_name[i];
@@ -174,6 +180,7 @@ static void try_merge(int index, char **new_arg_name) {
                        new_arg_name[i], arg_name[index][i]);
         }
     }
+    return true;
 }
 
 static char *get_arg_from_call_expr(struct expression *expr, int arg_position) {
@@ -481,12 +488,13 @@ static void match_func(const char *fn_name, struct expression *expr, void *_fn_i
 
             arg_name[index][cur_arg_cat] = str_arg;
             continue;
-        } else if (key_arg[fn_id] == -1 && new_arg_name) {
+        } else if (new_arg_name) {
             // If the argument is known but not the
             // previous, then try to merge and do as if nothing happened
-            try_merge(cur_index, new_arg_name);
-            free(new_arg_name);
-            new_arg_name = NULL;
+            if (try_merge(cur_index, new_arg_name, fn_id)) {
+                free(new_arg_name);
+                new_arg_name = NULL;
+            }
         }
 
         if (prev_arg_cat != cur_arg_cat) {
