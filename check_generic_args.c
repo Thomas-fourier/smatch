@@ -481,7 +481,8 @@ static void match_func(const char *fn_name, struct expression *expr, void *_fn_i
 
             arg_name[index][cur_arg_cat] = str_arg;
             continue;
-        } else if (new_arg_name) { // If the argument is known but not the
+        } else if (key_arg[fn_id] == -1 && new_arg_name) {
+            // If the argument is known but not the
             // previous, then try to merge and do as if nothing happened
             try_merge(cur_index, new_arg_name);
             free(new_arg_name);
