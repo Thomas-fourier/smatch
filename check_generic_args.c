@@ -208,63 +208,63 @@ static char *get_arg_from_call_expr(struct expression *expr, int arg_position) {
     return stringify(arg);
 }
 
-static void print_arg_name() {
+static void print_arg_name(FILE *out) {
     for (int i = 0; arg_cat[i]; i++)
-        printf("%16s\t", arg_cat[i]);
+        fprintf(out, "%16s\t", arg_cat[i]);
 
-    printf("\n");
+    fprintf(out, "\n");
 
     for (int i = 0; arg_name[i]; i++) {
         for (int j = 0; arg_cat[j]; j++) {
-            printf("%16s\t", arg_name[i][j]);
+            fprintf(out, "%16s\t", arg_name[i][j]);
         }
-        printf("\n");
+        fprintf(out, "\n");
     }
-    printf("\n\n");
+    fprintf(out, "\n\n");
 }
 
-static void print_arg_pos() {
-    printf("Arg positions:\t\t\t");
+static void print_arg_pos(FILE *out) {
+    fprintf(out,"Arg positions:\t\t\t");
     for (int j = 0; arg_cat[j]; j++) {
-        printf("%s", arg_cat[j]);
+        fprintf(out, "%s", arg_cat[j]);
         for (int i = 0; i < (16 - strlen(arg_cat[j])); i++)
             putc(' ', stdout);
     }
-    printf("\n");
+    fprintf(out, "\n");
 
     for (int i = 0; func_name[i]; i++) {
-        printf("%24s\t", func_name[i]);
+        fprintf(out, "%24s\t", func_name[i]);
 
         for (int j = 0; arg_cat[j]; j++) {
             if (key_arg[i] == j) 
-                printf("\033[91m");
-            printf("%d\t\t", arg_pos[i][j]);
+                fprintf(out, "\033[91m");
+            fprintf(out, "%d\t\t", arg_pos[i][j]);
             if (key_arg[i] == j) 
-                printf("\033[0m");
+                fprintf(out, "\033[0m");
         }
-        printf("\n");
+        fprintf(out, "\n");
     }
-    printf("\n");
+    fprintf(out, "\n");
 
-    printf("Ignore functions:\n");
+    fprintf(out, "Ignore functions:\n");
     for (int i = 0; ignore_funcs[i]; i++)
-        printf("%s ", ignore_funcs[i]);
-    printf("\n\n");
+        fprintf(out, "%s ", ignore_funcs[i]);
+    fprintf(out, "\n\n");
 
-    printf("Variables to test:\n");
+    fprintf(out, "Variables to test:\n");
     for (int i = 0; to_test[i]; i++) {
         if (to_test[i][2] != -1) {
-            printf("func: %s, var: %s, test functions: ",
+            fprintf(out, "func: %s, var: %s, test functions: ",
                    func_name[to_test[i][0]], arg_cat[to_test[i][1]]);
                 for (int j = 2; to_test[i][j] != -1; j++)
-                    printf("%s ", func_name[to_test[i][j]]);
+                    fprintf(out, "%s ", func_name[to_test[i][j]]);
             putc('\n', stdout);
         } else {
-            printf("func: %s, var: %s\n", func_name[to_test[i][0]],
+            fprintf(out, "func: %s, var: %s\n", func_name[to_test[i][0]],
                    arg_cat[to_test[i][1]]);
         }
     }
-    printf("\n");
+    fprintf(out, "\n");
 }
 
 static void free_var_to_test()
@@ -532,7 +532,7 @@ static void match_func(const char *fn_name, struct expression *expr, void *_fn_i
         push_array((void ***)&arg_name, &nb_arg_name, new_arg_name);
 
     if (false)
-        print_arg_name();
+        print_arg_name(stdout);
 
 }
 
@@ -921,7 +921,7 @@ void check_generic_args(int id) {
     // manual_init();
     if (!parse_file(option_generic_args_file))
         return;
-    if (false) print_arg_pos();
+    if (false) print_arg_pos(stdout);
 
     arg_name = malloc(sizeof(*arg_name));
     arg_name[0] = NULL;
