@@ -522,10 +522,24 @@ static void match_func(const char *fn_name, struct expression *expr, void *_fn_i
 
         if (index == -1)
             index = cur_index;
-        else if (index != cur_index)
+        else if (index != cur_index) {
+            if (strcmp(arg_name[index][cur_arg_cat],
+                       arg_name[cur_index][prev_arg_cat]) == 0) {
+                try_merge(index, arg_name[cur_index], fn_id);
+                free(arg_name[cur_index]);
+                arg_name[cur_index] = arg_name[nb_arg_name - 1];
+                arg_name[nb_arg_name - 1] = NULL;
+                nb_arg_name--;
+                if (index == nb_arg_name)
+                    index = cur_index;
+                else
+                    cur_index = index;
+                continue;
+            }
             sm_warning("Possibly mixing arguments %s and %s",
                        arg_name[cur_index][prev_arg_cat],
                        arg_name[index][cur_arg_cat]);
+        }
     }
 
     is_requirement(fn_id, expr);
