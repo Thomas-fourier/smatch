@@ -181,8 +181,11 @@ static bool try_merge(int index, char **new_arg_name, int fn_id) {
 
 
     for (int i = 0; i < nb_arg_cat; i++) {
-        if (arg_name[index][i] == NULL) {
+        if (!arg_name[index][i]) {
             arg_name[index][i] = new_arg_name[i];
+        } else if (new_arg_name[i] &&
+                   strcmp(new_arg_name[i], arg_name[index][i]) == 0) {
+            continue;
         } else if (new_arg_name[i]) {
             sm_warning("Possibly mixing arguments %s and %s",
                        new_arg_name[i], arg_name[index][i]);
