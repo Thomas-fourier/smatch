@@ -468,10 +468,9 @@ static void match_func(const char *fn_name, struct expression *expr, void *_fn_i
         return;
 
     int fn_id = (int)(long) _fn_id;
-    int index = find_arg_name(fn_id, expr);
 
 
-    char **new_arg_name = NULL;
+    char **new_arg_name = calloc(nb_arg_cat, sizeof(*new_arg_name));
 
     for (int cur_arg_cat = 0; arg_cat[cur_arg_cat]; cur_arg_cat++) {
         if (arg_pos[fn_id][cur_arg_cat] == -2) continue;
@@ -479,80 +478,19 @@ static void match_func(const char *fn_name, struct expression *expr, void *_fn_i
         char *str_arg = get_arg_from_call_expr(expr, arg_pos[fn_id][cur_arg_cat]);
         if (!str_arg) continue;
 
-        if (index != -1 && arg_name[index][cur_arg_cat] && 
-            strcmp(arg_name[index][cur_arg_cat], str_arg) == 0) {
-            free_string(str_arg);
-            continue;
-        }
+        new_arg_name[cur_arg_cat] = str_arg;
+    }
 
-        if (index != -1 && !arg_name[index][cur_arg_cat]) {
-            arg_name[index][cur_arg_cat] = str_arg;
-            continue;
-        }
-
-        if (new_arg_name && new_arg_name[cur_arg_cat] == NULL &&
-            key_arg[fn_id] != -1 && cur_arg_cat != key_arg[fn_id]) {
-            new_arg_name[cur_arg_cat] = str_arg;
-            continue;
-        }
-
-        int prev_arg_cat = cur_arg_cat, cur_index;
-        find_previous_arg_name(str_arg, &prev_arg_cat, &cur_index);
-
-        if (prev_arg_cat == -1) {
-            // Its ok, check that it is the case for all and append
-            if (index == -1) {
-                if (!new_arg_name)
-                    new_arg_name = calloc(nb_arg_cat, sizeof(new_arg_name[0]));
-                new_arg_name[cur_arg_cat] = str_arg;
-                continue;
-            }
-
-            arg_name[index][cur_arg_cat] = str_arg;
-            continue;
-        } else if (new_arg_name) {
-            // If the argument is known but not the
-            // previous, then try to merge and do as if nothing happened
-            if (try_merge(cur_index, new_arg_name, fn_id)) {
-                free(new_arg_name);
-                new_arg_name = NULL;
-            }
-        }
-
-        if (prev_arg_cat != cur_arg_cat) {
-            sm_warning("Possibly mixing %s and %s",
-                       arg_cat[prev_arg_cat], arg_cat[cur_arg_cat]);
-            free_string(str_arg);
-            continue;
-        }
-
-        if (index == -1)
-            index = cur_index;
-        else if (index != cur_index) {
-            if (strcmp(arg_name[index][cur_arg_cat],
-                       arg_name[cur_index][prev_arg_cat]) == 0) {
-                try_merge(index, arg_name[cur_index], fn_id);
-                free(arg_name[cur_index]);
-                arg_name[cur_index] = arg_name[nb_arg_name - 1];
-                arg_name[nb_arg_name - 1] = NULL;
-                nb_arg_name--;
-                if (index == nb_arg_name)
-                    index = cur_index;
-                else
-                    cur_index = index;
-                continue;
-            }
-            sm_warning("Possibly mixing arguments %s and %s",
-                       arg_name[cur_index][prev_arg_cat],
-                       arg_name[index][cur_arg_cat]);
-        }
+    int index = find_arg_name(fn_id, expr);
+    if (index != -1) {
+        try_merge(index, new_arg_name, fn_id);
+        free(new_arg_name);
+    } else {
+            push_array((void ***)&arg_name, &nb_arg_name, new_arg_name);
     }
 
     is_requirement(fn_id, expr);
     add_test_requirements(fn_id, expr);
-
-    if (new_arg_name)
-        push_array((void ***)&arg_name, &nb_arg_name, new_arg_name);
 
     if (false)
         print_arg_name(stdout);
@@ -946,9 +884,7 @@ void check_generic_args(int id) {
         return;
     if (false) print_arg_pos(stdout);
 
-    arg_name = malloc(sizeof(*arg_name));
-    arg_name[0] = NULL;
-    nb_arg_name = 0;
+    init_array((void ***)&arg_name, &nb_arg_name);
     int i;
     for (i = 0; func_name[i]; i++)
         add_function_hook(func_name[i], match_func, (void *)(long)i);
