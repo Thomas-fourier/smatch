@@ -490,6 +490,12 @@ static void match_func(const char *fn_name, struct expression *expr, void *_fn_i
             continue;
         }
 
+        if (new_arg_name && new_arg_name[cur_arg_cat] == NULL &&
+            key_arg[fn_id] != -1 && cur_arg_cat != key_arg[fn_id]) {
+            new_arg_name[cur_arg_cat] = str_arg;
+            continue;
+        }
+
         int prev_arg_cat = cur_arg_cat, cur_index;
         find_previous_arg_name(str_arg, &prev_arg_cat, &cur_index);
 
