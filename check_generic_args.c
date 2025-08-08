@@ -155,7 +155,7 @@ static void find_previous_arg_name(char *expr, int *this_arg_cat, int *index)
     int i;
     for (i = 0; arg_name[i]; i++) {
         if (arg_name[i][*this_arg_cat] &&
-            strcmp(arg_name[i][*this_arg_cat], expr)) {
+            strcmp(arg_name[i][*this_arg_cat], expr) == 0) {
             *index = i;
             return;
         }
@@ -170,7 +170,7 @@ static void find_previous_arg_name(char *expr, int *this_arg_cat, int *index)
 
     // Case not found
     *this_arg_cat = -1;
-    *index = i;
+    *index = -1;
 }
 
 static bool try_merge(int index, char **new_arg_name, int fn_id) {
