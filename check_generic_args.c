@@ -60,6 +60,19 @@ static int *test_from_line; // All the lines concerned with the test
 static char **all_vars_to_test_in_func;
 static char nb_all_vars_to_test_in_func;
 
+struct confusion {
+    char *name1;
+    char *name2;
+    char *filename;
+    int line;
+};
+
+static struct confusion **confusion_list;
+static int nb_confusion_list;
+
+static struct confusion **allowed_confusions;
+static int nb_allowed_confusions;
+
 // This is only used for parsing
 static char **sec_func;
 static int nb_sec_func;
@@ -187,8 +200,14 @@ static bool try_merge(int index, char **new_arg_name, int fn_id) {
                    strcmp(new_arg_name[i], arg_name[index][i]) == 0) {
             continue;
         } else if (new_arg_name[i]) {
-            sm_warning("Possibly mixing arguments %s and %s",
-                       new_arg_name[i], arg_name[index][i]);
+            struct confusion *this_confusion = malloc(sizeof(*this_confusion));
+            this_confusion->name1 = alloc_string(new_arg_name[i]);
+            this_confusion->name2 = alloc_string(arg_name[index][i]);
+            this_confusion->filename = alloc_string(get_filename());
+            this_confusion->line = get_lineno();
+
+            push_array((void ***)&confusion_list, &nb_confusion_list,
+                       this_confusion);
         }
     }
     return true;
@@ -505,10 +524,18 @@ static void match_assign(struct expression *expr)
     if (__inline_fn)
         return;
 
+    char *right_str = stringify(expr->right);
+    char *left_str = stringify(expr->left);
+    struct confusion *this_confusion = malloc(sizeof(*this_confusion));
+    this_confusion->name1 = right_str;
+    this_confusion->name2 = left_str;
+
+    push_array((void ***)&allowed_confusions, &nb_allowed_confusions,
+               this_confusion);
+
     if (!var_to_test)
         return;
 
-    char *right_str = stringify(expr->right);
     for (int i = 0; var_to_test[i]; i++) {
         if (strcmp(var_to_test[i], right_str) == 0) {
             push_array((void ***)&var_to_test, &nb_var_to_test,
@@ -516,8 +543,6 @@ static void match_assign(struct expression *expr)
             return;
         }
     }
-
-    free_string(right_str);
 }
 
 static void match_func_end() {
@@ -546,6 +571,44 @@ static void match_test(struct expression *expr) {
     char *str_expr = stringify(expr);
     if (is_expr_to_test(str_expr)) {
         free_var_to_test();
+    }
+}
+
+static bool is_same_confusion(struct confusion *conf1, struct confusion *conf2)
+{
+    if (strcmp(conf1->name1, conf2->name1) == 0 &&
+        strcmp(conf1->name2, conf2->name2) == 0)
+        return true;
+
+    
+    if (strcmp(conf1->name1, conf2->name2) == 0 &&
+        strcmp(conf1->name2, conf2->name1) == 0)
+        return true;
+
+    return false;
+}
+
+static void match_file_end()
+{
+    int i, j;
+    for (i = 0; confusion_list[i]; i++) {
+        for (j = 0; allowed_confusions[j]; j++) {
+            if (is_same_confusion(confusion_list[i], allowed_confusions[j])) {
+                break;
+            }
+        }
+
+        if (allowed_confusions[j])
+            continue;
+
+        // Smatch does not allow passing a filename to sm_warning, so doing it by hand
+        if (final_pass || option_debug || local_debug || debug_db) {
+            fprintf(sm_outfd, "%s:%d ", confusion_list[i]->filename,
+                    confusion_list[i]->line);
+            fprintf(sm_outfd, "warn: ");
+            fprintf(sm_outfd, "Possibly mixing arguments %s and %s \n",
+                        confusion_list[i]->name1, confusion_list[i]->name2);
+        }
     }
 }
 
@@ -885,6 +948,9 @@ void check_generic_args(int id) {
     if (false) print_arg_pos(stdout);
 
     init_array((void ***)&arg_name, &nb_arg_name);
+    init_array((void ***)&confusion_list, &nb_confusion_list);
+    init_array((void ***)&allowed_confusions, &nb_allowed_confusions);
+
     int i;
     for (i = 0; func_name[i]; i++)
         add_function_hook(func_name[i], match_func, (void *)(long)i);
@@ -893,4 +959,6 @@ void check_generic_args(int id) {
     add_hook(match_assign, ASSIGNMENT_HOOK);
     add_hook(match_func_end, END_FUNC_HOOK);
     add_hook(match_test, CONDITION_HOOK);
+
+    add_hook(match_file_end, END_FILE_HOOK);
 }
