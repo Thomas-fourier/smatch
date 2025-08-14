@@ -134,7 +134,7 @@ static char *stringify(struct expression *expr) {
     if (expr->type == EXPR_ASSIGNMENT)
         return stringify(expr->left);
 
-    if (expr->type == EXPR_PREOP && expr->op == '&')
+    if (expr->type == EXPR_PREOP && (expr->op == '&' || expr->op == '*'))
         return stringify(expr->unop);
 
     if (expr->type == EXPR_DEREF && expr->member) {
