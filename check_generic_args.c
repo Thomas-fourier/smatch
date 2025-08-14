@@ -486,11 +486,11 @@ static int find_arg_name(int fn_id, struct expression *expr) {
 
 static void match_func(const char *fn_name, struct expression *expr, void *_fn_id)
 {
-    if (is_expr_in_list(get_function(), func_name, nb_func_name, NULL) ||
-        is_expr_in_list(get_function(), ignore_funcs, nb_ignore_funcs, NULL))
+    if (is_fake_call(expr) || __inline_fn)
         return;
 
-    if (__inline_fn)
+    if (is_expr_in_list(get_function(), func_name, nb_func_name, NULL) ||
+        is_expr_in_list(get_function(), ignore_funcs, nb_ignore_funcs, NULL))
         return;
 
     int fn_id = (int)(long) _fn_id;
@@ -525,7 +525,8 @@ static void match_func(const char *fn_name, struct expression *expr, void *_fn_i
 
 static void match_assign(struct expression *expr)
 {
-    if (is_fake_var_assign(expr) || is_fake_assigned_call(expr))
+    if (is_fake_var_assign(expr) || is_fake_assigned_call(expr) ||
+        is_fake_call(expr->right))
         return;
 
     if (__inline_fn)
