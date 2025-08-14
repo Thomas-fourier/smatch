@@ -122,13 +122,20 @@ static bool is_cast(struct expression *expr) {
 static char *stringify(struct expression *expr) {
     char *res;
     char *pp;
+    sval_t constant;
 
-    while (is_cast(expr) || expr->type == EXPR_ASSIGNMENT) {
-        if (expr->type == EXPR_ASSIGNMENT)
-            expr = expr->left;
-        else
-            expr = expr->cast_expression;
-    }
+    expr = strip_expr(expr);
+    if (get_value(expr, &constant))
+        return alloc_string(sval_to_str(constant));
+
+    if (is_cast(expr))
+        return stringify(expr->cast_expression);
+
+    if (expr->type == EXPR_ASSIGNMENT)
+        return stringify(expr->left);
+
+    if (expr->type == EXPR_PREOP && expr->op == '&')
+        return stringify(expr->unop);
 
     if (expr->type == EXPR_DEREF && expr->member) {
         res = malloc(strlen(expr->member->name) + 1);
