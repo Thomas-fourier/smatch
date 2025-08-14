@@ -518,7 +518,7 @@ static void match_func(const char *fn_name, struct expression *expr, void *_fn_i
 
 static void match_assign(struct expression *expr)
 {
-    if (is_fake_var_assign(expr))
+    if (is_fake_var_assign(expr) || is_fake_assigned_call(expr))
         return;
 
     if (__inline_fn)
