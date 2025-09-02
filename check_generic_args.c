@@ -996,7 +996,7 @@ void check_generic_args(int id) {
     my_id = id;
 
     // manual_init();
-    if (!parse_file(option_generic_args_file))
+    if (! option_generic_args_file || !parse_file(option_generic_args_file))
         return;
     if (false) print_arg_pos(stdout);
 
