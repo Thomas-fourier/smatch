@@ -248,12 +248,14 @@ static bool try_merge(int index, char **new_arg_name, int fn_id) {
     for (int i = 0; i < nb_arg_cat; i++) {
         if (!arg_name[index][i]) {
             arg_name[index][i] = new_arg_name[i];
+            new_arg_name[i] = NULL;
         } else if (new_arg_name[i] &&
                    strcmp(new_arg_name[i], arg_name[index][i]) == 0) {
             continue;
         } else if (new_arg_name[i]) {
             struct confusion *this_confusion = malloc(sizeof(*this_confusion));
-            this_confusion->name1 = alloc_string(new_arg_name[i]);
+            this_confusion->name1 = new_arg_name[i];
+            new_arg_name[i] = NULL;
             this_confusion->name2 = alloc_string(arg_name[index][i]);
             this_confusion->filename = alloc_string(get_filename());
             this_confusion->line = get_lineno();
@@ -400,8 +402,12 @@ exit:
         if (to_test[i][2] == fn_id) {
             if (all_vars_to_test_in_func &&
                 (test = get_arg_from_call_expr(expr, arg_pos[fn_id][to_test[i][1]])) &&
-                (is_expr_in_list(test, all_vars_to_test_in_func, nb_all_vars_to_test_in_func, NULL)))
+                (is_expr_in_list(test, all_vars_to_test_in_func,
+                                 nb_all_vars_to_test_in_func, NULL))) {
+                    if (test)
+                        free(test);
                     return;
+                }
 
             sm_warning("Testing function %s is not run on a variable to test.",
                        func_name[fn_id]);
@@ -555,6 +561,8 @@ static void match_func(const char *fn_name, struct expression *expr, void *_fn_i
     int index = find_arg_name(fn_id, expr);
     if (index != -1) {
         try_merge(index, new_arg_name, fn_id);
+        for (int i = 0; i < nb_arg_cat; i++)
+            free_string(new_arg_name[i]);
         free(new_arg_name);
     } else {
             push_array((void ***)&arg_name, &nb_arg_name, new_arg_name);
@@ -625,6 +633,7 @@ static void match_test(struct expression *expr) {
     if (is_expr_to_test(str_expr)) {
         free_var_to_test();
     }
+    free_string(str_expr);
 }
 
 static bool is_same_confusion(struct confusion *conf1, struct confusion *conf2)
@@ -883,6 +892,8 @@ static void add_test(char *var, char *test_func) {
 
         push_array((void ***)&to_test, &nb_to_test, line);
     }
+
+    free(test_func_id);
 }
 
 static bool parse_do_test(char *line) {
