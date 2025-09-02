@@ -36,6 +36,7 @@ sg_pcopy_to_buffer(key sg, nents)
 var dma_add
 var buf
 var size
+var offset
 
 dma_mapping_error(dev, key dma_add)
 enic_dma_map_check(dev, key dma_add)
@@ -50,7 +51,7 @@ b43_dma_mapping_error(dev, key dma_add, size)
 
 after:
 dma_add = dma_map_single_attrs(dev, key buf, size, dir, attrs)
-dma_add = dma_map_page_attrs(dev, key buf, size, dir, attrs)
+dma_add = dma_map_page_attrs(dev, key buf, offset, size, dir, attrs)
 dma_add = dma_map_resource(dev, key buf, size, dir, attrs)
 dma_add = __skb_frag_dma_map(dev, key buf, size, dir, attrs)
 dma_add = niu_pci_map_page(dev, key buf, _, size, dir)
@@ -65,7 +66,7 @@ test dma_add with dma_mapping_error or enic_dma_map_check or iwl_txq_gen2_set_tb
 
 after:
 dma_add = ib_dma_map_single(dev, key buf, size, dir, attrs)
-dma_add = ib_dma_map_page(dev, key buf, size, dir, attrs)
+dma_add = ib_dma_map_page(dev, key buf, offset, size, dir, attrs)
 dma_add = hmm_dma_map_pfn(_)
 do:
 test dma_add with ib_dma_mapping_error
