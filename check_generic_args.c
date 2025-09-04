@@ -425,22 +425,32 @@ static void warn_if_var_to_test() {
     }
 }
 
-static struct statement *get_parent_if(struct expression *expr, bool member)
+static struct statement *stmt_get_parent_if(struct statement *stmt, bool *branch)
+{
+    while (stmt && stmt->parent) {
+        if (stmt->parent->type == STMT_IF) {
+            if (stmt == stmt->parent->if_true) {
+                *branch = true;
+                return stmt->parent;
+            }
+            if (stmt == stmt->parent->if_false) {
+                *branch = false;
+                return stmt->parent;
+            }
+        }
+        stmt = stmt->parent;
+    }
+    return NULL;
+}
+
+static struct statement *expr_get_parent_if(struct expression *expr, bool *branch)
 {
     struct expression *parent_expr = NULL;
     while ((parent_expr = expr_get_parent_expr(expr)) && parent_expr != expr)
         expr = parent_expr;
 
     struct statement *stmt = expr_get_parent_stmt(expr);
-    while (stmt && stmt->parent) {
-        if (stmt->parent->type == STMT_IF &&
-            ((member && stmt == stmt->parent->if_true) ||
-             (!member && stmt == stmt->parent->if_false))) {
-            return stmt->parent;
-        }
-        stmt = stmt->parent;
-    }
-    return NULL;
+    return stmt_get_parent_if(stmt, branch);
 }
 
 static bool other_member_if(int fn_id, struct expression *expr)
@@ -462,7 +472,9 @@ static bool other_member_if(int fn_id, struct expression *expr)
         if (!comp_list(test_func, &(to_test[i][2])))
             continue;
 
-        if (parent_if != get_parent_if(expr, false))
+        bool branch;
+        // Only ignore if not in else branch
+        if (parent_if != expr_get_parent_if(expr, &branch) && !branch)
             continue;
 
         return true;
@@ -512,7 +524,12 @@ static void add_test_requirements(int fn_id, struct expression *expr)
         test_from_line[0] = get_lineno();
         test_from_line[1] = 0;
 
-        parent_if = get_parent_if(expr, true);
+        bool branch;
+        parent_if = expr_get_parent_if(expr, &branch);
+        // Only valid if_true i.e. branch is true
+        if (parent_if && !branch) {
+            parent_if = NULL;
+        }
     }
 }
 
