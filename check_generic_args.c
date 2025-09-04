@@ -79,6 +79,7 @@ static int nb_sec_func;
 
 // Maintained and updated
 static char ***arg_name; // name of the arguments for each category
+static char **arg_name_condition;
 static int nb_arg_name;
 
 
@@ -212,22 +213,35 @@ static bool is_expr_in_list(const char *expr, char **list, int len, int *index)
     return false;
 }
 
+static bool is_condition_compatible(char *arg_name_cond, char *condition) {
+    if (!arg_name_cond)
+        return true;
+
+    if (!condition)
+        return false;
+
+    return strcmp(arg_name_cond, condition) == 0;
+}
+
 /* Find string in a matrix of strings, if no
  *
  */
-static void find_previous_arg_name(char *expr, int *this_arg_cat, int *index)
+static void find_previous_arg_name(char *expr, int *this_arg_cat, int *index,
+                                   char *condition)
 {
     int i;
     for (i = 0; arg_name[i]; i++) {
         if (arg_name[i][*this_arg_cat] &&
-            strcmp(arg_name[i][*this_arg_cat], expr) == 0) {
+            strcmp(arg_name[i][*this_arg_cat], expr) == 0 &&
+            is_condition_compatible(arg_name_condition[i], condition)) {
             *index = i;
             return;
         }
     }
 
     for (i = 0; arg_name[i]; i++) {
-        if (is_expr_in_list(expr, arg_name[i], nb_arg_cat, this_arg_cat)) {
+        if (is_expr_in_list(expr, arg_name[i], nb_arg_cat, this_arg_cat) && 
+            is_condition_compatible(arg_name_condition[i], condition)) {
             *index = i;
             return;
         }
@@ -285,12 +299,14 @@ static char *get_arg_from_call_expr(struct expression *expr, int arg_position) {
 }
 
 static void print_arg_name(FILE *out) {
+    fprintf(out, "\t\t\t\t");
     for (int i = 0; arg_cat[i]; i++)
         fprintf(out, "%16s\t", arg_cat[i]);
 
     fprintf(out, "\n");
 
     for (int i = 0; arg_name[i]; i++) {
+        fprintf(out, "%24s\t", arg_name_condition[i]);
         for (int j = 0; arg_cat[j]; j++) {
             fprintf(out, "%16s\t", arg_name[i][j]);
         }
@@ -534,14 +550,14 @@ static void add_test_requirements(int fn_id, struct expression *expr)
 }
 
 
-static int find_arg_name(int fn_id, struct expression *expr) {
+static int find_arg_name(int fn_id, struct expression *expr, char *condition) {
     if (key_arg[fn_id] == -1)
         return -1;
 
     char *key_param = get_arg_from_call_expr(expr, arg_pos[fn_id][key_arg[fn_id]]);
 
     int prev_arg_cat = key_arg[fn_id], index;
-    find_previous_arg_name(key_param, &prev_arg_cat, &index);
+    find_previous_arg_name(key_param, &prev_arg_cat, &index, condition);
     free_string(key_param);
 
     if (prev_arg_cat == key_arg[fn_id])
@@ -549,6 +565,27 @@ static int find_arg_name(int fn_id, struct expression *expr) {
 
     return -1;
 
+}
+
+
+static char *get_current_condition(struct expression *expr) {
+    bool branch;
+    struct statement *parent_if = expr_get_parent_if(expr, &branch);
+    if (!parent_if)
+        return NULL;
+
+    char *cond;
+    char *new_cond = stringify(parent_if->if_conditional);
+    asprintf(&cond, branch ? "%s" : "!%s", new_cond);
+    free(new_cond);
+
+    while ((parent_if = stmt_get_parent_if(parent_if, &branch))) {
+        new_cond = stringify(parent_if->if_conditional);
+        asprintf(&cond, branch ? "%s && %s" : "%s && !%s", cond, new_cond);
+        free(new_cond);
+    }
+
+    return cond;
 }
 
 
@@ -575,14 +612,18 @@ static void match_func(const char *fn_name, struct expression *expr, void *_fn_i
         new_arg_name[cur_arg_cat] = str_arg;
     }
 
-    int index = find_arg_name(fn_id, expr);
+    char *current_cond = get_current_condition(expr);
+    int index = find_arg_name(fn_id, expr, current_cond);
     if (index != -1) {
         try_merge(index, new_arg_name, fn_id);
         for (int i = 0; i < nb_arg_cat; i++)
             free_string(new_arg_name[i]);
         free(new_arg_name);
+        free(current_cond);
     } else {
             push_array((void ***)&arg_name, &nb_arg_name, new_arg_name);
+            nb_arg_name--;
+            push_array((void ***)&arg_name_condition, &nb_arg_name, current_cond);
     }
 
     is_requirement(fn_id, expr);
@@ -1029,6 +1070,7 @@ void check_generic_args(int id) {
     if (false) print_arg_pos(stdout);
 
     init_array((void ***)&arg_name, &nb_arg_name);
+    init_array((void ***)&arg_name_condition, &nb_arg_name);
     init_array((void ***)&confusion_list, &nb_confusion_list);
     init_array((void ***)&allowed_confusions, &nb_allowed_confusions);
 
