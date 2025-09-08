@@ -145,8 +145,14 @@ static char *stringify(struct expression *expr) {
     }
 
     if (expr->type == EXPR_DEREF && expr->member) {
-        asprintf(&res, "(%s)->%s", type_to_str(get_type(expr->deref)),
-                 expr->member->name);
+        if (expr->deref->type == EXPR_DEREF) {
+            char *parent = stringify(expr->deref);
+            asprintf(&res, "%s->%s", parent, expr->member->name);
+            free_string(parent);
+        } else {
+            asprintf(&res, "(%s)->%s", type_to_str(get_type(expr->deref)),
+                     expr->member->name);
+        }
     } else {
         res = expr_to_str(expr);
 
