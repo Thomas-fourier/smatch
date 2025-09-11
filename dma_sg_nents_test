@@ -22,11 +22,13 @@ ib_dma_unmap_sg(dev, sg, key nents, dir)
 dma_sync_sg_for__ice(dev, key sg, nents, dir)
 dma_sync_sg_for_cpu(dev, key sg, nents, dir)
 
-sg_copy_buffer(key sg, nents)
-sg_copy_from_buffer(key sg, nents)
-sg_copy_to_buffer(key sg, nents)
-sg_pcopy_from_buffer(key sg, nents)
-sg_pcopy_to_buffer(key sg, nents)
+// The number of nents is not specified because the user can copy parts of the
+// buffer
+sg_copy_buffer(key sg, _)
+sg_copy_from_buffer(key sg, _)
+sg_copy_to_buffer(key sg, _)
+sg_pcopy_from_buffer(key sg, _)
+sg_pcopy_to_buffer(key sg, _)
 
 
 
