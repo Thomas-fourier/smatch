@@ -219,6 +219,7 @@ CK(check_always_true)
 CK(check_no_increment)
 
 /* <- your test goes here */
+CK(check_api_resemblance)
 /* CK(register_template) */
 
 /* kernel specific */
