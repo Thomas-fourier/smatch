@@ -34,6 +34,9 @@
 /test-parsing
 /test-show-type
 /test-unssa
+.cache
+smatch_data/*
+!smatch_data/db
 
 # tags
 tags
@@ -62,3 +65,10 @@ cscope.out
 
 #python
 *.pyc
+
+# smatch data
+smatch_data/kernel.implicit_dependencies
+smatch_data/db/sm_hash
+
+# clangd
+compile_commands.json
