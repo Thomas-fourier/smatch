@@ -1,0 +1,12 @@
+#! /bin/bash
+
+NR_CPU=`nproc`
+CMD=$(dirname $(dirname $0))/smatch
+
+make clean
+find -name \*.c.smatch -exec rm \{\} \;
+
+find . -type f | grep -E ".*\.c$" | rev | cut -d. -f2- | rev | awk " {printf \$0 ; print \".o\" } " | \
+	xargs make -j${NR_CPU} $ENDIAN -k CHECK="$CMD -p=kernel --file-output --succeed --generic-arg-file=$(dirname $CMD)/dma_sg_nents_test" C=1
+
+find -name \*.c.smatch -exec cat \{\} \; -exec rm \{\} \; > smatch_warning.txt
