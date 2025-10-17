@@ -20,6 +20,11 @@ typedef float score;
 GHashTable *function_calls = NULL;
 FILE *out;
 
+static void match_func_def(struct symbol *sm)
+{
+    fprintf(out, "Defining %s in file %s\n", sm->ident->name, get_filename());
+}
+
 static void match_func(struct expression *expr)
 {
     if (__inline_call)
@@ -204,6 +209,7 @@ void check_api_resemblance(int id)
     out = stderr;
     function_calls = g_hash_table_new(g_str_hash, g_str_equal);
 
+    add_hook(match_func_def, FUNC_DEF_HOOK);
     add_hook(match_func, FUNCTION_CALL_HOOK);
     add_hook(match_file_end, END_FILE_HOOK);
 }
