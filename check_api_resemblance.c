@@ -39,11 +39,12 @@ static void match_func(struct expression *expr)
 
     bool free_fn = false;
     char *fn = expr_to_str(expr->fn);
-    struct string_list *tab = g_hash_table_lookup(function_calls, fn);
+    // For each function, save all the calls to it as 
+    struct expression_list *tab = g_hash_table_lookup(function_calls, fn);
     if (tab)
         free_fn = true;
 
-    add_ptr_list(&tab, call_expr);
+    add_ptr_list(&tab, expr);
 
     g_hash_table_insert(function_calls, fn, tab);
     if (free_fn)
@@ -89,11 +90,176 @@ unsigned long long levenshtein_d(const char *s, const char *t)
 	// return the full string cost if one is zero length
 }
 
-
-static score compute_correlation(struct string_list *calls_i,
-                                 struct string_list *calls_j)
+static bool is_cast(struct expression *expr)
 {
-    char *i, *j;
+    if (!expr)
+        return false;
+
+    switch (expr->type) {
+        case EXPR_CAST:
+        case EXPR_FORCE_CAST:
+        case EXPR_IMPLIED_CAST:
+            return true;
+        default:
+            return false;
+    }
+}
+
+static char *stringify_call(struct expression *expr);
+
+static char *stringify(struct expression *expr)
+{
+    char *res;
+    char *pp;
+    sval_t constant;
+
+    expr = strip_expr(expr);
+    if (get_value(expr, &constant))
+        return alloc_string(sval_to_str(constant));
+
+    if (is_cast(expr))
+        return stringify(expr->cast_expression);
+
+    if (expr->type == EXPR_ASSIGNMENT)
+        return stringify(expr->left);
+
+    if (expr->type == EXPR_PREOP && (expr->op == '&' || expr->op == '*'))
+        return stringify(expr->unop);
+
+    if (expr->type == EXPR_CALL) {
+        return stringify_call(expr);
+    }
+
+    if (expr->type == EXPR_DEREF && expr->member) {
+        if (expr->deref->type == EXPR_DEREF) {
+            char *parent = stringify(expr->deref);
+            asprintf(&res, "%s->%s", parent, expr->member->name);
+            free_string(parent);
+        } else {
+            asprintf(&res, "(%s)->%s", type_to_str(get_type(expr->deref)),
+                     expr->member->name);
+        }
+    } else {
+        res = expr_to_str(expr);
+
+        pp = res;
+        while (pp && (pp = strstr(pp, "++"))) {
+            memmove(pp, pp+2, strlen(pp+2)+1);
+        }
+    }
+
+    return res;
+}
+
+static char *stringify_call(struct expression *expr)
+{
+    int nb_args = ptr_list_size((struct ptr_list *)expr->args);
+    char **str_args;
+    int len = 0;
+    char *res;
+    char *p;
+    int i;
+
+    char *func = stringify(expr->fn);
+    len = strlen(func) + 1;
+    if (!nb_args) {
+        res = realloc(func, len + 2);
+        strcpy(res + len - 1, "()");
+        return res;
+    }
+
+    str_args = malloc(nb_args * sizeof(*str_args));
+    for (i = 0; i < nb_args; i++) {
+        str_args[i] = stringify(get_argument_from_call_expr(expr->args,
+                                                                  i));
+        len += (2 + strlen(str_args[i]));
+    }
+
+    res = malloc(len);
+    p = res;
+    p += sprintf(p, "%s(", func);
+    free_string(func);
+    for (i = 0; i < nb_args; i++) {
+        p += sprintf(p, i == nb_args - 1 ? "%s)" : "%s, ", str_args[i]);
+        free_string(str_args[i]);
+    }
+    free(str_args);
+
+    return res;
+}
+
+static struct expression *get_return_expr(struct expression *expr)
+{
+    struct expression *parent_expr;
+
+    while ((parent_expr = expr_get_parent_expr(expr)) &&
+            parent_expr != expr && expr->type != EXPR_ASSIGNMENT)
+        expr = parent_expr;
+
+    if (expr->type == EXPR_ASSIGNMENT)
+        return expr->left;
+
+    return NULL;
+}
+
+static struct expression *get_argument_index(struct expression *call, int i)
+{
+    if (i == -1)
+        return get_return_expr(call);
+
+    return get_argument_from_call_expr(call->args, i);
+}
+
+static char **stringify_list(struct expression *expr, int *nb_args) {
+    *nb_args = ptr_list_size((struct ptr_list *)expr->args);
+    char **str = malloc(sizeof(* str) * (*nb_args + 1));
+    struct expression *arg_expr;
+
+    for (int i = -1; i < *nb_args; i++) {
+        arg_expr = get_argument_index(expr, i);
+
+        if (arg_expr)
+            str[i + 1] = stringify(arg_expr);
+        else
+            str[i + 1] = NULL;
+    }
+
+    return str;
+}
+
+
+static score compute_distance(struct expression *expr_1,
+                              struct expression *expr_2)
+{
+    int nb_args_i, nb_args_j;
+    char **args_i = stringify_list(expr_1, &nb_args_i);
+    char **args_j = stringify_list(expr_2, &nb_args_j);
+
+    int common_args = 0;
+
+    for (int i = 0; i <= nb_args_i; i++) {
+        for (int j = 0; j < nb_args_j; j++) {
+            if (args_i[i] && args_j[j] &&
+                strcmp(args_i[i], args_j[j]))
+                common_args++;
+        }
+    }
+
+    for (int i = 0; i < nb_args_i; i++)
+        free_string(args_i[i]);
+    free(args_i);
+
+    for (int j = 0; j < nb_args_j; j++)
+        free_string(args_j[j]);
+    free(args_j);
+
+    return common_args;
+}
+
+static score compute_correlation(struct expression_list *calls_i,
+                                 struct expression_list *calls_j)
+{
+    struct expression *i, *j;
     int ind_i, ind_j;
     score cur_min;
     score avg_i = 0, avg_j = 0;
@@ -111,7 +277,7 @@ static score compute_correlation(struct string_list *calls_i,
     FOR_EACH_PTR(calls_i, i) {
         ind_j = 0;
         FOR_EACH_PTR(calls_j, j) {
-            dists[ind_i][ind_j] = levenshtein_d(i, j);
+            dists[ind_i][ind_j] = compute_distance(i, j);
             ind_j++;
         } END_FOR_EACH_PTR(j);
         ind_i++;
@@ -121,7 +287,7 @@ static score compute_correlation(struct string_list *calls_i,
     FOR_EACH_PTR(calls_i,i); {
         cur_min = INFINITY;
         for (ind_j = 0; ind_j < len_j; ind_j++)
-            cur_min = min((score)cur_min, (score)dists[ind_i][ind_j] / (score)strlen(i));
+            cur_min = min((score)cur_min, (score)dists[ind_i][ind_j]);
         avg_i += cur_min;
         ind_i++;
     } END_FOR_EACH_PTR(i);
@@ -130,7 +296,7 @@ static score compute_correlation(struct string_list *calls_i,
     FOR_EACH_PTR(calls_j, j) {
         cur_min = INT_MAX;
         for (ind_i = 0; ind_i < len_i; ind_i++) {
-            cur_min = min((score)cur_min, (score)dists[ind_i][ind_j] / (score)strlen(j));
+            cur_min = min((score)cur_min, (score)dists[ind_i][ind_j]);
         }
         avg_j += cur_min;
         ind_j++;
@@ -171,7 +337,7 @@ static void match_file_end()
 {
     GHashTableIter i, j;
     char *fun_i, *fun_j;
-    struct string_list *calls_i, *calls_j;
+    struct expression_list *calls_i, *calls_j;
     score distances[nb_max_pair];
     char *func_pair[nb_max_pair];
 
@@ -192,9 +358,6 @@ static void match_file_end()
         }
 
         free(fun_i);
-        FOR_EACH_PTR(calls_i, fun_i) {
-            free(fun_i);
-        } END_FOR_EACH_PTR(fun_i);
         free_ptr_list(&calls_i);
     }
 
