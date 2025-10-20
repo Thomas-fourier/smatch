@@ -184,26 +184,18 @@ static char *stringify_call(struct expression *expr)
     return res;
 }
 
-static struct expression *get_return_expr(struct expression *expr)
-{
-    struct expression *parent_expr;
-
-    while ((parent_expr = expr_get_parent_expr(expr)) &&
-            parent_expr != expr && expr->type != EXPR_ASSIGNMENT)
-        expr = parent_expr;
-
-    if (expr->type == EXPR_ASSIGNMENT)
-        return expr->left;
-
-    return NULL;
-}
-
-static struct expression *get_argument_index(struct expression *call, int i)
-{
-    if (i == -1)
-        return get_return_expr(call);
-
-    return get_argument_from_call_expr(call->args, i);
+static struct expression *get_argument_index(struct expression *expr, int arg_position) {
+    if (arg_position == -1) {
+        struct expression *parent = expr_get_parent_expr(expr);
+        if (parent && is_cast(parent))
+            return get_argument_index(parent, -1);
+        if (parent && parent->type == EXPR_ASSIGNMENT && parent->left)
+            return parent->left;
+        else
+            return NULL;
+    } else {
+        return get_argument_from_call_expr(expr->args, arg_position);
+    }
 }
 
 static char **stringify_list(struct expression *expr, int *nb_args) {
