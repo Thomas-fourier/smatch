@@ -226,18 +226,18 @@ static score compute_distance(struct expression *expr_1,
     int common_args = 0;
 
     for (int i = 0; i <= nb_args_i; i++) {
-        for (int j = 0; j < nb_args_j; j++) {
+        for (int j = 0; j <= nb_args_j; j++) {
             if (args_i[i] && args_j[j] &&
                 strcmp(args_i[i], args_j[j]))
                 common_args++;
         }
     }
 
-    for (int i = 0; i < nb_args_i; i++)
+    for (int i = 0; i <= nb_args_i; i++)
         free_string(args_i[i]);
     free(args_i);
 
-    for (int j = 0; j < nb_args_j; j++)
+    for (int j = 0; j <= nb_args_j; j++)
         free_string(args_j[j]);
     free(args_j);
 
