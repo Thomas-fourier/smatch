@@ -33,10 +33,6 @@ static void match_func(struct expression *expr)
     if (ptr_list_size((struct ptr_list *)expr->args) <= 1)
         return;
 
-    char *call_expr = expr_to_str(expr);
-    if (!call_expr)
-        return;
-
     bool free_fn = false;
     char *fn = expr_to_str(expr->fn);
     // For each function, save all the calls to it as 
