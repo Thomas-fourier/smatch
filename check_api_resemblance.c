@@ -16,6 +16,13 @@
 #define nb_max_pair 200
 
 typedef float score;
+struct fn_call {
+    char *func;
+    int nb_args;
+    char **args;
+};
+
+DECLARE_PTR_LIST(fn_call_list, struct fn_call);
 
 GHashTable *function_calls = NULL;
 FILE *out;
@@ -24,6 +31,8 @@ static void match_func_def(struct symbol *sm)
 {
     fprintf(out, "Defining %s in file %s\n", sm->ident->name, get_filename());
 }
+
+static struct fn_call *stringify_list(struct expression *expr);
 
 static void match_func(struct expression *expr)
 {
@@ -35,12 +44,13 @@ static void match_func(struct expression *expr)
 
     bool free_fn = false;
     char *fn = expr_to_str(expr->fn);
+    struct fn_call *fn_rep = stringify_list(expr);
     // For each function, save all the calls to it as 
-    struct expression_list *tab = g_hash_table_lookup(function_calls, fn);
+    struct fn_call_list *tab = g_hash_table_lookup(function_calls, fn);
     if (tab)
         free_fn = true;
 
-    add_ptr_list(&tab, expr);
+    add_ptr_list(&tab, fn_rep);
 
     g_hash_table_insert(function_calls, fn, tab);
     if (free_fn)
@@ -198,56 +208,52 @@ static struct expression *get_argument_index(struct expression *expr, int arg_po
     }
 }
 
-static char **stringify_list(struct expression *expr, int *nb_args) {
-    *nb_args = ptr_list_size((struct ptr_list *)expr->args);
-    char **str = malloc(sizeof(* str) * (*nb_args + 1));
+static struct fn_call *stringify_list(struct expression *expr) {
+    int nb_args = ptr_list_size((struct ptr_list *)expr->args) + 1;
+    char **str = malloc(sizeof(* str) * nb_args);
     struct expression *arg_expr;
 
-    for (int i = -1; i < *nb_args; i++) {
-        arg_expr = get_argument_index(expr, i);
+    for (int i = 0; i < nb_args; i++) {
+        arg_expr = get_argument_index(expr, i - 1);
 
         if (arg_expr)
-            str[i + 1] = stringify(arg_expr);
+            str[i] = stringify(arg_expr);
         else
-            str[i + 1] = NULL;
+            str[i] = NULL;
     }
 
-    return str;
+    struct fn_call *res = malloc(sizeof(*res));
+    res->nb_args = nb_args;
+    res->args = str;
+    res->func = stringify(expr->fn);
+    return res;
 }
 
 
-static score compute_distance(struct expression *expr_1,
-                              struct expression *expr_2)
+static score compute_distance(struct fn_call *expr_1,
+                              struct fn_call *expr_2)
 {
-    int nb_args_i, nb_args_j;
-    char **args_i = stringify_list(expr_1, &nb_args_i);
-    char **args_j = stringify_list(expr_2, &nb_args_j);
+    int nb_args_i = expr_1->nb_args, nb_args_j = expr_2->nb_args;
+    char **args_i = expr_1->args;
+    char **args_j = expr_2->args;
 
     int common_args = 0;
 
-    for (int i = 0; i <= nb_args_i; i++) {
-        for (int j = 0; j <= nb_args_j; j++) {
+    for (int i = 0; i < nb_args_i; i++) {
+        for (int j = 0; j < nb_args_j; j++) {
             if (args_i[i] && args_j[j] &&
                 strcmp(args_i[i], args_j[j]))
                 common_args++;
         }
     }
 
-    for (int i = 0; i <= nb_args_i; i++)
-        free_string(args_i[i]);
-    free(args_i);
-
-    for (int j = 0; j <= nb_args_j; j++)
-        free_string(args_j[j]);
-    free(args_j);
-
     return common_args;
 }
 
-static score compute_correlation(struct expression_list *calls_i,
-                                 struct expression_list *calls_j)
+static score compute_correlation(struct fn_call_list *calls_i,
+                                 struct fn_call_list *calls_j)
 {
-    struct expression *i, *j;
+    struct fn_call *i, *j;
     int ind_i, ind_j;
     score cur_min;
     score avg_i = 0, avg_j = 0;
@@ -321,11 +327,23 @@ static void add_to_dist(char *fun_i, char *fun_j, score dist, score *distances,
     asprintf(&func_pair[i], "%s %s", fun_i, fun_j);
 }
 
+static void free_call_list(struct fn_call_list *call_list) {
+    struct fn_call *call;
+    FOR_EACH_PTR(call_list, call) {
+        for (int i = 0; i < call->nb_args; i++)
+            free(call->args[i]);
+        free(call->args);
+        free(call->func);
+        free(call);
+    } END_FOR_EACH_PTR(call);
+    free_ptr_list(&call_list);
+}
+
 static void match_file_end()
 {
     GHashTableIter i, j;
     char *fun_i, *fun_j;
-    struct expression_list *calls_i, *calls_j;
+    struct fn_call_list *calls_i, *calls_j;
     score distances[nb_max_pair];
     char *func_pair[nb_max_pair];
 
@@ -346,7 +364,7 @@ static void match_file_end()
         }
 
         free(fun_i);
-        free_ptr_list(&calls_i);
+        free_call_list(calls_i);
     }
 
     for (int i = 0; i < nb_max_pair && func_pair[i]; i++) {
