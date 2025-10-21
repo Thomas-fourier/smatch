@@ -15,86 +15,13 @@
 
 #define nb_max_pair 200
 
-typedef float score;
-struct fn_call {
-    char *func;
-    int nb_args;
-    char **args;
-};
-
-DECLARE_PTR_LIST(fn_call_list, struct fn_call);
-
 GHashTable *function_calls = NULL;
 FILE *out;
 
-static void match_func_def(struct symbol *sm)
-{
-    fprintf(out, "Defining %s in file %s\n", sm->ident->name, get_filename());
-}
 
-static struct fn_call *stringify_list(struct expression *expr);
-
-static void match_func(struct expression *expr)
-{
-    if (__inline_call)
-        return;
-
-    if (ptr_list_size((struct ptr_list *)expr->args) <= 1)
-        return;
-
-    bool free_fn = false;
-    char *fn = expr_to_str(expr->fn);
-    struct fn_call *fn_rep = stringify_list(expr);
-    // For each function, save all the calls to it as 
-    struct fn_call_list *tab = g_hash_table_lookup(function_calls, fn);
-    if (tab)
-        free_fn = true;
-
-    add_ptr_list(&tab, fn_rep);
-
-    g_hash_table_insert(function_calls, fn, tab);
-    if (free_fn)
-        free(fn);
-}
-
-
-unsigned long long levenshtein_d(const char *s, const char *t)
-{
-	unsigned long long k, i, j, n, m, cost, *d, distance, a, b, c;
-
-	//Step 1
-	n = strlen(s);
-	m = strlen(t);
-	if (n != 0 && m != 0) {
-		d = malloc((sizeof(unsigned long long)) * (m + 1) * (n + 1));
-		m++;
-		n++;
-		//Step 2
-		for (k = 0; k < n; k++)
-			d[k] = k;
-		for (k = 0; k < m; k++)
-			d[k * n] = k;
-			//Step 3 and 4
-        for (i = 1; i < n; i++)
-            for (j = 1; j < m; j++) {
-                //Step 5
-                if (s[i - 1] == t[j - 1])
-                    cost = 0;
-                else
-                    cost = 1;
-                //Step 6
-                a = d[(j - 1) * n + i] + 1;
-                b = d[j * n + i - 1] + 1;
-                c = d[(j - 1) * n + i - 1] + cost;
-                d[j * n + i] = (min(a,(min(b,c))));
-            }
-			distance = d[n * m - 1];
-		free(d);
-		return distance;
-	} else
-		return (max(m,n));
-	// return the full string cost if one is zero length
-}
+//////////////////////////////////////////////////////////////////////
+//                          Stringify                               //
+//////////////////////////////////////////////////////////////////////
 
 static bool is_cast(struct expression *expr)
 {
@@ -194,6 +121,19 @@ static char *stringify_call(struct expression *expr)
     return res;
 }
 
+//////////////////////////////////////////////////////////////////////////
+//                  Function call representation                        //
+//////////////////////////////////////////////////////////////////////////
+
+typedef float score;
+struct fn_call {
+    char *func;
+    int nb_args;
+    char **args;
+};
+
+DECLARE_PTR_LIST(fn_call_list, struct fn_call);
+
 static struct expression *get_argument_index(struct expression *expr, int arg_position) {
     if (arg_position == -1) {
         struct expression *parent = expr_get_parent_expr(expr);
@@ -208,7 +148,7 @@ static struct expression *get_argument_index(struct expression *expr, int arg_po
     }
 }
 
-static struct fn_call *stringify_list(struct expression *expr) {
+static struct fn_call *save_fn_call(struct expression *expr) {
     int nb_args = ptr_list_size((struct ptr_list *)expr->args) + 1;
     char **str = malloc(sizeof(* str) * nb_args);
     struct expression *arg_expr;
@@ -229,6 +169,53 @@ static struct fn_call *stringify_list(struct expression *expr) {
     return res;
 }
 
+static void free_call_list(struct fn_call_list *call_list) {
+    struct fn_call *call;
+    FOR_EACH_PTR(call_list, call) {
+        for (int i = 0; i < call->nb_args; i++)
+            free(call->args[i]);
+        free(call->args);
+        free(call->func);
+        free(call);
+    } END_FOR_EACH_PTR(call);
+    free_ptr_list(&call_list);
+}
+
+///////////////////////////////////////////////////////////////////////////
+//                          Hook functions                               //
+///////////////////////////////////////////////////////////////////////////
+
+static void match_func_def(struct symbol *sm)
+{
+    fprintf(out, "Defining %s in file %s\n", sm->ident->name, get_filename());
+}
+
+static void match_func(struct expression *expr)
+{
+    if (__inline_call)
+        return;
+
+    if (ptr_list_size((struct ptr_list *)expr->args) <= 1)
+        return;
+
+    bool free_fn = false;
+    char *fn = expr_to_str(expr->fn);
+    struct fn_call *fn_rep = save_fn_call(expr);
+    // For each function, save all the calls to it as
+    struct fn_call_list *tab = g_hash_table_lookup(function_calls, fn);
+    if (tab)
+        free_fn = true;
+
+    add_ptr_list(&tab, fn_rep);
+
+    g_hash_table_insert(function_calls, fn, tab);
+    if (free_fn)
+        free(fn);
+}
+
+///////////////////////////////////////////////////////////////////////////
+//               Compute distance between functions                      //
+///////////////////////////////////////////////////////////////////////////
 
 static score compute_distance(struct fn_call *expr_1,
                               struct fn_call *expr_2)
@@ -296,7 +283,7 @@ static score compute_correlation(struct fn_call_list *calls_i,
         ind_j++;
     } END_FOR_EACH_PTR(j);
 
-    
+
     for (ind_i = 0; ind_i < len_i; ind_i++)
         free(dists[ind_i]);
     free(dists);
@@ -327,18 +314,6 @@ static void add_to_dist(char *fun_i, char *fun_j, score dist, score *distances,
     asprintf(&func_pair[i], "%s %s", fun_i, fun_j);
 }
 
-static void free_call_list(struct fn_call_list *call_list) {
-    struct fn_call *call;
-    FOR_EACH_PTR(call_list, call) {
-        for (int i = 0; i < call->nb_args; i++)
-            free(call->args[i]);
-        free(call->args);
-        free(call->func);
-        free(call);
-    } END_FOR_EACH_PTR(call);
-    free_ptr_list(&call_list);
-}
-
 static void match_file_end()
 {
     GHashTableIter i, j;
@@ -351,10 +326,10 @@ static void match_file_end()
     memset(func_pair, 0x00, nb_max_pair * sizeof(*func_pair));
 
     g_hash_table_iter_init(&i, function_calls);
-    
+
     while (g_hash_table_iter_next(&i, (void **)&fun_i,
                                   (void **)&calls_i)) {
-        g_hash_table_iter_remove(&i); // Remove to compute distance 
+        g_hash_table_iter_remove(&i); // Remove to compute distance
         // between different functions
         g_hash_table_iter_init(&j, function_calls);
         while (g_hash_table_iter_next(&j, (void **)&fun_j,
