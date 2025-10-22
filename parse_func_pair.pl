@@ -1,7 +1,5 @@
 #!/usr/bin/perl
 
-use Text::Levenshtein qw(distance);
-
 my %score = ();
 my %func_def = ();
 
@@ -21,8 +19,8 @@ while(<>) {
         } else {
             push(@{$score{$2}{$1}}, $3)
         }
-    } elsif (/^Defining ([\w_\d]+) in ([\w_\/\.]+)$/) {
-        $func_def{$1} = $2
+    } elsif (/^Defining ([\w_\d]+) in file ([\w_\/\.\-]*)$/) {
+        $func_def{$1} = $2;
     }
 }
 
@@ -31,9 +29,9 @@ my @res;
 for my $fun1 (keys %score) {
     #print $fun1 . "\n";
     for my $fun2 (keys %{$score{$fun1}}) {
-        if ($func_def{$fun1} == $func_def{$fun2}) {
+        if ($func_def{$fun1} eq $func_def{$fun2}) {
             push(@res, scalar(@{$score{$fun1}{$fun2}}) # sqrt(avg(@{$score{$fun1}{$fun2}})) / distance($fun1, $fun2)
-                 . " " . $fun1 . " " . $fun2);
+                 . " " . $fun1 . " " . $fun2 . " " . $func_def{$fun1});
         }
     }
 }
