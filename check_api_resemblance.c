@@ -244,7 +244,7 @@ static score compute_correlation(struct fn_call_list *calls_i,
 {
     struct fn_call *i, *j;
     int ind_i, ind_j;
-    score cur_min;
+    score cur_max;
     score avg_i = 0, avg_j = 0;
     int len_i, len_j;
     score **dists;
@@ -268,20 +268,19 @@ static score compute_correlation(struct fn_call_list *calls_i,
 
     ind_i = 0;
     FOR_EACH_PTR(calls_i,i); {
-        cur_min = INFINITY;
+        cur_max = 0;
         for (ind_j = 0; ind_j < len_j; ind_j++)
-            cur_min = min((score)cur_min, (score)dists[ind_i][ind_j]);
-        avg_i += cur_min;
+            cur_max = max(cur_max, dists[ind_i][ind_j]);
+        avg_i += cur_max;
         ind_i++;
     } END_FOR_EACH_PTR(i);
 
     ind_j = 0;
     FOR_EACH_PTR(calls_j, j) {
-        cur_min = INT_MAX;
-        for (ind_i = 0; ind_i < len_i; ind_i++) {
-            cur_min = min((score)cur_min, (score)dists[ind_i][ind_j]);
-        }
-        avg_j += cur_min;
+        cur_max = 0;
+        for (ind_i = 0; ind_i < len_i; ind_i++)
+            cur_max = max(cur_max, dists[ind_i][ind_j]);
+        avg_j += cur_max;
         ind_j++;
     } END_FOR_EACH_PTR(j);
 
@@ -291,17 +290,17 @@ static score compute_correlation(struct fn_call_list *calls_i,
     free(dists);
 
 
-    return avg_i / (score)len_i + avg_j / (score)len_j;
+    return (avg_i / (score)len_i + avg_j / (score)len_j) / 2;
 }
 
 static void add_to_dist(char *fun_i, char *fun_j, score dist, score *distances,
                         char **func_pair)
 {
-    if (dist > distances[nb_max_pair - 1])
+    if (dist < distances[nb_max_pair - 1])
         return;
 
     int j = nb_max_pair - 1, i = 0;
-    while (dist > distances[i] && i < nb_max_pair)
+    while (dist < distances[i] && i < nb_max_pair)
         i++;
 
     free(func_pair[j]);
