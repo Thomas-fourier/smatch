@@ -229,8 +229,10 @@ static score compute_distance(struct fn_call *expr_1,
     for (int i = 0; i < nb_args_i; i++) {
         for (int j = 0; j < nb_args_j; j++) {
             if (args_i[i] && args_j[j] &&
-                strcmp(args_i[i], args_j[j]))
+                strcmp(args_i[i], args_j[j]) == 0) {
                 common_args++;
+                break;
+            }
         }
     }
 
