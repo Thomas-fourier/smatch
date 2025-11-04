@@ -312,6 +312,16 @@ static void add_to_dist(char *fun_i, char *fun_j, score dist, score *distances,
     }
 
     distances[i] = dist;
+
+    // Order pairs of functions because h_map doesn't always return them in the
+    // same order.
+    if (strcmp(fun_i,fun_j) < 0) {
+        char* temp;
+        temp = fun_i;
+        fun_i = fun_j;
+        fun_j = temp;
+    }
+
     asprintf(&func_pair[i], "%s %s", fun_i, fun_j);
 }
 
