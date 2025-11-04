@@ -1,7 +1,6 @@
 #include "smatch.h"
 #include "smatch_extra.h"
 #include <glib.h>
-#include <math.h>
 
  #define max(a,b) \
    ({ __typeof__ (a) _a = (a); \
