@@ -151,14 +151,24 @@ static struct fn_call *save_fn_call(struct expression *expr) {
     int nb_args = ptr_list_size((struct ptr_list *)expr->args) + 1;
     char **str = malloc(sizeof(* str) * nb_args);
     struct expression *arg_expr;
+    int nb_real_args = 0;
 
     for (int i = 0; i < nb_args; i++) {
         arg_expr = get_argument_index(expr, i - 1);
 
-        if (arg_expr)
+        if (arg_expr) {
             str[i] = stringify(arg_expr);
-        else
+            nb_real_args++;
+        } else {
             str[i] = NULL;
+        }
+    }
+
+    if (nb_real_args <= 2) {
+        for (int i = 0; i < nb_args; i++)
+            free_string(str[i]);
+        free(str);
+        return NULL;
     }
 
     struct fn_call *res = malloc(sizeof(*res));
@@ -172,7 +182,7 @@ static void free_call_list(struct fn_call_list *call_list) {
     struct fn_call *call;
     FOR_EACH_PTR(call_list, call) {
         for (int i = 0; i < call->nb_args; i++)
-            free(call->args[i]);
+            free_string(call->args[i]);
         free(call->args);
         free(call->func);
         free(call);
@@ -200,6 +210,8 @@ static void match_func(struct expression *expr)
     bool free_fn = false;
     char *fn = expr_to_str(expr->fn);
     struct fn_call *fn_rep = save_fn_call(expr);
+    if (!fn_rep)
+        return;
     // For each function, save all the calls to it as
     struct fn_call_list *tab = g_hash_table_lookup(function_calls, fn);
     if (tab)
