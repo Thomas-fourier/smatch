@@ -36,7 +36,7 @@ sub is_in_doc {
             return index($i, $fun2) != -1;
         }
     }
-    print("No documentation found for $fun1");
+    print("No documentation found for $fun1\n");
     return 0;
 }
 
