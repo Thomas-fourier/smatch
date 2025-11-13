@@ -1,0 +1,8 @@
+var dev
+var sgt
+var dir
+
+
+dma_map_sgtable(dev, sgt, dir, _)
+dma_unmap_sgtable(dev, sgt,	dir, _)
+dma_sync_sgtable_for_cpu(dev, sgt, dir)

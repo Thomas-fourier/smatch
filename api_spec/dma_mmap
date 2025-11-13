@@ -1,0 +1,11 @@
+var dev
+var vma
+var cpu_addr
+var dma_addr
+var size
+
+
+cpu_addr = dma_alloc_attrs(dev, size, dma_addr, _, attrs)
+dma_mmap_attrs(dev, vma, cpu_addr, dma_addr, size, attrs)
+dma_mmap_wc(dev, vma, cpu_addr, dma_addr, size)
+
