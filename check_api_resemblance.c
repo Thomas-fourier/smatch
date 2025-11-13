@@ -209,9 +209,13 @@ static void match_func(struct expression *expr)
 
     bool free_fn = false;
     char *fn = expr_to_str(expr->fn);
-    struct fn_call *fn_rep = save_fn_call(expr);
-    if (!fn_rep)
+    if (!fn)
         return;
+    struct fn_call *fn_rep = save_fn_call(expr);
+    if (!fn_rep) {
+        free(fn);
+        return;
+    }
     // For each function, save all the calls to it as
     struct fn_call_list *tab = g_hash_table_lookup(function_calls, fn);
     if (tab)
