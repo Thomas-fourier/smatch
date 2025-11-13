@@ -42,7 +42,7 @@ sub is_in_doc {
 
 sub linked_by_doc {
     my ($fun1, $fun2) = @_;
-    return is_in_doc($fun1, $fun2) || is_in_doc($fun2, $fun2);
+    return is_in_doc($fun1, $fun2) || is_in_doc($fun2, $fun1);
 }
 
 while(<>) {
