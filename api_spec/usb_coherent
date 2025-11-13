@@ -1,0 +1,8 @@
+var dev
+var size
+var addr
+var dma
+
+
+key addr = usb_alloc_coherent(dev, size, _, dma)
+usb_free_coherent(dev, size, key addr, dma)

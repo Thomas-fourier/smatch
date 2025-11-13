@@ -1,0 +1,7 @@
+var major
+var baseminor
+var count
+var name
+
+__register_chrdev(major, baseminor, count, name, _)
+__unregister_chrdev(major, baseminor, count, name)
