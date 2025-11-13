@@ -24,6 +24,10 @@ sub is_in_doc {
         return 0;
     }
     my $file_fun1 = dirname($filename) . "/" . $func_def{$fun1};
+    if (! -f $file_fun1){
+        print "No such file $file_fun1\n";
+        return 0;
+    }
     map_file my $file_cat, $file_fun1;
     # Match /* ... */ ... (EOF|/|{|}|;)
     my @matches = ($file_cat =~ m/(\/\*(?:\*[^\/]|[^*])*\*\/[^\Z\/{}\;]*)/g);
