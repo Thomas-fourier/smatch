@@ -30,10 +30,11 @@ sub is_in_doc {
 
     for my $i (@matches) {
         # There is exactly one end of comment, check that
-        my $end_match = substr($i, index($i, "*/"));
-        if (-1 != index($end_match, $fun1)) {
-            $i = substr($i, 0, index($i, "*/"));
-            return index($i, $fun2) != -1;
+        $_ = substr($i, index($i, "*/"));
+        if (m/\b$fun1\b/) {
+            $_ = substr($i, 0, index($i, "*/"));
+            if (m/\b$fun2\b/) { return 1; }
+            else { return 0; }
         }
     }
     print("No documentation found for $fun1\n");
