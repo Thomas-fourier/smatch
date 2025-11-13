@@ -2,11 +2,30 @@
 
 NR_CPU=`nproc`
 CMD=$(dirname $(dirname $0))/smatch
+API_SPECS=$(dirname $CMD)/api_spec
 
-make clean
 find -name \*.c.smatch -exec rm \{\} \;
 
-find . -type f | grep -E ".*\.c$" | rev | cut -d. -f2- | rev | awk " {printf \$0 ; print \".o\" } " | \
-	xargs make -j${NR_CPU} $ENDIAN -k CHECK="$CMD -p=kernel --file-output --succeed --generic-arg-file=$(dirname $CMD)/dma_sg_nents_test" C=1
+for file in  $(ls $API_SPECS);
+	do
+	echo $file
+	# # Extract function names
+	# TMP=$(mktemp)
+	# TMP1=$(mktemp)
+	# cat $API_SPECS/$file | grep -v -E "^var[ \t]" | grep "(" | cut -d"(" -f 1 |\
+	# 	tr -d [:blank:] >> $TMP
+	# cat $TMP | grep "=" | cut -d'=' -f 2 >> $TMP1
+	# cat $TMP | grep -v "=" >> $TMP1
+
+	make clean
+	find . -type f | grep -E ".*\.c$" | rev |\
+		cut -d. -f2- |\
+		rev | awk " {printf \$0 ; print \".o\" } " | \
+		xargs make -j${NR_CPU} $ENDIAN -k CHECK="valgrind $CMD -p=kernel --file-output\
+			--succeed --generic-arg-file=$API_SPECS/$file" C=1 |\
+		tee smatch_compile.warn
+
+	rm -f $TMP $TMP1
+done
 
 find -name \*.c.smatch -exec cat \{\} \; -exec rm \{\} \; > smatch_warning.txt
