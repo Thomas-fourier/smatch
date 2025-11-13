@@ -20,12 +20,12 @@ sub is_in_doc {
     my ($fun1, $fun2) = @_;
     # path of header (suppose logs is in linux folder)
     if ($func_def{$fun1} eq "") {
-        print("No definition of the function $fun1 found\n");
+        print STDERR "No definition of the function $fun1 found\n";
         return 0;
     }
     my $file_fun1 = dirname($filename) . "/" . $func_def{$fun1};
     if (! -f $file_fun1){
-        print "No such file $file_fun1\n";
+        print STDERR "No such file $file_fun1\n";
         return 0;
     }
     map_file my $file_cat, $file_fun1;
@@ -41,7 +41,7 @@ sub is_in_doc {
             else { return 0; }
         }
     }
-    print("No documentation found for $fun1\n");
+    print STDERR "No documentation found for $fun1\n";
     return 0;
 }
 
