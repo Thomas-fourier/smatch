@@ -31,7 +31,6 @@ for file in  $(ls $API_SPECS)
 	while [ -s $headers ]
 		do
 		find . -type f | grep -E ".*\.c$" | xargs grep -f $headers -l >> $files_to_run
-		echo "here"
 		find . -type f | grep -E ".*\.h$" | xargs grep -f $headers -l | sort |\
 			comm -13 $all_headers - |\
 			xargs -r -n 1 basename > $TMP
