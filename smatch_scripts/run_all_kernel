@@ -48,6 +48,9 @@ for file in  $(ls $API_SPECS)
 			--succeed --generic-arg-file=$API_SPECS/$file" C=1 |\
 		tee smatch_compile.warn
 
+
+	find -name \*.c.smatch -exec cat \{\} \; -exec rm \{\} \; |\
+		grep "Possibly mixing" >> smatch_warning.txt
 done
 
 rm -f $TMP $func_name_list $files_to_run $headers $all_headers
