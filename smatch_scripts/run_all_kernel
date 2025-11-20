@@ -6,27 +6,51 @@ API_SPECS=$(dirname $CMD)/api_spec
 
 find -name \*.c.smatch -exec rm \{\} \;
 
-for file in  $(ls $API_SPECS);
+TMP=$(mktemp)
+func_name_list=$(mktemp)
+files_to_run=$(mktemp)
+headers=$(mktemp)
+all_headers=$(mktemp)
+
+for file in  $(ls $API_SPECS)
 	do
 	echo $file
-	# # Extract function names
-	# TMP=$(mktemp)
-	# TMP1=$(mktemp)
-	# cat $API_SPECS/$file | grep -v -E "^var[ \t]" | grep "(" | cut -d"(" -f 1 |\
-	# 	tr -d [:blank:] >> $TMP
-	# cat $TMP | grep "=" | cut -d'=' -f 2 >> $TMP1
-	# cat $TMP | grep -v "=" >> $TMP1
+	# Extract function names
+	cat $API_SPECS/$file | grep -v -E "^var[ \t]" | grep "(" | cut -d"(" -f 1 |\
+		tr -d [:blank:] >> $TMP
+	cat $TMP | grep "=" | cut -d'=' -f 2 >> $func_name_list
+	cat $TMP | grep -v "=" >> $func_name_list
+	echo "" > $TMP
+
+	# add every file in which is included previous files
+	find . -type f | grep -E ".*\.c$" | xargs grep -f $func_name_list -l > $files_to_run
+	find . -type f | grep -E ".*\.h$" | xargs grep -f $func_name_list -l |\
+		xargs -r -n 1 basename > $headers
+
+	while [ -s $headers ]
+		do
+		find . -type f | grep -E ".*\.c$" | xargs grep -f $headers -l >> $files_to_run
+		echo "here"
+		find . -type f | grep -E ".*\.h$" | xargs grep -f $headers -l | sort |\
+			comm -13 $all_headers - |\
+			xargs -r -n 1 basename > $TMP
+		mv $TMP $headers
+		cat $headers  $all_headers | sort | uniq > $TMP
+		mv $TMP $all_headers
+	done
+
 
 	make clean
-	find . -type f | grep -E ".*\.c$" | rev |\
+	cat $files_to_run | sort | uniq | rev |\
 		cut -d. -f2- |\
 		rev | awk " {printf \$0 ; print \".o\" } " | \
 		xargs make -j${NR_CPU} $ENDIAN -k CHECK="$CMD -p=kernel --file-output\
 			--succeed --generic-arg-file=$API_SPECS/$file" C=1 |\
 		tee smatch_compile.warn
 
-	rm -f $TMP $TMP1
 done
+
+rm -f $TMP $func_name_list $files_to_run $headers $all_headers
 
 find -name \*.c.smatch -exec cat \{\} \; -exec rm \{\} \; > smatch_warning.txt
 
