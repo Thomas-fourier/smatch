@@ -63,6 +63,7 @@ static char nb_all_vars_to_test_in_func;
 struct confusion {
     char *name1;
     char *name2;
+    char *arg_cat;
     char *filename;
     int line;
 };
@@ -277,6 +278,7 @@ static bool try_merge(int index, char **new_arg_name, int fn_id) {
             this_confusion->name1 = new_arg_name[i];
             new_arg_name[i] = NULL;
             this_confusion->name2 = alloc_string(arg_name[index][i]);
+            this_confusion->arg_cat = arg_cat[i];
             this_confusion->filename = alloc_string(get_filename());
             this_confusion->line = get_lineno();
 
@@ -654,6 +656,7 @@ static void match_assign(struct expression *expr)
     struct confusion *this_confusion = malloc(sizeof(*this_confusion));
     this_confusion->name1 = right_str;
     this_confusion->name2 = left_str;
+    this_confusion->arg_cat = NULL;
 
     push_array((void ***)&allowed_confusions, &nb_allowed_confusions,
                this_confusion);
@@ -732,8 +735,10 @@ static void match_file_end()
             fprintf(sm_outfd, "%s:%d ", confusion_list[i]->filename,
                     confusion_list[i]->line);
             fprintf(sm_outfd, "warn: ");
-            fprintf(sm_outfd, "Possibly mixing arguments %s and %s \n",
-                        confusion_list[i]->name1, confusion_list[i]->name2);
+            fprintf(sm_outfd,
+                    "Possibly mixing arguments %s and %s of type %s\n",
+                    confusion_list[i]->name1, confusion_list[i]->name2,
+                    confusion_list[i]->arg_cat);
         }
     }
 }
