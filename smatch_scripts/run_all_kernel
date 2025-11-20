@@ -22,7 +22,7 @@ for file in  $(ls $API_SPECS);
 	find . -type f | grep -E ".*\.c$" | rev |\
 		cut -d. -f2- |\
 		rev | awk " {printf \$0 ; print \".o\" } " | \
-		xargs make -j${NR_CPU} $ENDIAN -k CHECK="valgrind $CMD -p=kernel --file-output\
+		xargs make -j${NR_CPU} $ENDIAN -k CHECK="$CMD -p=kernel --file-output\
 			--succeed --generic-arg-file=$API_SPECS/$file" C=1 |\
 		tee smatch_compile.warn
 
