@@ -13,30 +13,38 @@ files_to_run=$(mktemp)
 headers=$(mktemp)
 all_headers=$(mktemp)
 
+c_files=$(mktemp)
+h_files=$(mktemp)
+
+find . -type f | grep -E ".*\.c$" >> $c_files
+find . -type f | grep -E ".*\.h$" >> $h_files
+
 for file in  $(ls $API_SPECS)
 	do
 	echo $file
 	# Extract function names
 	cat $API_SPECS/$file | grep -v -E "^var[ \t]" | grep "(" | cut -d"(" -f 1 |\
-		tr -d [:blank:] >> $TMP
-	cat $TMP | grep "=" | cut -d'=' -f 2 >> $func_name_list
+		tr -d [:blank:] > $TMP
+	cat $TMP | grep "=" | cut -d'=' -f 2 > $func_name_list
 	cat $TMP | grep -v "=" >> $func_name_list
-	echo "" > $TMP
+	true > $TMP
 
 	# add every file in which is included previous files
-	find . -type f | grep -E ".*\.c$" | xargs grep -f $func_name_list -l > $files_to_run
-	find . -type f | grep -E ".*\.h$" | xargs grep -f $func_name_list -l |\
+	cat $c_files | xargs grep -f $func_name_list -l > $files_to_run
+	cat $h_files | xargs grep -f $func_name_list -l |\
 		xargs -r -n 1 basename > $headers
+	
+	cat $headers | sort > $all_headers
 
 	while [ -s $headers ]
 		do
-		find . -type f | grep -E ".*\.c$" | xargs grep -f $headers -l >> $files_to_run
-		find . -type f | grep -E ".*\.h$" | xargs grep -f $headers -l | sort |\
-			comm -13 $all_headers - |\
-			xargs -r -n 1 basename > $TMP
-		mv $TMP $headers
+		cat $c_files | xargs grep -f $headers -l >> $files_to_run
+		cat $h_files | xargs grep -f $headers -l | xargs -r -n 1 basename |\
+			sort | uniq | comm -13 $all_headers - > $TMP
+		cat $TMP > $headers
 		cat $headers  $all_headers | sort | uniq > $TMP
-		mv $TMP $all_headers
+		cat $TMP > $all_headers
+		true > $TMP
 	done
 
 
@@ -53,7 +61,7 @@ for file in  $(ls $API_SPECS)
 		grep "Possibly mixing" >> smatch_warning.txt
 done
 
-rm -f $TMP $func_name_list $files_to_run $headers $all_headers
+rm -f $TMP $func_name_list $files_to_run $headers $all_headers $c_files $h_files
 
 find -name \*.c.smatch -exec cat \{\} \; -exec rm \{\} \; > smatch_warning.txt
 
