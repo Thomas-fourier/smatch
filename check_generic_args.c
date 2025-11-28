@@ -40,39 +40,59 @@ static char **func_name;    // function name
 static int nb_func_name;
 static int **arg_pos;       // For each function, for each arg, position of the
                             // arg (-1 is return value, -2 not present)
-static int *key_arg;        // key_arg[i] is the type of argument which is the
-                            // key
-static char **ignore_funcs;
-static int nb_ignore_funcs;
 
-static int **to_test;       // List of things to test:
-                            // [after fn_id, test var_id, with fn_id, or with…]
-                            // if with func is -1, then with
-static int nb_to_test;
+//////////////////////////////////////////////////////////////////////////////////////////////
+// 			Confusion
+//////////////////////////////////////////////////////////////////////////////////////////////
+static char **arg_confusion = NULL;
+static int *confusion_parent = NULL;
+static int nb_arg_confusion;
 
-static char **var_to_test;
-static int nb_var_to_test;
-static struct statement *parent_if;
-static int var_to_test_type;
-static int *test_func;
-static int *test_from_line; // All the lines concerned with the test
+static void add_arg(char *new_arg)
+{
+    arg_confusion = realloc(arg_confusion,
+                            sizeof(*arg_confusion) * (nb_arg_confusion+1));
+    confusion_parent = realloc(confusion_parent,
+                               sizeof(*confusion_parent) * (nb_arg_confusion+1));
+    if (!(arg_confusion && confusion_parent))
+	    exit(1);
+    confusion_parent[nb_arg_confusion] = nb_arg_confusion;
+    arg_confusion[nb_arg_confusion] = new_arg;
+    nb_arg_confusion++;
+}
 
-static char **all_vars_to_test_in_func;
-static char nb_all_vars_to_test_in_func;
+static int find_index(int i)
+{
+    if (confusion_parent[i] == i)
+        return i;
+    else
+        return find_index(confusion_parent[i]);
+}
 
-struct confusion {
-    char *name1;
-    char *name2;
-    char *arg_cat;
-    char *filename;
-    int line;
-};
+static int find(char *some_arg)
+{
+    for (int i = 0; i < nb_arg_confusion; i++) {
+        if (strcmp(some_arg, arg_confusion[i]) == 0) {
+            int ret = find_index(i);
+            return ret;
+        }
+    }
+    add_arg(some_arg);
+    return nb_arg_confusion - 1;
+}
 
-static struct confusion **confusion_list;
-static int nb_confusion_list;
+static void union_(char *some_arg, char *other_arg)
+{
+    int some_parent = find(some_arg);
+    int other_parent = find(other_arg);
 
-static struct confusion **allowed_confusions;
-static int nb_allowed_confusions;
+    confusion_parent[other_parent] = some_parent;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+//                         Confusion
+//////////////////////////////////////////////////////////////////////////////////////////////
 
 // This is only used for parsing
 static char **sec_func;
@@ -80,7 +100,8 @@ static int nb_sec_func;
 
 // Maintained and updated
 static char ***arg_name; // name of the arguments for each category
-static char **arg_name_condition;
+static char **arg_name_function;
+static char **arg_name_location;
 static int nb_arg_name;
 
 
@@ -95,16 +116,6 @@ static void init_array(void ***list, int *len) {
     *list = malloc(sizeof(**list));
     (*list)[0] = NULL;
     *len = 0;
-}
-
-static bool comp_list(int *array1, int* array2)
-{
-    int i;
-    for (i = 0; array1[i] != -1 && array2[i] != -1; i++) {
-        if (array1[i] != array2[i])
-            return false;
-    }
-    return array1[i] == array2[i];
 }
 
 static bool is_cast(struct expression *expr) {
@@ -230,75 +241,6 @@ static bool is_expr_in_list(const char *expr, char **list, int len, int *index)
     return false;
 }
 
-static bool is_condition_compatible(char *arg_name_cond, char *condition) {
-    if (!arg_name_cond)
-        return true;
-
-    if (!condition)
-        return false;
-
-    return strcmp(arg_name_cond, condition) == 0;
-}
-
-/* Find string in a matrix of strings, if no
- *
- */
-static void find_previous_arg_name(char *expr, int *this_arg_cat, int *index,
-                                   char *condition)
-{
-    int i;
-    for (i = 0; arg_name[i]; i++) {
-        if (arg_name[i][*this_arg_cat] &&
-            strcmp(arg_name[i][*this_arg_cat], expr) == 0 &&
-            is_condition_compatible(arg_name_condition[i], condition)) {
-            *index = i;
-            return;
-        }
-    }
-
-    for (i = 0; arg_name[i]; i++) {
-        if (is_expr_in_list(expr, arg_name[i], nb_arg_cat, this_arg_cat) && 
-            is_condition_compatible(arg_name_condition[i], condition)) {
-            *index = i;
-            return;
-        }
-    }
-
-    // Case not found
-    *this_arg_cat = -1;
-    *index = -1;
-}
-
-static bool try_merge(int index, char **new_arg_name, int fn_id) {
-    if (new_arg_name[key_arg[fn_id]] && arg_name[index][key_arg[fn_id]] &&
-        strcmp(new_arg_name[key_arg[fn_id]],
-               arg_name[index][key_arg[fn_id]]) != 0)
-        return false;
-
-
-    for (int i = 0; i < nb_arg_cat; i++) {
-        if (!arg_name[index][i]) {
-            arg_name[index][i] = new_arg_name[i];
-            new_arg_name[i] = NULL;
-        } else if (new_arg_name[i] &&
-                   strcmp(new_arg_name[i], arg_name[index][i]) == 0) {
-            continue;
-        } else if (new_arg_name[i]) {
-            struct confusion *this_confusion = malloc(sizeof(*this_confusion));
-            this_confusion->name1 = new_arg_name[i];
-            new_arg_name[i] = NULL;
-            this_confusion->name2 = alloc_string(arg_name[index][i]);
-            this_confusion->arg_cat = arg_cat[i];
-            this_confusion->filename = alloc_string(get_filename());
-            this_confusion->line = get_lineno();
-
-            push_array((void ***)&confusion_list, &nb_confusion_list,
-                       this_confusion);
-        }
-    }
-    return true;
-}
-
 static char *get_arg_from_call_expr(struct expression *expr, int arg_position) {
     struct expression *arg;
     if (arg_position == -1) {
@@ -316,6 +258,17 @@ static char *get_arg_from_call_expr(struct expression *expr, int arg_position) {
     return stringify(arg);
 }
 
+static bool args_are_same(char **arg_name_1, char **arg_name_2)
+{
+    for (int i = 0; i < nb_arg_cat; i++) {
+        if (arg_name_1[i] && arg_name_2[i]) {
+            if (find(arg_name_1[i]) != find(arg_name_2[i]))
+                return false;
+        }
+    }
+    return true;
+}
+
 static void print_arg_name(FILE *out) {
     fprintf(out, "\t\t\t\t");
     for (int i = 0; arg_cat[i]; i++)
@@ -324,9 +277,10 @@ static void print_arg_name(FILE *out) {
     fprintf(out, "\n");
 
     for (int i = 0; arg_name[i]; i++) {
-        fprintf(out, "%24s\t", arg_name_condition[i]);
+        fprintf(out, "%24s\t", arg_name_function[i]);
         for (int j = 0; arg_cat[j]; j++) {
-            fprintf(out, "%16s\t", arg_name[i][j]);
+            if (arg_name[i][j])
+                fprintf(out, "%16s\t", arg_name[i][j]);
         }
         fprintf(out, "\n");
     }
@@ -334,286 +288,42 @@ static void print_arg_name(FILE *out) {
 }
 
 static void print_arg_pos(FILE *out) {
-    fprintf(out,"Arg positions:\t\t\t");
-    for (int j = 0; arg_cat[j]; j++) {
-        fprintf(out, "%s", arg_cat[j]);
-        for (int i = 0; i < (16 - strlen(arg_cat[j])); i++)
-            putc(' ', stdout);
-    }
+    fprintf(out,"Arg positions:\t");
+    for (int j = 0; arg_cat[j]; j++) 
+        fprintf(out, "%16s", arg_cat[j]);
     fprintf(out, "\n");
 
-    for (int i = 0; func_name[i]; i++) {
+        for (int i = 0; func_name[i]; i++) {
         fprintf(out, "%24s\t", func_name[i]);
 
-        for (int j = 0; arg_cat[j]; j++) {
-            if (key_arg[i] == j) 
-                fprintf(out, "\033[91m");
+        for (int j = 0; arg_cat[j]; j++)
             fprintf(out, "%d\t\t", arg_pos[i][j]);
-            if (key_arg[i] == j) 
-                fprintf(out, "\033[0m");
-        }
         fprintf(out, "\n");
     }
     fprintf(out, "\n");
-
-    fprintf(out, "Ignore functions:\n");
-    for (int i = 0; ignore_funcs[i]; i++)
-        fprintf(out, "%s ", ignore_funcs[i]);
-    fprintf(out, "\n\n");
-
-    fprintf(out, "Variables to test:\n");
-    for (int i = 0; to_test[i]; i++) {
-        if (to_test[i][2] != -1) {
-            fprintf(out, "func: %s, var: %s, test functions: ",
-                   func_name[to_test[i][0]], arg_cat[to_test[i][1]]);
-                for (int j = 2; to_test[i][j] != -1; j++)
-                    fprintf(out, "%s ", func_name[to_test[i][j]]);
-            putc('\n', stdout);
-        } else {
-            fprintf(out, "func: %s, var: %s\n", func_name[to_test[i][0]],
-                   arg_cat[to_test[i][1]]);
-        }
-    }
-    fprintf(out, "\n");
 }
 
-static void free_var_to_test()
+
+static bool similar_line_exists(char **new_arg_name, const char *fn_name)
 {
-    if (!all_vars_to_test_in_func)
-        init_array((void *)&all_vars_to_test_in_func, (void *)&nb_all_vars_to_test_in_func);
-    for (int i = 0; var_to_test[i]; i++)
-        push_array((void *)&all_vars_to_test_in_func,
-                   (void *)&nb_all_vars_to_test_in_func, var_to_test[i]);
-
-    free(var_to_test);
-    free(test_from_line);
-    var_to_test = NULL;
-    parent_if = NULL;
-}
-
-static bool is_expr_to_test(char *expr) {
-    if (!expr)
+    if (!arg_name_function)
         return false;
-
-    if (!var_to_test)
-        return false;
-
-    for (int i = 0; var_to_test[i]; i++) {
-        if (strcmp(expr, var_to_test[i]) == 0) {
-            return true;
+    for (int i = 0; i < nb_arg_name; i++) {
+        if (0 == strcmp(fn_name, arg_name_function[i])) {
+            if (args_are_same(new_arg_name, arg_name[i]))
+                return true;
         }
     }
     return false;
 }
-
-static bool is_valid_testing_fn(int fn_id, int *test_func)
-{
-    for (int i = 0; test_func[i] != -1; i++) {
-        if (test_func[i] == fn_id)
-            return true;
-    }
-    return false;
-}
-
-static void is_requirement(int fn_id, struct expression *expr)
-{
-    char *test;
-    if (!var_to_test || !is_valid_testing_fn(fn_id, test_func))
-        goto exit;
-
-    if ((test = get_arg_from_call_expr(expr,
-                                       arg_pos[fn_id][var_to_test_type]))) {
-        if (is_expr_to_test(test)) {
-                free_var_to_test();
-                free_string(test);
-                return;
-        }
-        
-        free_string(test);
-    }
-exit:
-     for (int i = 0; to_test[i]; i++) {
-        if (to_test[i][2] == fn_id) {
-            if (all_vars_to_test_in_func &&
-                (test = get_arg_from_call_expr(expr, arg_pos[fn_id][to_test[i][1]])) &&
-                (is_expr_in_list(test, all_vars_to_test_in_func,
-                                 nb_all_vars_to_test_in_func, NULL))) {
-                    if (test)
-                        free(test);
-                    return;
-                }
-
-            sm_warning("Testing function %s is not run on a variable to test.",
-                       func_name[fn_id]);
-            return;
-        }
-    }
-}
-
-static void warn_if_var_to_test() {
-    if (var_to_test) {
-        for (int i = 0; test_from_line[i]; i++)
-            sm_warning_line(test_from_line[i],
-                            "Possibly not testing %s", var_to_test[0]);
-        free_var_to_test();
-    }
-}
-
-static struct statement *stmt_get_parent_if(struct statement *stmt, bool *branch)
-{
-    while (stmt && stmt->parent) {
-        if (stmt->parent->type == STMT_IF) {
-            if (stmt == stmt->parent->if_true) {
-                *branch = true;
-                return stmt->parent;
-            }
-            if (stmt == stmt->parent->if_false) {
-                *branch = false;
-                return stmt->parent;
-            }
-        }
-        stmt = stmt->parent;
-    }
-    return NULL;
-}
-
-static struct statement *expr_get_parent_if(struct expression *expr, bool *branch)
-{
-    struct expression *parent_expr = NULL;
-    while ((parent_expr = expr_get_parent_expr(expr)) && parent_expr != expr)
-        expr = parent_expr;
-
-    struct statement *stmt = expr_get_parent_stmt(expr);
-    return stmt_get_parent_if(stmt, branch);
-}
-
-static bool other_member_if(int fn_id, struct expression *expr)
-{
-    if (!var_to_test || !parent_if)
-        return false;
-
-    for (int i = 0; to_test[i]; i++) {
-        if (to_test[i][0] != fn_id)
-            continue;
-
-        char *new_var_to_test = get_arg_from_call_expr(expr, arg_pos[fn_id][to_test[i][1]]);
-        if (strcmp(var_to_test[0], new_var_to_test) != 0) {
-            free_string(new_var_to_test);
-            continue;
-        }
-        free_string(new_var_to_test);
-
-        if (!comp_list(test_func, &(to_test[i][2])))
-            continue;
-
-        bool branch;
-        // Only ignore if not in else branch
-        if (parent_if != expr_get_parent_if(expr, &branch) && !branch)
-            continue;
-
-        return true;
-    }
-
-    return false;
-}
-
-static void add_test_requirements(int fn_id, struct expression *expr)
-{
-    char *str_arg;
-    if (other_member_if(fn_id, expr)) {
-        int i;
-        for (i = 0; test_from_line[i]; i++) {}
-        test_from_line[i] = get_lineno();
-        test_from_line = realloc(test_from_line, (i + 1) * sizeof(*test_from_line));
-        test_from_line[i + 1] = 0;
-        return;
-    }
-
-    warn_if_var_to_test();
-
-    for (int i = 0; to_test[i]; i++) {
-        if (to_test[i][0] != fn_id)
-            continue;
-
-        if (var_to_test) {
-            sm_warning(
-                "Testing two variables from the same func is not currently supported"
-            );
-            free_var_to_test();
-        }
-
-        str_arg = get_arg_from_call_expr(expr, arg_pos[fn_id][to_test[i][1]]);
-        if (!str_arg) {
-            sm_warning("Not assigning %s, cannot be tested", arg_cat[to_test[i][1]]);
-            continue;
-        }
-
-        init_array((void ***)&var_to_test, &nb_var_to_test);
-        push_array((void ***)&var_to_test, &nb_var_to_test, str_arg);
-
-
-        var_to_test_type = to_test[i][1];
-        test_func = &(to_test[i][2]);
-        test_from_line = malloc(2 * sizeof(*test_from_line));
-        test_from_line[0] = get_lineno();
-        test_from_line[1] = 0;
-
-        bool branch;
-        parent_if = expr_get_parent_if(expr, &branch);
-        // Only valid if_true i.e. branch is true
-        if (parent_if && !branch) {
-            parent_if = NULL;
-        }
-    }
-}
-
-
-static int find_arg_name(int fn_id, struct expression *expr, char *condition) {
-    if (key_arg[fn_id] == -1)
-        return -1;
-
-    char *key_param = get_arg_from_call_expr(expr, arg_pos[fn_id][key_arg[fn_id]]);
-
-    int prev_arg_cat = key_arg[fn_id], index;
-    find_previous_arg_name(key_param, &prev_arg_cat, &index, condition);
-    free_string(key_param);
-
-    if (prev_arg_cat == key_arg[fn_id])
-        return index;
-
-    return -1;
-
-}
-
-
-static char *get_current_condition(struct expression *expr) {
-    bool branch;
-    struct statement *parent_if = expr_get_parent_if(expr, &branch);
-    if (!parent_if)
-        return NULL;
-
-    char *cond;
-    char *new_cond = stringify(parent_if->if_conditional);
-    asprintf(&cond, branch ? "%s" : "!%s", new_cond);
-    free(new_cond);
-
-    while ((parent_if = stmt_get_parent_if(parent_if, &branch))) {
-        new_cond = stringify(parent_if->if_conditional);
-        asprintf(&cond, branch ? "%s && %s" : "%s && !%s", cond, new_cond);
-        free(new_cond);
-    }
-
-    return cond;
-}
-
 
 static void match_func(const char *fn_name, struct expression *expr, void *_fn_id)
 {
     if (is_fake_call(expr) || __inline_fn)
         return;
 
-    if (is_expr_in_list(get_function(), func_name, nb_func_name, NULL) ||
-        is_expr_in_list(get_function(), ignore_funcs, nb_ignore_funcs, NULL))
+    // Ignore if we are in the implementation of a function
+    if (is_expr_in_list(get_function(), func_name, nb_func_name, NULL))
         return;
 
     int fn_id = (int)(long) _fn_id;
@@ -630,26 +340,16 @@ static void match_func(const char *fn_name, struct expression *expr, void *_fn_i
         new_arg_name[cur_arg_cat] = str_arg;
     }
 
-    char *current_cond = get_current_condition(expr);
-    int index = find_arg_name(fn_id, expr, current_cond);
-    if (index != -1) {
-        try_merge(index, new_arg_name, fn_id);
-        for (int i = 0; i < nb_arg_cat; i++)
-            free_string(new_arg_name[i]);
-        free(new_arg_name);
-        free(current_cond);
-    } else {
-            push_array((void ***)&arg_name, &nb_arg_name, new_arg_name);
-            nb_arg_name--;
-            push_array((void ***)&arg_name_condition, &nb_arg_name, current_cond);
+    // If the call is not the same as one already done, pass otherwise add
+    if (!similar_line_exists(new_arg_name, fn_name)) {
+        push_array((void ***)&arg_name, &nb_arg_name, new_arg_name);
+        nb_arg_name--;
+        push_array((void ***)&arg_name_function, &nb_arg_name, alloc_string(fn_name));
+        nb_arg_name--;
+        char *loc;
+        asprintf(&loc, "%s:%d", get_filename(), get_lineno());
+        push_array((void ***)&arg_name_location, &nb_arg_name,loc);
     }
-
-    is_requirement(fn_id, expr);
-    add_test_requirements(fn_id, expr);
-
-    if (false)
-        print_arg_name(stdout);
-
 }
 
 static void match_assign(struct expression *expr)
@@ -661,6 +361,12 @@ static void match_assign(struct expression *expr)
     if (__inline_fn)
         return;
 
+    // If one of the side is constant
+    sval_t TMP;
+    if (get_value(expr->right, &TMP) ||
+        get_value(expr->left, &TMP))
+        return;
+
     char *right_str = stringify(expr->right);
     if (!right_str)
         return;
@@ -669,96 +375,42 @@ static void match_assign(struct expression *expr)
         free(right_str);
         return;
     }
-    struct confusion *this_confusion = malloc(sizeof(*this_confusion));
-    this_confusion->name1 = right_str;
-    this_confusion->name2 = left_str;
-    this_confusion->arg_cat = NULL;
 
-    push_array((void ***)&allowed_confusions, &nb_allowed_confusions,
-               this_confusion);
+    union_(right_str, left_str);
+}
 
-    if (!var_to_test)
-        return;
-
-    for (int i = 0; var_to_test[i]; i++) {
-        if (strcmp(var_to_test[i], right_str) == 0) {
-            push_array((void ***)&var_to_test, &nb_var_to_test,
-                       stringify(expr->left));
-            return;
+static bool exists_similar_call(bool *checked, int index)
+{
+    if (!arg_name_function)
+        return true;
+    if (!arg_name)
+        return true;
+    for (int j = index + 1; j < nb_arg_name; j++) {
+        if (strcmp(arg_name_function[index], arg_name_function[j]) != 0 &&
+            args_are_same(arg_name[index], arg_name[j])) {
+                checked[j] = true;
+                return true;
         }
     }
-}
-
-static void match_func_end() {
-    if (__inline_fn)
-        return;
-
-    warn_if_var_to_test();
-
-    if (!all_vars_to_test_in_func)
-        return;
-
-    for (int i = 0; all_vars_to_test_in_func[i]; i++)
-        free_string(all_vars_to_test_in_func[i]);
-
-    free(all_vars_to_test_in_func);
-    all_vars_to_test_in_func = NULL;
-}
-
-static void match_test(struct expression *expr) {
-    if (__inline_fn)
-        return;
-
-    if (var_to_test && test_func[0] != -1)
-        return;
-
-    char *str_expr = stringify(expr);
-    if (is_expr_to_test(str_expr)) {
-        free_var_to_test();
-    }
-    free_string(str_expr);
-}
-
-static bool is_same_confusion(struct confusion *conf1, struct confusion *conf2)
-{
-    if (strcmp(conf1->name1, conf2->name1) == 0 &&
-        strcmp(conf1->name2, conf2->name2) == 0)
-        return true;
-
-    
-    if (strcmp(conf1->name1, conf2->name2) == 0 &&
-        strcmp(conf1->name2, conf2->name1) == 0)
-        return true;
-
     return false;
 }
 
 static void match_file_end()
 {
-    int i, j;
-    for (i = 0; confusion_list[i]; i++) {
-        for (j = 0; allowed_confusions[j]; j++) {
-            if (is_same_confusion(confusion_list[i], allowed_confusions[j])) {
-                break;
-            }
-        }
+    bool *checked = calloc(nb_arg_name, sizeof(*checked));
+    if (false) print_arg_name(stderr);
 
-        if (allowed_confusions[j])
+    for (int i = 0; i < nb_arg_name; i++) {
+        if (checked[i])
+            continue;
+        if (exists_similar_call(checked, i))
             continue;
 
-        // Smatch does not allow passing a filename to sm_warning, so doing it by hand
-        if (final_pass || option_debug || local_debug || debug_db) {
-            fprintf(sm_outfd, "%s:%d ", confusion_list[i]->filename,
-                    confusion_list[i]->line);
-            fprintf(sm_outfd, "warn: ");
-            fprintf(sm_outfd,
-                    "Possibly mixing arguments %s and %s of type %s\n",
-                    confusion_list[i]->name1, confusion_list[i]->name2,
-                    confusion_list[i]->arg_cat);
-        }
+        fprintf(stdout, "%s warn: Possible function not matched %s\n",
+                   arg_name_location[i], arg_name_function[i]);
+
     }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 //                                PARSER                                      //
@@ -799,8 +451,6 @@ static bool add_to_arg_pos(char *expr, char *line, int pos, bool key)
         parse_error("Argument %s used multiple times in %s", expr, line);
 
     arg_pos[nb_func_name - 1][index] = pos;
-    if (key)
-        key_arg[nb_func_name - 1] = index;
     return true;
 }
 
@@ -828,8 +478,6 @@ static bool parse_call(char *line, enum section sec)
     push_array((void ***)&func_name, &nb_func_name, alloc_string(buffer));
     arg_pos = realloc(arg_pos, nb_func_name * sizeof(*arg_pos));
     arg_pos[nb_func_name - 1] = malloc(nb_arg_cat * sizeof(**arg_pos));
-    key_arg = realloc(key_arg, nb_func_name * sizeof(nb_func_name));
-    key_arg[nb_func_name - 1] = -1;
 
     for (i = 0; i < nb_arg_cat; i++)
         arg_pos[nb_func_name - 1][i] = -2;
@@ -974,8 +622,6 @@ static void add_test(char *var, char *test_func) {
         line[1] = var_id;
         for (int j = 0; j <= nb_test_func_id; j++)
             line[2 + j] = test_func_id[j];
-
-        push_array((void ***)&to_test, &nb_to_test, line);
     }
 
     free(test_func_id);
@@ -1005,7 +651,6 @@ static bool parse_do_test(char *line) {
 static bool parse_ignore(char *line) {
     char buffer[varname_size + 1];
     if (1 == sscanf(line, label, buffer)) {
-        push_array((void ***)&ignore_funcs, &nb_ignore_funcs, alloc_string(buffer));
         return true;
     }
 
@@ -1015,8 +660,6 @@ static bool parse_ignore(char *line) {
 static bool parse_file(const char *filename) {
     init_array((void ***)&arg_cat, &nb_arg_cat);
     init_array((void ***)&func_name, &nb_func_name);
-    init_array((void ***)&to_test, &nb_to_test);
-    ignore_funcs = calloc(1, sizeof(*ignore_funcs));
     arg_pos = NULL;
 
     FILE *file = fopen(filename, "r");
@@ -1097,18 +740,15 @@ void check_generic_args(int id) {
     if (false) print_arg_pos(stdout);
 
     init_array((void ***)&arg_name, &nb_arg_name);
-    init_array((void ***)&arg_name_condition, &nb_arg_name);
-    init_array((void ***)&confusion_list, &nb_confusion_list);
-    init_array((void ***)&allowed_confusions, &nb_allowed_confusions);
+    arg_name_function = calloc(1, sizeof(*arg_name_function));
+    arg_name_location = calloc(1, sizeof(*arg_name_location));
 
     int i;
     for (i = 0; func_name[i]; i++)
-        add_function_hook(func_name[i], match_func, (void *)(long)i);
+        add_function_hook(func_name[i], &match_func, (void *)(long)i);
 
 
     add_hook(match_assign, ASSIGNMENT_HOOK);
-    add_hook(match_func_end, END_FUNC_HOOK);
-    add_hook(match_test, CONDITION_HOOK);
 
     add_hook(match_file_end, END_FILE_HOOK);
 }
