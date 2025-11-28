@@ -1,0 +1,15 @@
+var page
+after:
+buf = kmalloc(_)
+buf = kzalloc(_)
+do:
+test buf
+then:
+
+kfree(buf)
+
+buf = kmap(page)
+buf = kmap_atomic(page)
+kunmap(page)
+kunmap_atomic(page)
+

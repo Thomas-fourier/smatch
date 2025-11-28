@@ -1,44 +1,10 @@
-var sg
 var dev
-var nents
-var dma_nents
-var dir
-var attrs
-
-/////////////////////////////////////////
-// DMA SG interface
-
-// Mapping funcitons
-dma_nents = dma_map_sg_attrs(dev, key sg, nents, dir, attrs)
-dma_nents = ib_dma_map_sg_attrs(dev, key sg, nents, dir, attrs)
-dma_nents = ib_dma_map_sg(dev, key sg, nents, dir)
-
-// Unmapping
-dma_unmap_sg_attrs(dev, key sg, nents, dir, _)
-ib_dma_unmap_sg_attrs(dev, key sg, nents, dir, _)
-ib_dma_unmap_sg(dev, sg, key nents, dir)
-
-// Syncing 
-dma_sync_sg_for__ice(dev, key sg, nents, dir)
-dma_sync_sg_for_cpu(dev, key sg, nents, dir)
-
-// The number of nents is not specified because the user can copy parts of the
-// buffer
-sg_copy_buffer(key sg, _)
-sg_copy_from_buffer(key sg, _)
-sg_copy_to_buffer(key sg, _)
-sg_pcopy_from_buffer(key sg, _)
-sg_pcopy_to_buffer(key sg, _)
-
-
-
-/////////////////////////////////
-// DMA map api
-
 var dma_add
 var buf
 var size
 var offset
+var dir
+var attrs
 
 dma_mapping_error(dev, key dma_add)
 enic_dma_map_check(dev, key dma_add)
@@ -98,21 +64,3 @@ ignore:
 dma_map_area
 
 then:
-
-////////////////////////////////////
-// Malloc and free
-var page
-after:
-buf = kmalloc(_)
-buf = kzalloc(_)
-do:
-test buf
-then:
-
-kfree(buf)
-
-buf = kmap(page)
-buf = kmap_atomic(page)
-kunmap(page)
-kunmap_atomic(page)
-
