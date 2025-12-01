@@ -18,6 +18,9 @@ h_files=$(mktemp)
 find . -type f | grep -E ".*\.c$" >> $c_files
 find . -type f | grep -E ".*\.h$" >> $h_files
 
+rm -rf smatch_output
+mkdir smatch_output
+
 for file in  $(ls $API_SPECS)
 	do
 	echo $file
@@ -48,16 +51,17 @@ for file in  $(ls $API_SPECS)
 
 
 	make clean
+
 	cat $files_to_run | sort | uniq | rev |\
 		cut -d. -f2- |\
 		rev | awk " {printf \$0 ; print \".o\" } " | \
 		xargs make -j${NR_CPU} $ENDIAN -k CHECK="$CMD -p=kernel --file-output\
 			--succeed --generic-arg-file=$API_SPECS/$file" C=1 |\
-		tee smatch_compile.warn
+		tee smatch_output/$file.log
 
 
 	find -name \*.c.smatch -exec cat \{\} \; -exec rm \{\} \; |\
-		grep "Possibly mixing" >> smatch_warning.txt
+		grep "Possibly mixing" >> smatch_output/$file.warning
 done
 
 rm -f $TMP $func_name_list $files_to_run $headers $all_headers $c_files $h_files
