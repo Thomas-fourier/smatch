@@ -148,6 +148,8 @@ static char *stringify(struct expression *expr) {
     if (expr->type == EXPR_DEREF && expr->member) {
         if (expr->deref->type == EXPR_DEREF) {
             char *parent = stringify(expr->deref);
+            if (!parent)
+                return NULL;
             asprintf(&res, "%s->%s", parent, expr->member->name);
             free_string(parent);
         } else {
@@ -177,6 +179,8 @@ static char *stringify_call(struct expression *expr)
     int i;
 
     char *func = stringify(expr->fn);
+    if (!func)
+        return NULL;
     len = strlen(func) + 1;
     if (!nb_args) {
         res = realloc(func, len + 2);
@@ -188,6 +192,12 @@ static char *stringify_call(struct expression *expr)
     for (i = 0; i < nb_args; i++) {
         str_args[i] = stringify(get_argument_from_call_expr(expr->args,
                                                                   i));
+        if (!str_args[i]) {
+            for (; i > 0; i--)
+                free (str_args[i-1]);
+            free(str_args);
+            return NULL;
+        }
         len += (2 + strlen(str_args[i]));
     }
 
@@ -652,7 +662,13 @@ static void match_assign(struct expression *expr)
         return;
 
     char *right_str = stringify(expr->right);
+    if (!right_str)
+        return;
     char *left_str = stringify(expr->left);
+    if (!left_str) {
+        free(right_str);
+        return;
+    }
     struct confusion *this_confusion = malloc(sizeof(*this_confusion));
     this_confusion->name1 = right_str;
     this_confusion->name2 = left_str;
