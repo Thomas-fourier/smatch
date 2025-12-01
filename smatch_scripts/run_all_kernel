@@ -15,8 +15,8 @@ all_headers=$(mktemp)
 c_files=$(mktemp)
 h_files=$(mktemp)
 
-find . -type f | grep -E ".*\.c$" >> $c_files
-find . -type f | grep -E ".*\.h$" >> $h_files
+find . -type f -name "*.c" >> $c_files
+find . -type f -name "*.h" >> $h_files
 
 rm -rf smatch_output
 mkdir smatch_output
