@@ -63,6 +63,10 @@ static void add_arg(char *new_arg)
 
 static int find_index(int i)
 {
+    if (i < 0 || i > nb_arg_confusion) {
+        sm_error("Wrong argument in find_index");
+        exit(1);
+    }
     if (confusion_parent[i] == i)
         return i;
     else
