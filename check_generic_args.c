@@ -406,10 +406,32 @@ static bool exists_similar_call(bool *checked, int index)
     return ret;
 }
 
+static bool all_funcs_are_same()
+{
+    if (0 == nb_arg_name)
+        return false;
+
+    char *fn_name = arg_name_function[0];
+    for (int i = 0; i < nb_arg_name; i++) {
+        if (strcmp(fn_name, arg_name_function[i]) != 0)
+            return false;
+    }
+    return true;
+}
+
 static void match_file_end()
 {
-    bool *checked = calloc(nb_arg_name, sizeof(*checked));
     if (false) print_arg_name(stderr);
+
+    if (all_funcs_are_same()) {
+        if (option_spammy)
+            fprintf(sm_outfd,
+                    "%s warn: Function %s is the only of the interface\n",
+                    arg_name_location[0], arg_name_function[0]);
+        return;
+    }
+
+    bool *checked = calloc(nb_arg_name, sizeof(*checked));
 
     for (int i = 0; i < nb_arg_name; i++) {
         if (checked[i])
