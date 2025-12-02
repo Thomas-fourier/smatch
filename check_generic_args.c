@@ -389,14 +389,21 @@ static bool exists_similar_call(bool *checked, int index)
         return true;
     if (!arg_name)
         return true;
-    for (int j = index + 1; j < nb_arg_name; j++) {
+    bool ret = false;
+    for (int j = 0; j < nb_arg_name; j++) {
+        if (j == index)
+            continue;
+
+        if (checked[j] && ret)
+            continue;
+
         if (strcmp(arg_name_function[index], arg_name_function[j]) != 0 &&
             args_are_same(arg_name[index], arg_name[j])) {
                 checked[j] = true;
-                return true;
+                ret = true;
         }
     }
-    return false;
+    return ret;
 }
 
 static void match_file_end()
