@@ -1,4 +1,6 @@
 var page
+var buf
+
 after:
 buf = kmalloc(_)
 buf = kzalloc(_)

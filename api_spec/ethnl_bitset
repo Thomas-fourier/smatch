@@ -4,5 +4,5 @@ var nbits
 var names
 var compact
 
-ethnl_put_bitset32(skb, attrtype, val, mask, nbits, names, compact)
+ethnl_put_bitset32(_, _, val, mask, nbits, names, compact)
 ethnl_bitset32_size(val, mask, nbits, names, compact)
