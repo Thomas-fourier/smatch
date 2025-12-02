@@ -410,7 +410,7 @@ static void match_file_end()
         if (exists_similar_call(checked, i))
             continue;
 
-        fprintf(stdout, "%s warn: Possible function not matched %s\n",
+        fprintf(sm_outfd, "%s warn: Possible function not matched %s\n",
                    arg_name_location[i], arg_name_function[i]);
 
     }
