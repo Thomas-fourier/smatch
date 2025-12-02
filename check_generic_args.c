@@ -57,7 +57,7 @@ static void add_arg(char *new_arg)
     if (!(arg_confusion && confusion_parent))
 	    exit(1);
     confusion_parent[nb_arg_confusion] = nb_arg_confusion;
-    arg_confusion[nb_arg_confusion] = new_arg;
+    arg_confusion[nb_arg_confusion] = alloc_string(new_arg);
     nb_arg_confusion++;
 }
 
@@ -353,6 +353,10 @@ static void match_func(const char *fn_name, struct expression *expr, void *_fn_i
         char *loc;
         asprintf(&loc, "%s:%d", get_filename(), get_lineno());
         push_array((void ***)&arg_name_location, &nb_arg_name,loc);
+    } else {
+        for (int i = 0; i < nb_arg_cat; i++)
+            free(new_arg_name[i]);
+        free(new_arg_name);
     }
 }
 
@@ -375,12 +379,15 @@ static void match_assign(struct expression *expr)
     if (!right_str)
         return;
     char *left_str = stringify(expr->left);
-    if (!left_str) {
-        free(right_str);
-        return;
-    }
+    if (!left_str)
+        goto free_right;
 
     union_(right_str, left_str);
+
+    free_string(left_str);
+free_right:
+    free_string(right_str);
+    return;
 }
 
 static bool exists_similar_call(bool *checked, int index)
@@ -443,6 +450,8 @@ static void match_file_end()
                    arg_name_location[i], arg_name_function[i]);
 
     }
+
+    free(checked);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -605,78 +614,13 @@ bool is_label(char *line, enum section *sec) {
     return true;
 }
 
-static int *parse_testing_functions(char *test_func, int *len)
+static bool parse_do_test(char *line)
 {
-    int *test_func_id = malloc(sizeof(*test_func_id));
-    int nb_test_func_id = 1;
-    char buf[varname_size + 1];
-
-    if (!test_func) {
-        *len = 0;
-        test_func_id[0] = -1;
-        return test_func_id;
-    }
-
-    for (;;) {
-        sscanf(test_func, label, buf);
-        test_func += strlen(buf);
-        test_func_id = realloc(test_func_id,
-                                (1 + nb_test_func_id) * sizeof(*test_func_id));
-        if (!is_expr_in_list(buf, func_name, nb_func_name,
-                                &test_func_id[nb_test_func_id - 1]))
-            parse_error("Function %s not declared", buf);
-        test_func = strstr(test_func, "or");
-        if (!test_func)
-            break;
-        test_func += 3;
-        nb_test_func_id++;
-    }
-    test_func_id[nb_test_func_id] = -1;
-
-    *len = nb_test_func_id;
-    return test_func_id;
-}
-
-static void add_test(char *var, char *test_func) {
-    int var_id;
-    int *test_func_id;
-    int nb_test_func_id;
-
-    if (!is_expr_in_list(var, arg_cat, nb_arg_cat, &var_id))
-        parse_error("Variable %s not declared.", var);
-
-    test_func_id = parse_testing_functions(test_func, &nb_test_func_id);
-
-    for (int i = 0; sec_func[i]; i++) {
-        int *line = malloc((3 + nb_test_func_id) * sizeof(*line));
-        if (!is_expr_in_list(sec_func[i], func_name, nb_func_name, &line[0]))
-            parse_error("Unexpected error.");
-
-        line[1] = var_id;
-        for (int j = 0; j <= nb_test_func_id; j++)
-            line[2 + j] = test_func_id[j];
-    }
-
-    free(test_func_id);
-}
-
-static bool parse_do_test(char *line) {
-    char var_test[varname_size + 1];
-
-    char *test_pos, *with_pos;
+    char *test_pos;
     test_pos = strstr(line, "test");
-    with_pos = strstr(line, "with");
 
-    if (test_pos && with_pos) {
-        with_pos[0] = '\0';
-        sscanf(test_pos + 5, label, var_test);
-        add_test(var_test, with_pos + 5);
+    if (test_pos)
         return true;
-    } else if (test_pos) {
-        sscanf(test_pos + 5, label, var_test);
-        add_test(var_test, NULL);
-        return true;
-    }
 
     return false;
 }
