@@ -10,8 +10,14 @@ then:
 
 kfree(buf)
 
+// kmap and kunmap are deprecated
 buf = kmap(page)
 buf = kmap_atomic(page)
-kunmap(page)
-kunmap_atomic(page)
+buf = kmap_local_page(page)
+buf = kmap_local_folio(page)
+
+kunmap(buf)
+kunmap_atomic(buf)
+kunmap_local(buf)
+kunmap_local_atomic(buf)
 
