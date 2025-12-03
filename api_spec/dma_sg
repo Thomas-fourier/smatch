@@ -12,13 +12,13 @@ var attrs
 dma_nents = dma_map_sg_attrs(dev, key sg, nents, dir, attrs)
 dma_nents = ib_dma_map_sg_attrs(dev, key sg, nents, dir, attrs)
 dma_nents = ib_dma_map_sg(dev, key sg, nents, dir)
+cc_map_sg(dev, key sg, _, dir, nents, _, _, dma_nents)
+sec_map_and_split_sg(sg, _, _, _, _, nents, dev, _)
 
 // Unmapping
 dma_unmap_sg_attrs(dev, key sg, nents, dir, _)
 ib_dma_unmap_sg_attrs(dev, key sg, nents, dir, _)
 ib_dma_unmap_sg(dev, sg, key nents, dir)
+sec_unmap_sg_on_err(sg, _, _, _, nents, dev)
 
-// Syncing 
-dma_sync_sg_for__ice(dev, key sg, nents, dir)
-dma_sync_sg_for_cpu(dev, key sg, nents, dir)
 
