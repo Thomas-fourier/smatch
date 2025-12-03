@@ -3,9 +3,11 @@ var vma
 var cpu_addr
 var dma_addr
 var size
-var attrs
 
-cpu_addr = dma_alloc_attrs(dev, size, dma_addr, _, attrs)
-dma_mmap_attrs(dev, vma, cpu_addr, dma_addr, size, attrs)
+cpu_addr = dma_alloc_attrs(dev, size, dma_addr, _)
+cpu_addr = dma_alloc_wc(dev, size, dma_addr, _)
+dma_mmap_attrs(dev, vma, cpu_addr, dma_addr, size, _)
 dma_mmap_wc(dev, vma, cpu_addr, dma_addr, size)
+dma_free_attrs(dev, size, cpu_addr, dma_addr, _)
+dma_free_wc(dev, size, cpu_addr, dma_addr, _)
 
