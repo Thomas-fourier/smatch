@@ -321,6 +321,57 @@ static bool similar_line_exists(char **new_arg_name, const char *fn_name)
     return false;
 }
 
+// Assume that there is only one ternary pattern in the call
+static char **split_array_if_ternary(char **new_arg_name)
+{
+    char **new_array = NULL;
+    char *mark_index;
+
+    for (int i = 0; i < nb_arg_cat; i++) {
+        if (new_arg_name[i] && (mark_index = strstr(new_arg_name[i], "?"))) {
+            if (new_array) {
+                sm_warning( "Two ternary patterns on the same file");
+                continue;
+            }
+            new_array = malloc(sizeof(*new_array) * nb_arg_cat);
+            for (int j = 0; j < nb_arg_cat; j++) {
+                if (j == i) {
+                    char *column = strstr(new_arg_name[i], ":");
+                    if (!column) {
+                        sm_warning( "? without :");
+                        continue;
+                    }
+                    *column = 0;
+                    new_array[j] = alloc_string(mark_index + 1);
+                    new_arg_name[j] = alloc_string(column + 1);
+                } else {
+                    new_array[j] = new_arg_name[j];
+                }
+
+            }
+        }
+    }
+    return new_array;
+}
+
+static void push_line_or_free(char **new_arg_name, const char* fn_name) 
+{
+    // If the call is not the same as one already done, pass otherwise add
+    if (!similar_line_exists(new_arg_name, fn_name)) {
+        push_array((void ***)&arg_name, &nb_arg_name, new_arg_name);
+        nb_arg_name--;
+        push_array((void ***)&arg_name_function, &nb_arg_name, alloc_string(fn_name));
+        nb_arg_name--;
+        char *loc;
+        asprintf(&loc, "%s:%d", get_filename(), get_lineno());
+        push_array((void ***)&arg_name_location, &nb_arg_name,loc);
+    } else {
+        for (int i = 0; i < nb_arg_cat; i++)
+            free(new_arg_name[i]);
+        free(new_arg_name);
+    }
+}
+
 static void match_func(const char *fn_name, struct expression *expr, void *_fn_id)
 {
     if (is_fake_call(expr) || __inline_fn)
@@ -344,20 +395,11 @@ static void match_func(const char *fn_name, struct expression *expr, void *_fn_i
         new_arg_name[cur_arg_cat] = str_arg;
     }
 
-    // If the call is not the same as one already done, pass otherwise add
-    if (!similar_line_exists(new_arg_name, fn_name)) {
-        push_array((void ***)&arg_name, &nb_arg_name, new_arg_name);
-        nb_arg_name--;
-        push_array((void ***)&arg_name_function, &nb_arg_name, alloc_string(fn_name));
-        nb_arg_name--;
-        char *loc;
-        asprintf(&loc, "%s:%d", get_filename(), get_lineno());
-        push_array((void ***)&arg_name_location, &nb_arg_name,loc);
-    } else {
-        for (int i = 0; i < nb_arg_cat; i++)
-            free(new_arg_name[i]);
-        free(new_arg_name);
-    }
+    char **other_array = split_array_if_ternary(new_arg_name);
+
+    push_line_or_free(new_arg_name, fn_name);
+    if (other_array)
+        push_line_or_free(other_array, fn_name);
 }
 
 static void match_assign(struct expression *expr)
