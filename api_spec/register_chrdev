@@ -4,4 +4,7 @@ var count
 var name
 
 __register_chrdev(major, baseminor, count, name, _)
+register_chrdev(major, name, _)
 __unregister_chrdev(major, baseminor, count, name)
+unregister_chrdev(major, name)
+

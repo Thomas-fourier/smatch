@@ -4,5 +4,5 @@ var addr
 var dma
 
 
-key addr = usb_alloc_coherent(dev, size, _, dma)
-usb_free_coherent(dev, size, key addr, dma)
+addr = usb_alloc_coherent(dev, size, _, dma)
+usb_free_coherent(dev, size, addr, dma)

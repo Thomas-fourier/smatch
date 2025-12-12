@@ -1,0 +1,9 @@
+var irq
+var handler
+var flags
+var name
+var dev
+
+request_irq(irq, handler, flags, name, dev)
+
+free_irq(irq, dev)

@@ -1,0 +1,8 @@
+var ida
+var id
+var flags
+
+id = ida_alloc(ida, flags)
+id = ida_alloc_range(ida,_,_,_)
+
+ida_free(ida, id)

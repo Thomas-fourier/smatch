@@ -1,0 +1,10 @@
+
+var lock
+var flags
+
+
+// Functions or macros, let's see
+spin_lock_irqsave(lock, flags)
+
+
+spin_unlock_irqrestore(lock, flags)
