@@ -1,0 +1,9 @@
+var resource
+var start
+var n
+var name
+var io_resource
+
+resource = __request_mem_region(io_resource, start, n, name)
+
+release_mem_region(io_resource, start, n)
