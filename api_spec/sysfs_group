@@ -1,0 +1,7 @@
+var kobj
+var grp
+var ret
+
+ret = sysfs_create_group(kobj, grp)
+
+sysfs_remove_group(kobj, grp)
