@@ -590,12 +590,14 @@ static int merge(struct token *left, struct token *right)
 
 static struct token *dup_token(struct token *token, struct position *streampos)
 {
-	struct token *alloc = alloc_token(streampos);
-	token_type(alloc) = token_type(token);
-	alloc->pos.newline = token->pos.newline;
-	alloc->pos.whitespace = token->pos.whitespace;
+	struct position pos = *streampos;
+	struct token *alloc = __alloc_token(0);
+
+	alloc->pos = token->pos;
 	alloc->number = token->number;
-	alloc->pos.noexpand = token->pos.noexpand;
+	alloc->pos.stream = pos.stream;
+	alloc->pos.line = pos.line;
+	alloc->pos.pos = pos.pos;
 	return alloc;	
 }
 
