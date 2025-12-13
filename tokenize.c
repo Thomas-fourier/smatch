@@ -794,7 +794,7 @@ static int get_one_special(int c, stream_t *stream)
 	return next;
 }
 
-#define IDENT_HASH_BITS (13)
+#define IDENT_HASH_BITS (16)
 #define IDENT_HASH_SIZE (1<<IDENT_HASH_BITS)
 #define IDENT_HASH_MASK (IDENT_HASH_SIZE-1)
 
