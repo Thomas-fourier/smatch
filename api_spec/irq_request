@@ -5,5 +5,7 @@ var name
 var dev
 
 request_irq(irq, handler, flags, name, dev)
+request_threaded_irq(irq, _, _, _, _, dev);
+
 
 free_irq(irq, dev)
