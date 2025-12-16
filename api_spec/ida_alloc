@@ -4,5 +4,7 @@ var flags
 
 id = ida_alloc(ida, flags)
 id = ida_alloc_range(ida,_,_,_)
+id = ida_alloc_max(ida,_,_,_)
+id = ida_alloc_min(ida,_,_,_)
 
 ida_free(ida, id)
