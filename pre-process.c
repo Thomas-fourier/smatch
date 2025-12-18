@@ -713,15 +713,11 @@ static struct token **substitute(struct token **list, const struct token *body, 
 				state = Concat;
 			continue;
 
-		case TOKEN_IDENT:
-			added = dup_token(body, base_pos);
-			if (added->ident->tainted)
-				added->pos.noexpand = 1;
-			tail = &added->next;
-			break;
-
 		default:
 			added = dup_token(body, base_pos);
+			if (token_type(body) == TOKEN_IDENT &&
+			    added->ident->tainted)
+				added->pos.noexpand = 1;
 			tail = &added->next;
 			break;
 		}
