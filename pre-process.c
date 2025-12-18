@@ -588,7 +588,7 @@ static int merge(struct token *left, struct token *right)
 	return 0;
 }
 
-static struct token *dup_token(struct token *token, struct position *streampos)
+static struct token *dup_token(const struct token *token, struct position *streampos)
 {
 	struct position pos = *streampos;
 	struct token *alloc = __alloc_token(0);
@@ -620,9 +620,9 @@ static struct token **copy(struct token **where, struct token *list, int *count)
 	return where;
 }
 
-static int handle_kludge(struct token **p, struct arg *args)
+static int handle_kludge(const struct token **p, struct arg *args)
 {
-	struct token *t = (*p)->next->next;
+	const struct token *t = (*p)->next->next;
 	while (1) {
 		struct arg *v = &args[t->argnum];
 		if (token_type(t->next) != TOKEN_CONCAT) {
@@ -641,7 +641,7 @@ static int handle_kludge(struct token **p, struct arg *args)
 	}
 }
 
-static struct token **substitute(struct token **list, struct token *body, struct arg *args)
+static struct token **substitute(struct token **list, const struct token *body, struct arg *args)
 {
 	struct position *base_pos = &(*list)->pos;
 	int *count;
@@ -650,7 +650,7 @@ static struct token **substitute(struct token **list, struct token *body, struct
 	for (; !eof_token(body); body = body->next) {
 		struct token *added, *arg;
 		struct token **tail;
-		struct token *t;
+		const struct token *t;
 
 		switch (token_type(body)) {
 		case TOKEN_GNU_KLUDGE:
