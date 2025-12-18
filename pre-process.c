@@ -255,7 +255,7 @@ static void expand_list(struct token **list)
 
 static void preprocessor_line(struct stream *stream, struct token **line);
 
-static struct token *collect_arg(struct token *prev, int vararg, struct position *pos, int count)
+static struct token *collect_arg(struct token *prev, int vararg, const struct position *pos)
 {
 	struct stream *stream = input_streams + prev->pos.stream;
 	struct token **p = &prev->next;
@@ -275,11 +275,6 @@ static struct token *collect_arg(struct token *prev, int vararg, struct position
 		case TOKEN_STREAMBEGIN:
 			*p = &eof_token_entry;
 			return next;
-		case TOKEN_STRING:
-		case TOKEN_WIDE_STRING:
-			if (count > 1)
-				next->string->immutable = 1;
-			break;
 		}
 		if (false_nesting) {
 			*p = next->next;
@@ -326,7 +321,7 @@ static int collect_arguments(struct token *start, struct token *arglist, struct 
 	arglist = arglist->next;	/* skip counter */
 
 	if (!wanted) {
-		next = collect_arg(start, 0, &what->pos, 0);
+		next = collect_arg(start, 0, &what->pos);
 		if (eof_token(next))
 			goto Eclosing;
 		if (!eof_token(start->next) || !match_op(next, ')')) {
@@ -336,7 +331,7 @@ static int collect_arguments(struct token *start, struct token *arglist, struct 
 	} else {
 		for (count = 0; count < wanted; count++) {
 			struct argcount *p = &arglist->next->count;
-			next = collect_arg(start, p->vararg, &what->pos, p->normal);
+			next = collect_arg(start, p->vararg, &what->pos);
 			if (eof_token(next))
 				goto Eclosing;
 			if (p->vararg && wanted == 1 && eof_token(start->next))
@@ -375,7 +370,7 @@ Efew:
 	goto out;
 Emany:
 	while (match_op(next, ',')) {
-		next = collect_arg(next, 0, &what->pos, 0);
+		next = collect_arg(next, 0, &what->pos);
 		count++;
 	}
 	if (eof_token(next))
@@ -598,6 +593,8 @@ static struct token *dup_token(const struct token *token, struct position *strea
 	alloc->pos.stream = pos.stream;
 	alloc->pos.line = pos.line;
 	alloc->pos.pos = pos.pos;
+	if (token_type(alloc) == TOKEN_STRING || token_type(alloc) == TOKEN_WIDE_STRING)
+		token->string->immutable = 1;
 	return alloc;	
 }
 
@@ -1315,15 +1312,8 @@ static struct token *parse_expansion(struct token *expansion, struct token *argl
 		} else {
 			try_arg(token, TOKEN_MACRO_ARGUMENT, arglist);
 		}
-		switch (token_type(token)) {
-		case TOKEN_ERROR:
+		if (token_type(token) == TOKEN_ERROR)
 			goto Earg;
-
-		case TOKEN_STRING:
-		case TOKEN_WIDE_STRING:
-			token->string->immutable = 1;
-			break;
-		}
 	}
 	token = alloc_token(&expansion->pos);
 	token_type(token) = TOKEN_UNTAINT;
