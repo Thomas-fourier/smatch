@@ -358,8 +358,19 @@ static bool str_with_some_subs_are_same(char *char1, char *substr_start_1,
     return false;
 }
 
+static bool str_is_constant(char *str)
+{
+    for (; *str; str++) {
+        if (!isdigit(*str))
+            return false;
+    }
+    return true;
+}
+
 static bool two_args_are_same(char *char1, char *char2)
 {
+    if (str_is_constant(char1) && str_is_constant(char2))
+        return strcmp(char1, char2) == 0;
     char *substr_start_1;
 
     if (find(char1) == find(char2))
@@ -522,12 +533,6 @@ static void match_assign(struct expression *expr)
         return;
 
     if (__inline_fn)
-        return;
-
-    // If one of the side is constant
-    sval_t TMP;
-    if (get_value(expr->right, &TMP) ||
-        get_value(expr->left, &TMP))
         return;
 
     char *right_str = stringify(expr->right);
