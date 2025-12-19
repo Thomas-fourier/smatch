@@ -156,8 +156,22 @@ static char *stringify(struct expression *expr) {
     if (expr->type == EXPR_PREOP && (expr->op == '&' || expr->op == '*'))
         return stringify(expr->unop);
 
+    if (expr->type == EXPR_PREOP && expr->op == '(')
+        return stringify(expr->unop);
+
     if (expr->type == EXPR_CALL) {
         return stringify_call(expr);
+    }
+
+    if (expr->type == EXPR_BINOP ||
+        expr->type == EXPR_COMPARE ||
+        expr->type == EXPR_LOGICAL) {
+        char *l_str = stringify(expr->left);
+        char *r_str = stringify(expr->right);
+        asprintf(&res, "(%s) %s (%s)", l_str, show_special(expr->op), r_str);
+        free_string(l_str);
+        free_string(r_str);
+        return res;
     }
 
     if (expr->type == EXPR_DEREF && expr->member) {
@@ -171,14 +185,16 @@ static char *stringify(struct expression *expr) {
             asprintf(&res, "(%s)->%s", type_to_str(get_type(expr->deref)),
                      expr->member->name);
         }
-    } else {
-        res = expr_to_str(expr);
-
-        pp = res;
-        while (pp && (pp = strstr(pp, "++"))) {
-            memmove(pp, pp+2, strlen(pp+2)+1);
-        }
+        return res;
     }
+
+    res = expr_to_str(expr);
+
+    pp = res;
+    while (pp && (pp = strstr(pp, "++"))) {
+        memmove(pp, pp+2, strlen(pp+2)+1);
+    }
+
 
     return res;
 }
@@ -262,11 +278,108 @@ static char *get_arg_from_call_expr(struct expression *expr, int arg_position) {
     return stringify(arg);
 }
 
+static char *search_param_in_expr(char *haystack, char *needle)
+{
+    char *n_start = strstr(haystack, needle);
+    if (!n_start)
+        return NULL;
+
+    if (n_start > haystack && 
+        *(n_start - 1) != '(' &&
+        *(n_start - 1) != ')' &&
+        *(n_start - 1) != ' ' &&
+        *(n_start - 1) != ',' &&
+        *(n_start - 1) != '[' &&
+        *(n_start - 1) != ']')
+        return NULL;
+
+    int needle_len = strlen(needle);
+    int haystack_len = strlen(haystack);
+
+    if (n_start + needle_len < haystack + haystack_len &&
+        *(n_start + needle_len) != ')' &&
+        *(n_start + needle_len) != '(' &&
+        *(n_start + needle_len) != ' ' &&
+        *(n_start + needle_len) != ',' &&
+        *(n_start + needle_len) != ']' &&
+        *(n_start + needle_len) != '['
+    )
+        return NULL;
+
+    return n_start;
+}
+
+static bool strs_are_same_with_sub(char *char1, char *substr_start_1,
+                                   int substr_1_idx,
+                                   char *char2, char *substr_start_2,
+                                   int substr_2_idx)
+{
+    // Check that what comes before the affected string is same
+    while (substr_start_1 && substr_start_2) {
+        while (char1 < substr_start_1 && char2 < substr_start_2) {
+            if (*char1 != *char2)
+                return false;
+            char2++; char1++;
+        }
+        // check that what comes after is same
+        char1 = substr_start_1 + strlen(arg_confusion[substr_1_idx]);
+        char2 = substr_start_2 + strlen(arg_confusion[substr_2_idx]);
+
+        // Next occurrence of the substrs 
+        substr_start_1 = search_param_in_expr(char1,
+                                              arg_confusion[substr_1_idx]);
+        substr_start_2 = search_param_in_expr(char2, 
+                                              arg_confusion[substr_2_idx]);
+    }
+
+    while (*char1 && *char2) {
+        if (*char1 != *char2)
+            return false;
+        char1++; char2++;
+    }
+
+    return *char1 == *char2;
+}
+
+static bool str_with_some_subs_are_same(char *char1, char *substr_start_1, 
+                                        int substr_1_idx, char *char2)
+{
+    char *substr_start_2;
+
+    for (int j = 0; j < nb_arg_confusion; j++) {
+        if (find_index(substr_1_idx) == find_index(j)) {
+            if ((substr_start_2 = search_param_in_expr(char2, arg_confusion[j]))) {
+
+                if (strs_are_same_with_sub(char1, substr_start_1, substr_1_idx,
+                                       char2, substr_start_2, j))
+                    return true;
+        }}
+    }
+    return false;
+}
+
+static bool two_args_are_same(char *char1, char *char2)
+{
+    char *substr_start_1;
+
+    if (find(char1) == find(char2))
+        return true;
+
+    for (int i = 0; i < nb_arg_confusion; i++) {
+        if ((substr_start_1 = search_param_in_expr(char1, arg_confusion[i])) &&
+            strcmp(char1, arg_confusion[i]) != 0) {
+            if (str_with_some_subs_are_same(char1, substr_start_1, i, char2))
+                return true;
+        }
+    }
+    return false;
+}
+
 static bool args_are_same(char **arg_name_1, char **arg_name_2)
 {
     for (int i = 0; i < nb_arg_cat; i++) {
         if (arg_name_1[i] && arg_name_2[i]) {
-            if (find(arg_name_1[i]) != find(arg_name_2[i]))
+            if (!two_args_are_same(arg_name_1[i], arg_name_2[i]))
                 return false;
         }
     }
