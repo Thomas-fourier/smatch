@@ -96,9 +96,44 @@ static void union_(char *some_arg, char *other_arg)
 }
 
 
-//////////////////////////////////////////////////////////////////////////////////////////////
-//                         Confusion
-//////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//                         Constant assignment
+////////////////////////////////////////////////////////////////////////////////
+static int* argument_cst = NULL;    // index of the element in confusion_list
+static int* const_value = NULL; // constant value corresponding
+static int nb_argument = 0;
+
+static void constant_assign(char *left, int right)
+{
+    nb_argument++;
+    argument_cst = realloc(argument_cst,
+                           (nb_argument * sizeof(*argument_cst)));
+    const_value = realloc(const_value,
+                           (nb_argument * sizeof(*const_value)));
+    
+    argument_cst[nb_argument - 1] = find(left);
+    const_value[nb_argument - 1] = right;
+}
+
+static int find_const(char *var, char *cst)
+{
+    int int_cst;
+    int var_find = find(var);
+
+    if (1 != sscanf(cst, "%d", &int_cst)) {
+        sm_error("Expression %s flagged as constant but scanf failed", cst);
+        return -1;
+    }
+
+    for (int j = 0; j < nb_argument; j++) {
+        if (const_value[j] == int_cst) {
+            if (var_find == find_index(argument_cst[j]))
+                return true;
+        }
+    }
+    return false;
+}
+
 
 // This is only used for parsing
 static char **sec_func;
@@ -373,9 +408,16 @@ static bool str_is_constant(char *str)
 
 static bool two_args_are_same(char *char1, char *char2)
 {
-    if (str_is_constant(char1) && str_is_constant(char2))
+    bool char1_cst = str_is_constant(char1);
+    bool char2_cst = str_is_constant(char2);
+    if (char1_cst && char2_cst)
         return strcmp(char1, char2) == 0;
     char *substr_start_1;
+
+    if (char1_cst)
+        return find_const(char2, char1);
+    else if (char2_cst)
+        return find_const(char1, char2);
 
     if (find(char1) == find(char2))
         return true;
@@ -539,18 +581,38 @@ static void match_assign(struct expression *expr)
     if (__inline_fn)
         return;
 
-    char *right_str = stringify(expr->right);
-    if (!right_str)
-        return;
     char *left_str = stringify(expr->left);
     if (!left_str)
+        return;
+
+    // If one of the side is constant
+    sval_t TMP;
+    if (get_value(expr->right, &TMP)) {
+        constant_assign(left_str, TMP.value);
+        goto free_left;
+    }
+
+    char *right_str = stringify(expr->right);
+    if (!right_str)
+        goto free_left;
+
+
+    if (str_is_constant(right_str)) {
+        int right_int;
+        if (1 != sscanf(right_str, "%d", &right_int)) {
+            sm_error("%s scan as int failed", right_str);
+            goto free_right;
+        }
+        constant_assign(left_str, right_int);
         goto free_right;
+    }
 
     union_(right_str, left_str);
 
-    free_string(left_str);
 free_right:
     free_string(right_str);
+free_left:
+    free_string(left_str);
     return;
 }
 
