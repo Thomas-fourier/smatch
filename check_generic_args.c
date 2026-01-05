@@ -317,32 +317,30 @@ static char *get_arg_from_call_expr(struct expression *expr, int arg_position) {
     return stringify(arg);
 }
 
+static bool is_separator(char c)
+{
+    return c == '(' ||
+           c == ')' ||
+           c == ' ' ||
+           c == ',' ||
+           c == '[' ||
+           c == ']';
+}
+
 static char *search_param_in_expr(char *haystack, char *needle)
 {
     char *n_start = strstr(haystack, needle);
     if (!n_start)
         return NULL;
 
-    if (n_start > haystack && 
-        *(n_start - 1) != '(' &&
-        *(n_start - 1) != ')' &&
-        *(n_start - 1) != ' ' &&
-        *(n_start - 1) != ',' &&
-        *(n_start - 1) != '[' &&
-        *(n_start - 1) != ']')
+    if (n_start > haystack && !is_separator(*(n_start - 1)))
         return NULL;
 
     int needle_len = strlen(needle);
     int haystack_len = strlen(haystack);
 
     if (n_start + needle_len < haystack + haystack_len &&
-        *(n_start + needle_len) != ')' &&
-        *(n_start + needle_len) != '(' &&
-        *(n_start + needle_len) != ' ' &&
-        *(n_start + needle_len) != ',' &&
-        *(n_start + needle_len) != ']' &&
-        *(n_start + needle_len) != '['
-    )
+        !is_separator(*(n_start + needle_len)))
         return NULL;
 
     return n_start;
