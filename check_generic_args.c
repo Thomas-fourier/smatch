@@ -510,10 +510,11 @@ static char **split_array_if_ternary(char **new_arg_name)
                         continue;
                     }
                     *column = 0;
+                    free(new_arg_name[j]);
                     new_array[j] = alloc_string(mark_index + 1);
                     new_arg_name[j] = alloc_string(column + 1);
                 } else {
-                    new_array[j] = new_arg_name[j];
+                    new_array[j] = alloc_string(new_arg_name[j]);
                 }
 
             }
