@@ -494,6 +494,7 @@ static char **split_array_if_ternary(char **new_arg_name)
 {
     char **new_array = NULL;
     char *mark_index;
+    char *old_entry;
 
     for (int i = 0; i < nb_arg_cat; i++) {
         if (new_arg_name[i] && (mark_index = strstr(new_arg_name[i], "?"))) {
@@ -509,10 +510,11 @@ static char **split_array_if_ternary(char **new_arg_name)
                         sm_warning( "? without :");
                         continue;
                     }
-                    *column = 0;
-                    free(new_arg_name[j]);
+                    old_entry = new_arg_name[j];
+                    *column = '\0';
                     new_array[j] = alloc_string(mark_index + 1);
                     new_arg_name[j] = alloc_string(column + 1);
+                    free(old_entry);
                 } else {
                     new_array[j] = alloc_string(new_arg_name[j]);
                 }
