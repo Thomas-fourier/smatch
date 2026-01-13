@@ -202,6 +202,14 @@ static char *stringify(struct expression *expr) {
         return stringify_call(expr);
     }
 
+    if (expr->type == EXPR_CONDITIONAL || expr->type == EXPR_SELECT) {
+        char *l_str = stringify(expr->cond_true);
+        char *r_str = stringify(expr->cond_false);
+        asprintf(&res, "? %s : %s", l_str, r_str);
+        free_string(l_str);
+        free_string(r_str);
+    }
+
     if (expr->type == EXPR_BINOP ||
         expr->type == EXPR_COMPARE ||
         expr->type == EXPR_LOGICAL) {
