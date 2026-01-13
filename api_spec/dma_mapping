@@ -13,8 +13,8 @@ ib_dma_mapping_error(dev, key dma_add)
 fc_dma_mapping_error(dev, key dma_add)
 vring_mapping_error(dev, key dma_add)
 virtqueue_dma_mapping_error(dev, key dma_add)
-b43legacy_dma_mapping_error(dev, key dma_add, size)
-b43_dma_mapping_error(dev, key dma_add, size)
+b43legacy_dma_mapping_error(_, key dma_add, size)
+b43_dma_mapping_error(_, key dma_add, size)
 
 
 after:
@@ -29,6 +29,8 @@ dma_add = mtk_star_dma_map_tx(_)
 dma_add = owl_emac_dma_map_rx(_)
 dma_add = owl_emac_dma_map_tx(_)
 dma_add = nfp_net_dma_map_rx(_)
+dma_add = otx2_dma_map_page(_)
+dma_add = otx2_dma_map_skb_frag(_)
 do:
 test dma_add with dma_mapping_error or enic_dma_map_check or iwl_txq_gen2_set_tb_with_wa or b43legacy_dma_mapping_error or b43_dma_mapping_error
 
