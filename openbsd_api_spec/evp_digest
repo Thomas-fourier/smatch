@@ -1,0 +1,8 @@
+var ctx
+var pctx
+var type
+var e
+var pkey
+
+EVP_DigestSignInit(ctx, pctx, type, e, pkey)
+EVP_DigestVerifyInit(ctx, pctx, type, e, pkey)
