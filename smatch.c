@@ -51,7 +51,9 @@ int option_mem;
 char *option_datadir_str;
 int option_fatal_checks;
 int option_succeed;
-char *option_generic_args_file;
+char **option_generic_args_file;
+int nb_generic_args_file;
+int option_resemblance = 0;
 int SMATCH_EXTRA;
 
 FILE *sm_outfd;
@@ -261,7 +263,10 @@ void parse_args(int *argcp, char ***argvp)
 		}
 
 		if (!found && strncmp((*argvp)[1], "--generic-arg-file=", 19) == 0) {
-			option_generic_args_file = (*argvp)[1] + 19;
+			option_generic_args_file = realloc(option_generic_args_file,
+						++nb_generic_args_file * sizeof(*option_generic_args_file));
+			option_generic_args_file[nb_generic_args_file - 1] =
+									(*argvp)[1] + 19;
 			(*argvp)[1] = (*argvp)[0];
 			found = 1;
 		}
@@ -283,6 +288,7 @@ void parse_args(int *argcp, char ***argvp)
 		OPTION(no_db);
 		OPTION(succeed);
 		OPTION(print_names);
+		OPTION(resemblance);
 		if (!found)
 			break;
 		(*argcp)--;
