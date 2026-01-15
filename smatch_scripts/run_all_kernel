@@ -62,7 +62,9 @@ for file in  $(ls $API_SPECS)
 
 
 	find -name \*.c.smatch -exec cat \{\} \; -exec rm \{\} \; |\
-		grep "Possible function not matched" >> smatch_output/$file.warning
+		grep -F "Possible function not matched"\
+			-F "is the only of the interface"  >>\
+	       		smatch_output/$file.warning
 done
 
 rm -f $TMP $func_name_list $files_to_run $headers $all_headers $c_files $h_files
