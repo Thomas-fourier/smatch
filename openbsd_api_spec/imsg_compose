@@ -1,0 +1,8 @@
+var imsgbuf
+var type
+var id
+var pid
+var fd
+
+imsg_compose(imsgbuf, type, id, pid, fd, _, _)
+imsg_composev(imsgbuf, type, id, pid, fd, _, _)

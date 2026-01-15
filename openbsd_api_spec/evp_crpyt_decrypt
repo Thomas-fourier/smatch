@@ -1,0 +1,14 @@
+var ctx
+var cipher
+var key
+var iv
+var impl
+var out
+var outm
+var outl
+
+EVP_DecryptInit(ctx, cipher, key, iv)
+EVP_DecryptInit_ex( ctx, cipher, impl, key, iv)
+EVP_DecryptUpdate(ctx, _, outl, _, _)
+EVP_DecryptFinal_ex(ctx, outm, outl)
+EVP_DecryptFinal(ctx, outm, outl)
