@@ -1,0 +1,25 @@
+#! /bin/bash
+
+NR_CPU=`nproc`
+CMD=$(dirname $(dirname $0))/smatch
+
+c_files=$(mktemp)
+find . -type f -name "*.c" >> $c_files
+
+make clean
+find -name \*.c.smatch -exec rm \{\} \;
+
+cat $c_files | sort | uniq | rev |\
+		cut -d. -f2- |\
+		rev | awk " {printf \$0 ; print \".o\" } " | \
+		xargs make -j${NR_CPU} $ENDIAN -k CHECK="$CMD -p=kernel --file-output\
+			--succeed --resemblance" C=1 2>&1 |\
+		tee smatch.log
+
+
+rm -f $c_files
+find -name \*.c.smatch -exec cat \{\} \; -exec rm \{\} \; > smatch_warning.txt
+
+$(dirname $(dirname $0))/parse_func_pair.pl smatch.log
+
+

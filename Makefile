@@ -369,6 +369,8 @@ SMATCH_OBJS += smatch_unknown_value.o
 SMATCH_OBJS += smatch_untracked_param.o
 SMATCH_OBJS += smatch_untracked_var.o
 SMATCH_OBJS += smatch_var_sym.o
+SMATCH_OBJS += stringification.o
+SMATCH_OBJS += dsl.o
 
 CFLAGS+=-D__CHECKNAME__='"$(subst .c,,$(notdir $<))"'
 
