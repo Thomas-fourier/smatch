@@ -21,11 +21,10 @@ find . -type f -name "*.c" | sort | uniq | rev |\
 
 
 find -name \*.c.smatch -exec cat \{\} \; -exec rm \{\} \; |\
-	grep -F "Possible function not matched"\
-		-F "is the only of the interface"  >>\
+	grep -F -e "Possible function not matched"\
+		-e "is the only of the interface"  >>\
 			smatch.warning
 
 
-find -name \*.c.smatch -exec cat \{\} \; -exec rm \{\} \; > smatch_warning.txt
 
 
