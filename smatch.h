@@ -1141,6 +1141,7 @@ extern char *data_dir;
 extern char **option_generic_args_file;
 extern int nb_generic_args_file;
 extern int option_resemblance;
+extern int option_wrappers;
 extern int option_no_data;
 extern int option_full_path;
 extern int option_call_tree;
