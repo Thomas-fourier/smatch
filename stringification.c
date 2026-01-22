@@ -97,3 +97,20 @@ char *stringify(struct expression *expr)
 
     return res;
 }
+
+char *get_arg_from_call_expr(struct expression *expr, int arg_position) {
+    struct expression *arg;
+    if (arg_position == -1) {
+        struct expression *parent = expr_get_parent_expr(expr);
+        if (parent && is_cast(parent))
+            return get_arg_from_call_expr(parent, -1);
+        if (parent && parent->type == EXPR_ASSIGNMENT && parent->left)
+            arg = parent->left;
+        else // Maybe warning as well
+            return NULL;
+    } else {
+        arg = get_argument_from_call_expr(expr->args, arg_position);
+    }
+
+    return stringify(arg);
+}
