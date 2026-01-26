@@ -6,22 +6,24 @@ CMD=$SMATCH_DIR/smatch
 API_SPECS=$SMATCH_DIR/api_spec
 
 find -name \*.c.smatch -exec rm \{\} \;
+make clean
 
 for file in  $(ls $API_SPECS); do
-	dsl_files="$dsl_files --generic-args-file=$SMATCH_DIR/$file"
+	dsl_files="$dsl_files --generic-arg-file=$API_SPECS/$file"
 done
 
 find . -type f -name "*.c" | sort | uniq | rev |\
 	cut -d. -f2- |\
 	rev | awk " {printf \$0 ; print \".o\" } " | \
-	xargs make -j${NR_CPU} $ENDIAN -k CHECK="$CMD -p=kernel --file-output\
-		--succeed $dsl_files" C=1 |\
+	xargs make -j${NR_CPU} -k CHECK="$CMD -p=kernel --spammy --file-output\
+		--succeed $dsl_files --wrappers --resemblance" C=1 2>&1 |\
 	tee smatch.log
 
 
 find -name \*.c.smatch -exec cat \{\} \; -exec rm \{\} \; |\
 	grep -F -e "Possible function not matched"\
-		-e "is the only of the interface"  >>\
+		-e "is the only of the interface"\
+		-e "Probably a wrapper" >>\
 			smatch.warning
 
 
