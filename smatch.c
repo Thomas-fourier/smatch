@@ -52,6 +52,7 @@ char **option_generic_args_file;
 int nb_generic_args_file;
 int option_resemblance = 0;
 int option_wrappers = 0;
+int option_check_api = 0;
 int SMATCH_EXTRA;
 
 FILE *sm_outfd;
@@ -282,6 +283,7 @@ void parse_args(int *argcp, char ***argvp)
 		OPTION(print_names);
 		OPTION(resemblance);
 		OPTION(wrappers);
+		OPTION(check_api);
 		if (!found)
 			break;
 		(*argcp)--;

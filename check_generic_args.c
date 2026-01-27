@@ -504,7 +504,10 @@ static void init_call_rep(int i) {
 void check_generic_args(int id) {
     my_id = id;
 
-    if ((!option_generic_args_file) || option_wrappers)
+    if (!option_check_api)
+        return;
+
+    if ((!option_generic_args_file))
         return;
 
     all_calls = malloc(sizeof(*all_calls) * nb_generic_args_file);
