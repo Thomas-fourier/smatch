@@ -7,6 +7,8 @@ char **func_args = NULL;
 int nb_func_args = 0;
 char *ret = NULL;
 char *func_wrapped;
+bool found = false;
+char *wrapper_found = NULL;
 
 
 static int id;
@@ -36,6 +38,11 @@ static void match_func_end(void) {
         free(func_wrapped);
         func_wrapped = 0;
     }
+    if (found && wrapper_found)
+        sm_warning("Possible wrapper found %s", wrapper_found);
+    found = false;
+    free(wrapper_found);
+    wrapper_found = NULL;
 }
 
 static bool interseting_function(char *fn)
@@ -47,6 +54,19 @@ static bool interseting_function(char *fn)
         }
     }
     return false;
+}
+
+static void add_possible_wrapper(char *wrapper)
+{
+    sm_warning("add possible wrapper %s", wrapper);
+    if (found) {
+        free(wrapper_found);
+        wrapper_found = NULL;
+    } else {
+        found = true;
+        wrapper_found = wrapper;
+    }
+    return;
 }
 
 static void match_func_call(struct expression *expr)
@@ -72,7 +92,7 @@ static void match_func_call(struct expression *expr)
         free(arg);
     }
     if ((float)nb_common_arg / (float)nb_args > 0.45) {
-        sm_warning("Probably a wrapper %s", func_wrapped);
+        add_possible_wrapper(func_wrapped);
         return;
     }
     
@@ -92,7 +112,7 @@ static void match_return(struct expression *expr)
         return;
 
     if (strcmp(ret, this_ret) == 0)
-        sm_warning("Probably a wrapper %s", func_wrapped);
+        add_possible_wrapper(func_wrapped);
 
     free(this_ret);
 }
