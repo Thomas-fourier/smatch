@@ -1,4 +1,5 @@
 #include "smatch.h"
+#include "smatch_extra.h"
 #include "dsl.h"
 #include "stringification.h"
 
@@ -78,6 +79,13 @@ static void match_func_call(struct expression *expr)
     }
     // Here we should probably do something about two functions in the same
     // function… let's see what happens
+    // That was a valid concern indeed
+    struct statement *parent = expr_get_parent_stmt(expr);
+    if (parent->type == STMT_RETURN) {
+        add_possible_wrapper(new_func_wrapped);
+        return;
+    }
+
     free(func_wrapped);
     func_wrapped = new_func_wrapped;
 
