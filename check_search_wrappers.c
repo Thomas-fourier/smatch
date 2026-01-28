@@ -16,6 +16,9 @@ static int id;
 
 static void match_func_start(struct symbol *sym)
 {
+    if (__inline_fn)
+        return;
+
     struct symbol *arg;
     FOR_EACH_PTR(sym->ctype.base_type->arguments, arg) {
         if (!arg->ident) {
@@ -30,6 +33,9 @@ static void match_func_start(struct symbol *sym)
 }
 
 static void match_func_end(void) {
+    if (__inline_fn)
+        return;
+
     nb_func_args = 0;
     free(func_args);
     func_args = 0;
@@ -72,6 +78,9 @@ static void add_possible_wrapper(char *wrapper)
 
 static void match_func_call(struct expression *expr)
 {
+    if (__inline_fn)
+        return;
+
     char *new_func_wrapped = expr_to_str(expr->fn);
     if (!interseting_function(new_func_wrapped)) {
         free(new_func_wrapped);
