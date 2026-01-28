@@ -7,7 +7,7 @@ static struct dsl_representation *apis;
 char **func_args = NULL;
 int nb_func_args = 0;
 char *ret = NULL;
-char *func_wrapped;
+char *ret_func_wrapped;
 bool found = false;
 char *wrapper_found = NULL;
 
@@ -41,10 +41,8 @@ static void match_func_end(void) {
     func_args = 0;
     free(ret);
     ret = 0;
-    if (func_wrapped) {
-        free(func_wrapped);
-        func_wrapped = 0;
-    }
+    free(ret_func_wrapped);
+    ret_func_wrapped = 0;
     if (found && wrapper_found)
         sm_warning("Possible wrapper found %s", wrapper_found);
     found = false;
@@ -65,9 +63,9 @@ static bool interseting_function(char *fn)
 
 static void add_possible_wrapper(char *wrapper)
 {
-    sm_warning("add possible wrapper %s", wrapper);
     if (found) {
         free(wrapper_found);
+        free(wrapper);
         wrapper_found = NULL;
     } else {
         found = true;
@@ -81,22 +79,20 @@ static void match_func_call(struct expression *expr)
     if (__inline_fn)
         return;
 
-    char *new_func_wrapped = expr_to_str(expr->fn);
-    if (!interseting_function(new_func_wrapped)) {
-        free(new_func_wrapped);
+    char *func_wrapped = expr_to_str(expr->fn);
+    if (!func_wrapped)
         return;
-    }
-    // Here we should probably do something about two functions in the same
-    // function… let's see what happens
-    // That was a valid concern indeed
-    struct statement *parent = expr_get_parent_stmt(expr);
-    if (parent->type == STMT_RETURN) {
-        add_possible_wrapper(new_func_wrapped);
+
+    if (!interseting_function(func_wrapped)) {
+        free(func_wrapped);
         return;
     }
 
-    free(func_wrapped);
-    func_wrapped = new_func_wrapped;
+    struct statement *parent = expr_get_parent_stmt(expr);
+    if (parent && parent->type == STMT_RETURN) {
+        add_possible_wrapper(func_wrapped);
+        return;
+    }
 
     int nb_args = expression_list_size(expr->args);
     int nb_common_arg = 0;
@@ -112,11 +108,13 @@ static void match_func_call(struct expression *expr)
         add_possible_wrapper(func_wrapped);
         return;
     }
-    
-    if (ret)
-        free(ret);
 
-    ret = get_arg_from_call_expr(expr, -1);
+    free(ret);
+
+    if ((ret = get_arg_from_call_expr(expr, -1))) {
+        free(ret_func_wrapped);
+        ret_func_wrapped = func_wrapped;
+    }
 }
 
 static void match_return(struct expression *expr)
@@ -128,8 +126,10 @@ static void match_return(struct expression *expr)
     if (!this_ret)
         return;
 
-    if (strcmp(ret, this_ret) == 0)
-        add_possible_wrapper(func_wrapped);
+    if (strcmp(ret, this_ret) == 0) {
+        add_possible_wrapper(ret_func_wrapped);
+        ret_func_wrapped = 0;
+    }
 
     free(this_ret);
 }
