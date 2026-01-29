@@ -6,40 +6,32 @@ var offset
 var dir
 var attrs
 
-dma_mapping_error(dev, dma_add)
-enic_dma_map_check(dev, dma_add)
-iwl_txq_gen2_set_tb_with_wa(dev,_,_,dma_add)
-ib_dma_mapping_error(dev, dma_add)
-fc_dma_mapping_error(dev, dma_add)
-vring_mapping_error(dev, dma_add)
-virtqueue_dma_mapping_error(dev, dma_add)
-b43legacy_dma_mapping_error(_, dma_add, size)
-b43_dma_mapping_error(_, dma_add, size)
-
-
 dma_add = dma_map_single_attrs(dev, buf, size, dir, attrs)
 dma_add = dma_map_page_attrs(dev, buf, offset, size, dir, attrs)
 dma_add = dma_map_resource(dev, buf, size, dir, attrs)
 dma_add = __skb_frag_dma_map(dev, buf, size, dir, attrs)
 dma_add = niu_pci_map_page(dev, buf, _, size, dir)
 dma_add = niu_pci_map_single(dev, buf, _, size, dir)
-dma_add = mtk_star_dma_map_rx(_)
-dma_add = mtk_star_dma_map_tx(_)
-dma_add = owl_emac_dma_map_rx(_)
-dma_add = owl_emac_dma_map_tx(_)
-dma_add = nfp_net_dma_map_rx(_)
-dma_add = otx2_dma_map_page(_)
-dma_add = otx2_dma_map_skb_frag(_)
-
 dma_add = ib_dma_map_single(dev, buf, size, dir, attrs)
 dma_add = ib_dma_map_page(dev, buf, offset, size, dir, attrs)
-dma_add = hmm_dma_map_pfn(_)
-
 dma_add = fc_dma_map_single(dev, buf, size, dir)
-
 dma_add = vring_map_single(dev, buf, size, dir)
-
 dma_add = virtqueue_dma_map_single_attrs(dev, buf, size, dir, attrs)
-
 dma_add = map_descbuffer(dev, buf, size, attrs)
+
+
+
+dma_unmap_single_attrs(dev, dma_add, size, dir, attrs)
+dma_unmap_page_attrs(dev, dma_add, offset, size, dir, attrs)
+dma_unmap_resource(dev, dma_add, size, dir, attrs)
+__skb_frag_dma_unmap(dev, dma_add, size, dir, attrs)
+niu_pci_unmap_page(dev, dma_add, _, size, dir)
+niu_pci_unmap_single(dev, dma_add, _, size, dir)
+ib_dma_unmap_single(dev, dma_add, size, dir, attrs)
+ib_dma_unmap_page(dev, dma_add, offset, size, dir, attrs)
+fc_dma_unmap_single(dev, dma_add, size, dir)
+vring_unmap_single(dev, dma_add, size, dir)
+virtqueue_dma_unmap_single_attrs(dev, dma_add, size, dir, attrs)
+unmap_descbuffer(dev, dma_add, size, attrs)
+
 
