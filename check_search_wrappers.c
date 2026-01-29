@@ -8,7 +8,7 @@ char **func_args = NULL;
 int nb_func_args = 0;
 char *ret = NULL;
 char *ret_func_wrapped;
-bool found = false;
+int nb_api_call = 0;
 char *wrapper_found = NULL;
 
 
@@ -18,6 +18,8 @@ static void match_func_start(struct symbol *sym)
 {
     if (__inline_fn)
         return;
+
+    nb_api_call = 0;
 
     struct symbol *arg;
     FOR_EACH_PTR(sym->ctype.base_type->arguments, arg) {
@@ -43,9 +45,8 @@ static void match_func_end(void) {
     ret = 0;
     free(ret_func_wrapped);
     ret_func_wrapped = 0;
-    if (found && wrapper_found)
+    if (nb_api_call == 1 && wrapper_found)
         sm_warning("Possible wrapper found %s", wrapper_found);
-    found = false;
     free(wrapper_found);
     wrapper_found = NULL;
 }
@@ -63,20 +64,13 @@ static bool interseting_function(char *fn)
 
 static void add_possible_wrapper(char *wrapper)
 {
-    if (found) {
-        free(wrapper_found);
-        free(wrapper);
-        wrapper_found = NULL;
-    } else {
-        found = true;
-        wrapper_found = wrapper;
-    }
-    return;
+    free(wrapper_found);
+    wrapper_found = wrapper;
 }
 
 static void match_func_call(struct expression *expr)
 {
-    if (__inline_fn)
+    if (__inline_fn || (nb_api_call >= 2))
         return;
 
     char *func_wrapped = expr_to_str(expr->fn);
@@ -87,6 +81,8 @@ static void match_func_call(struct expression *expr)
         free(func_wrapped);
         return;
     }
+
+    nb_api_call++;
 
     struct statement *parent = expr_get_parent_stmt(expr);
     if (parent && parent->type == STMT_RETURN) {
@@ -99,8 +95,10 @@ static void match_func_call(struct expression *expr)
     for (int i = 0; i < nb_args; i++) {
         char *arg = get_arg_from_call_expr(expr, i);
         for (int j = 0; j < nb_func_args; j++) {
-            if (strcmp(func_args[j], arg))
+            if (0 == strcmp(func_args[j], arg)) {
                 nb_common_arg += 1;
+                break;
+            }
         }
         free(arg);
     }
@@ -120,6 +118,9 @@ static void match_func_call(struct expression *expr)
 static void match_return(struct expression *expr)
 {
     if (!ret)
+        return;
+
+    if (__inline_fn || (nb_api_call > 2))
         return;
 
     char *this_ret = expr_to_str(expr);
