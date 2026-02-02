@@ -36,7 +36,7 @@
 
 static int my_id;
 
-#define __GFP_NOFAIL 0x800
+#define __GFP_NOFAIL 0x8000u
 
 STATE(null);
 STATE(ok);
