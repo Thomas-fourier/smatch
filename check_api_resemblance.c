@@ -63,7 +63,7 @@ static struct fn_call *save_fn_call(struct expression *expr) {
         }
     }
 
-    if (nb_real_args <= 2) {
+    if (nb_real_args < 2) {
         for (int i = 0; i < nb_args; i++)
             free_string(str[i]);
         free(str);
@@ -95,12 +95,15 @@ static void free_call_list(struct fn_call_list *call_list) {
 
 static void match_func_def(struct symbol *sm)
 {
+    if (__inline_fn)
+        return;
+
     fprintf(out, "Defining %s in file %s\n", sm->ident->name, get_filename());
 }
 
 static void match_func(struct expression *expr)
 {
-    if (__inline_call)
+    if (__inline_fn)
         return;
 
     if (ptr_list_size((struct ptr_list *)expr->args) <= 1)
@@ -260,7 +263,7 @@ static void match_file_end()
         while (g_hash_table_iter_next(&j, (void **)&fun_j,
                                       (void **)&calls_j)) {
             score dis = compute_correlation(calls_i, calls_j);
-            if (dis > 0)
+            if (dis > 0.5)
                 add_to_dist(fun_i, fun_j, dis, distances, func_pair);
         }
 
