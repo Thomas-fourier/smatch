@@ -57,7 +57,8 @@ static struct fn_call *save_fn_call(struct expression *expr) {
 
         if (arg_expr) {
             str[i] = stringify(arg_expr);
-            nb_real_args++;
+            if (str[i])
+                nb_real_args++;
         } else {
             str[i] = NULL;
         }
