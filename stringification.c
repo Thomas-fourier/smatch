@@ -60,6 +60,9 @@ char *stringify(struct expression *expr)
     char *pp;
     sval_t constant;
 
+    if (!expr)
+        return NULL;
+
     expr = strip_expr(expr);
     if (get_value(expr, &constant))
         return alloc_string(sval_to_str(constant));
