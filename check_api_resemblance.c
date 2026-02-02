@@ -260,7 +260,8 @@ static void match_file_end()
         while (g_hash_table_iter_next(&j, (void **)&fun_j,
                                       (void **)&calls_j)) {
             score dis = compute_correlation(calls_i, calls_j);
-            add_to_dist(fun_i, fun_j, dis, distances, func_pair);
+            if (dis > 0)
+                add_to_dist(fun_i, fun_j, dis, distances, func_pair);
         }
 
         free(fun_i);
