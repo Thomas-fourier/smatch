@@ -8,11 +8,14 @@ static char *stringify_call(struct expression *expr)
     int nb_args = ptr_list_size((struct ptr_list *)expr->args);
     char **str_args;
     int len = 0;
-    char *res;
+    char *res = 0;
     char *p;
     int i;
 
     char *func = stringify(expr->fn);
+    if (!func)
+        return NULL;
+
     len = strlen(func) + 1;
     if (!nb_args) {
         res = realloc(func, len + 2);
@@ -24,15 +27,23 @@ static char *stringify_call(struct expression *expr)
     for (i = 0; i < nb_args; i++) {
         str_args[i] = stringify(get_argument_from_call_expr(expr->args,
                                                                   i));
+        if (!str_args[i]) {
+            free(res);
+            nb_args = i;
+            res = 0;
+            goto free_str_args;
+        }
         len += (2 + strlen(str_args[i]));
     }
 
     res = malloc(len);
     p = res;
     p += sprintf(p, "%s(", func);
+free_str_args:
     free_string(func);
     for (i = 0; i < nb_args; i++) {
-        p += sprintf(p, i == nb_args - 1 ? "%s)" : "%s, ", str_args[i]);
+        if (res)
+            p += sprintf(p, i == nb_args - 1 ? "%s)" : "%s, ", str_args[i]);
         free_string(str_args[i]);
     }
     free(str_args);
