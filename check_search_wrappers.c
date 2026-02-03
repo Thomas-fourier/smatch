@@ -94,6 +94,8 @@ static void match_func_call(struct expression *expr)
     int nb_common_arg = 0;
     for (int i = 0; i < nb_args; i++) {
         char *arg = get_arg_from_call_expr(expr, i);
+        if (!arg)
+            continue;
         for (int j = 0; j < nb_func_args; j++) {
             if (0 == strcmp(func_args[j], arg)) {
                 nb_common_arg += 1;
