@@ -271,21 +271,6 @@ static void print_arg_pos(FILE *out, const struct dsl_representation *dsl)
     fprintf(out, "\n");
 }
 
-
-static bool similar_line_exists(char **new_arg_name, const char *fn_name,
-                                struct calls_rep *calls)
-{
-    if (!calls->arg_name_function)
-        return false;
-    for (int i = 0; i < calls->nb_arg_name; i++) {
-        if (0 == strcmp(fn_name, calls->arg_name_function[i])) {
-            if (args_are_same(new_arg_name, calls->arg_name[i], calls))
-                return true;
-        }
-    }
-    return false;
-}
-
 // Assume that there is only one ternary pattern in the call
 static char **split_array_if_ternary(char **new_arg_name,
                                      struct calls_rep *calls)
@@ -327,19 +312,13 @@ static void push_line_or_free(char **new_arg_name, const char* fn_name,
                               struct calls_rep *calls) 
 {
     // If the call is not the same as one already done, pass otherwise add
-    if (!similar_line_exists(new_arg_name, fn_name, calls)) {
-        push_array((void ***)&calls->arg_name, &calls->nb_arg_name, new_arg_name);
-        calls->nb_arg_name--;
-        push_array((void ***)&calls->arg_name_function, &calls->nb_arg_name, alloc_string(fn_name));
-        calls->nb_arg_name--;
-        char *loc;
-        asprintf(&loc, "%s:%d", get_filename(), get_lineno());
-        push_array((void ***)&calls->arg_name_location, &calls->nb_arg_name,loc);
-    } else {
-        for (int i = 0; i < calls->dsl.nb_arg_cat; i++)
-            free(new_arg_name[i]);
-        free(new_arg_name);
-    }
+    push_array((void ***)&calls->arg_name, &calls->nb_arg_name, new_arg_name);
+    calls->nb_arg_name--;
+    push_array((void ***)&calls->arg_name_function, &calls->nb_arg_name, alloc_string(fn_name));
+    calls->nb_arg_name--;
+    char *loc;
+    asprintf(&loc, "%s:%d", get_filename(), get_lineno());
+    push_array((void ***)&calls->arg_name_location, &calls->nb_arg_name,loc);
 }
 
 static void match_func(const char *fn_name, struct expression *expr, void *_calls)
