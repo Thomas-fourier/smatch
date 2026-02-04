@@ -81,32 +81,48 @@ char *stringify(struct expression *expr)
     if (is_cast(expr))
         return stringify(expr->cast_expression);
 
-    if (expr->type == EXPR_ASSIGNMENT)
-        return stringify(expr->left);
+    switch (expr->type) {
+        case EXPR_ASSIGNMENT:
+            return stringify(expr->left);
 
-    if (expr->type == EXPR_PREOP && (expr->op == '&' || expr->op == '*'))
-        return stringify(expr->unop);
+        case EXPR_PREOP:
+        case EXPR_POSTOP:
+            // Array access
+            if (expr->op == '*' && expr->unop->type == EXPR_BINOP &&
+                expr->unop->op == '+') {
+                char *array = stringify(expr->unop->left);
+                asprintf(&res, "%s[index]", array);
+                free(array);
+                return res;
+            }
+            if (expr->op == '&' || expr->op == '*')
+                return stringify(expr->unop);
+        case EXPR_COMPARE:
+        case EXPR_LOGICAL:
+        case EXPR_BINOP:
+        case EXPR_COMMA: {
+            // Array access
+            struct expression *array_expr;
+            if ((array_expr = get_array_expr(expr))) {
+                asprintf(&res, "%s[index]", stringify(array_expr));
+                return res;
+            }
+        }
+        break;
+        case EXPR_CALL:
+            return stringify_call(expr);
 
-    if (expr->type == EXPR_CALL) {
-        return stringify_call(expr);
-    }
-
-    if (expr->type == EXPR_DEREF && expr->member) {
-        if (expr->deref->type == EXPR_DEREF) {
-            char *parent = stringify(expr->deref);
-            asprintf(&res, "%s->%s", parent, expr->member->name);
-            free_string(parent);
-        } else {
+        case EXPR_DEREF:
             asprintf(&res, "(%s)->%s", type_to_str(get_type(expr->deref)),
                      expr->member->name);
-        }
-    } else {
-        res = expr_to_str(expr);
+            return res;
+    }
 
-        pp = res;
-        while (pp && (pp = strstr(pp, "++"))) {
-            memmove(pp, pp+2, strlen(pp+2)+1);
-        }
+    res = expr_to_str(expr);
+
+    pp = res;
+    while (pp && (pp = strstr(pp, "++"))) {
+        memmove(pp, pp+2, strlen(pp+2)+1);
     }
 
     return res;
