@@ -7,9 +7,9 @@ var flags
 // This is either a macro (in virtualization context)
 // or a function
 cpu_addr = dma_alloc_coherent(dev, size, dma_handle, flags)
-cpu_addr = dma_alloc_attrs(dev, size, dma_addr, _)
-cpu_addr = dma_alloc_wc(dev, size, dma_addr, _)
+cpu_addr = dma_alloc_attrs(dev, size, dma_handle, _)
+cpu_addr = dma_alloc_wc(dev, size, dma_handle, _)
 
 dma_free_coherent(dev, size, cpu_addr, dma_handle)
-dma_free_attrs(dev, size, cpu_addr, dma_addr, _)
-dma_free_wc(dev, size, cpu_addr, dma_addr, _)
+dma_free_attrs(dev, size, cpu_addr, dma_handle, _)
+dma_free_wc(dev, size, cpu_addr, dma_handle, _)
