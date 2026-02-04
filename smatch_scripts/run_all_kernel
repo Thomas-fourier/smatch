@@ -21,10 +21,9 @@ find . -type f -name "*.c" | sort | uniq | rev |\
 	tee smatch.log
 
 
-find -name \*.c.smatch -exec cat \{\} \; -exec rm \{\} \; |\
-	grep -F -e "Possible function not matched"\
+find -name \*.c.smatch -exec grep -F -e "Possible function not matched"\
 		-e "is the only of the interface"\
-		-e "Possible wrapper found" >\
+		-e "Possible wrapper found" \{\} \;  >\
 			smatch.warning
 
 
