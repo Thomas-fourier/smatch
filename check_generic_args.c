@@ -444,8 +444,9 @@ static void match_file_end_calls(struct calls_rep *calls)
     if (all_funcs_are_same(calls)) {
         if (option_spammy)
             fprintf(sm_outfd,
-                    "%s warn: Function %s is the only of the interface\n",
-                    calls->arg_name_location[0], calls->arg_name_function[0]);
+                    "%s warn: Function %s is the only of the interface %s\n",
+                    calls->arg_name_location[0], calls->arg_name_function[0],
+                    calls->dsl.filename);
         return;
     }
 
@@ -457,8 +458,10 @@ static void match_file_end_calls(struct calls_rep *calls)
         if (exists_similar_call(checked, i, calls))
             continue;
 
-        fprintf(sm_outfd, "%s warn: Possible function not matched %s\n",
-                   calls->arg_name_location[i], calls->arg_name_function[i]);
+        fprintf(sm_outfd,
+                "%s warn: Possible function not matched %s in interface %s\n",
+                calls->arg_name_location[i], calls->arg_name_function[i],
+                calls->dsl.filename);
 
     }
 
