@@ -230,6 +230,11 @@ static bool args_are_same(char **arg_name_1, char **arg_name_2,
 
 static void print_arg_name(FILE *out, struct calls_rep *calls)
 {
+    if (!calls->nb_arg_name)
+        return;
+
+    fprintf(out, "%s\n", calls->dsl.filename);
+
     fprintf(out, "\t\t\t\t");
     for (int i = 0; calls->dsl.arg_cat[i]; i++)
         fprintf(out, "%16s\t", calls->dsl.arg_cat[i]);
@@ -241,6 +246,8 @@ static void print_arg_name(FILE *out, struct calls_rep *calls)
         for (int j = 0; calls->dsl.arg_cat[j]; j++) {
             if (calls->arg_name[i][j])
                 fprintf(out, "%16s\t", calls->arg_name[i][j]);
+            else
+                fprintf(out, "\t\t\t");
         }
         fprintf(out, "\n");
     }
