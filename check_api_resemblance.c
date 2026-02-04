@@ -13,7 +13,7 @@
        __typeof__ (b) _b = (b); \
      _a < _b ? _a : _b; })
 
-#define nb_max_pair 200
+#define nb_max_pair 2000
 
 GHashTable *function_calls = NULL;
 FILE *out;
