@@ -283,7 +283,7 @@ void check_api_resemblance(int id)
     if (!option_resemblance)
         return;
 
-    out = stderr;
+    out = stdout;
     function_calls = g_hash_table_new(g_str_hash, g_str_equal);
 
     add_hook(match_func_def, FUNC_DEF_HOOK);
