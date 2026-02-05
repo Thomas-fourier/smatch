@@ -107,6 +107,19 @@ char *stringify(struct expression *expr)
                 asprintf(&res, "%s[index]", stringify(array_expr));
                 return res;
             }
+            char *l = stringify(expr->left);
+            if (!l)
+                return NULL;
+            char *r = stringify(expr->right);
+            if (!r) {
+                res = 0;
+                goto free_l;
+            }
+            asprintf(&res, "(%s) %c (%s)", l, expr->op, r);
+            free(r);
+free_l:
+            free(l);
+            return res;
         }
         break;
         case EXPR_CALL:
