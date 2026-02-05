@@ -112,10 +112,15 @@ char *stringify(struct expression *expr)
         case EXPR_CALL:
             return stringify_call(expr);
 
-        case EXPR_DEREF:
-            asprintf(&res, "(%s)->%s", type_to_str(get_type(expr->deref)),
-                     expr->member->name);
+        case EXPR_DEREF: {
+            char *type = type_to_str(get_type(expr->deref));
+            if (!type || !expr->member) {
+                free(type);
+                return NULL;
+            }
+            asprintf(&res, "(%s)->%s", type, expr->member->name);
             return res;
+        }
     }
 
     res = expr_to_str(expr);
