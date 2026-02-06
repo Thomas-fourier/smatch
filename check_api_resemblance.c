@@ -99,7 +99,10 @@ static void match_func_def(struct symbol *sm)
     if (__inline_fn)
         return;
 
-    fprintf(out, "Defining %s in file %s\n", sm->ident->name, get_filename());
+    fprintf(out, "Defining %s with %d arguments in file s %s\n",
+            sm->ident->name,
+            ptr_list_size((struct ptr_list*)sm->ctype.base_type->arguments),
+            get_filename());
 }
 
 static void match_func(struct expression *expr)
@@ -107,13 +110,18 @@ static void match_func(struct expression *expr)
     if (__inline_fn)
         return;
 
-    if (ptr_list_size((struct ptr_list *)expr->args) <= 1)
-        return;
-
-    bool free_fn = false;
     char *fn = expr_to_str(expr->fn);
     if (!fn)
         return;
+
+    fprintf(out, "Calling %s in %s\n", fn, get_filename());
+
+    if (ptr_list_size((struct ptr_list *)expr->args) <= 1) {
+        free(fn);
+        return;
+    }
+
+    bool free_fn = false;
     struct fn_call *fn_rep = save_fn_call(expr);
     if (!fn_rep) {
         free(fn);
