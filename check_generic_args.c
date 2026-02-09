@@ -8,9 +8,75 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <glib.h>
 
 static int my_id;
 static struct calls_rep *all_calls;
+
+
+////////////////////////////////////////////////////////////////////////////////
+// 			Function definition
+////////////////////////////////////////////////////////////////////////////////
+static GHashTable *function_parameters = NULL;
+
+static void match_func_start(struct symbol *sm)
+{
+    if (g_hash_table_lookup(function_parameters, sm->ident->name))
+        return;
+
+    char **arguments = NULL;
+    int nb_func_args = 0;
+    struct symbol *arg;
+    FOR_EACH_PTR(sm->ctype.base_type->arguments, arg) {
+        if (!arg->ident) {
+            continue;
+        }
+
+        nb_func_args++;
+        arguments = realloc(arguments, sizeof(*arguments) * nb_func_args);
+        arguments[nb_func_args - 1] = arg->ident->name;
+
+    } END_FOR_EACH_PTR(arg);
+
+    nb_func_args++;
+    arguments = realloc(arguments, sizeof(*arguments) * nb_func_args);
+    arguments[nb_func_args - 1] = 0;
+
+    g_hash_table_insert(function_parameters, sm->ident->name, arguments);
+}
+
+static void __match_assign(char *left, struct expression *right);
+
+static void match_func_call(struct expression *expr)
+{
+    char *fn_name = expr_to_str(expr);
+    if (!fn_name)
+        return;
+
+    for (int i = 0; i < nb_generic_args_file; i++) {
+        if (is_expr_in_list(fn_name, all_calls[i].dsl.func_name,
+            all_calls[i].dsl.nb_func_name, NULL)) {
+            free(fn_name);
+            return;
+        }
+    }
+
+
+    char **args;
+    if (!(args = g_hash_table_lookup(function_parameters, fn_name))) {
+        free(fn_name);
+        return;
+    }
+
+    int arg_index = 0;
+    struct expression *arg;
+    FOR_EACH_PTR(expr->args, arg) {
+        __match_assign(args[arg_index], arg);
+        arg_index++;
+    } END_FOR_EACH_PTR(arg);
+
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // 			Confusion
@@ -172,11 +238,11 @@ static bool str_with_some_subs_are_same(char *char1, char *substr_start_1,
     for (int j = 0; j < nb_arg_confusion; j++) {
         if (find_index(substr_1_idx) == find_index(j)) {
             if ((substr_start_2 = search_param_in_expr(char2, arg_confusion[j]))) {
-
                 if (strs_are_same_with_sub(char1, substr_start_1, substr_1_idx,
                                        char2, substr_start_2, j))
                     return true;
-        }}
+            }
+        }
     }
     return false;
 }
@@ -356,27 +422,16 @@ static void match_func(const char *fn_name, struct expression *expr, void *_call
         push_line_or_free(other_array, fn_name, calls);
 }
 
-static void match_assign(struct expression *expr)
+static void __match_assign(char *left, struct expression *right)
 {
-    if (is_fake_var_assign(expr) || is_fake_assigned_call(expr) ||
-        is_fake_call(expr->right))
-        return;
-
-    if (__inline_fn)
-        return;
-
-    char *left_str = stringify(expr->left);
-    if (!left_str)
-        return;
-
     // If one of the side is constant
     sval_t TMP;
-    if (get_value(expr->right, &TMP)) {
-        constant_assign(left_str, TMP.value);
+    if (get_value(right, &TMP)) {
+        constant_assign(left, TMP.value);
         goto free_left;
     }
 
-    char *right_str = stringify(expr->right);
+    char *right_str = stringify(right);
     if (!right_str)
         goto free_left;
 
@@ -387,17 +442,34 @@ static void match_assign(struct expression *expr)
             sm_error("%s scan as int failed", right_str);
             goto free_right;
         }
-        constant_assign(left_str, right_int);
+        constant_assign(left, right_int);
         goto free_right;
     }
 
-    union_(right_str, left_str);
+    union_(right_str, left);
 
 free_right:
     free_string(right_str);
 free_left:
-    free_string(left_str);
+    free_string(left);
     return;
+}
+
+static void match_assign(struct expression *expr)
+{
+    if (is_fake_var_assign(expr) || is_fake_assigned_call(expr) ||
+        is_fake_call(expr->right))
+        return;
+
+    if (__inline_fn)
+        return;
+
+
+    char *left_str = stringify(expr->left);
+    if (!left_str)
+        return;
+
+    __match_assign(left_str, expr->right);
 }
 
 static bool exists_similar_call(bool *checked, int index,
@@ -486,8 +558,6 @@ static void init_call_rep(int i) {
 
     for (i = 0; calls->dsl.func_name[i]; i++)
         add_function_hook(calls->dsl.func_name[i], &match_func, (void *)calls);
-
-    
 }
 
 void check_generic_args(int id) {
@@ -504,7 +574,10 @@ void check_generic_args(int id) {
     for (int i = 0; i < nb_generic_args_file; i++)
         init_call_rep(i);
 
+    function_parameters = g_hash_table_new(g_str_hash, g_str_equal);
 
+    add_hook(match_func_start, FUNC_DEF_HOOK);
+    add_hook(match_func_call, FUNCTION_CALL_HOOK);
     add_hook(match_assign, ASSIGNMENT_HOOK);
     add_hook(match_file_end, END_FILE_HOOK);
 }
