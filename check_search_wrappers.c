@@ -10,6 +10,7 @@ char *ret = NULL;
 char *ret_func_wrapped;
 int nb_api_call = 0;
 char *wrapper_found = NULL;
+int function_start;
 
 
 static int id;
@@ -32,6 +33,8 @@ static void match_func_start(struct symbol *sym)
         func_args[nb_func_args - 1] = arg->ident->name;
 
     } END_FOR_EACH_PTR(arg);
+
+    function_start = get_lineno();
 }
 
 static void match_func_end(void) {
@@ -45,8 +48,9 @@ static void match_func_end(void) {
     ret = 0;
     free(ret_func_wrapped);
     ret_func_wrapped = 0;
-    if (nb_api_call == 1 && wrapper_found)
-        sm_warning("Possible wrapper found %s", wrapper_found);
+    if (wrapper_found && get_lineno() - function_start < 30)
+        sm_warning_line(function_start, "Possible wrapper found %s",
+                        wrapper_found);
     free(wrapper_found);
     wrapper_found = NULL;
 }
@@ -64,6 +68,10 @@ static bool interseting_function(char *fn)
 
 static void add_possible_wrapper(char *wrapper)
 {
+    if (wrapper_found) {
+        free(wrapper);
+        return;
+    }
     free(wrapper_found);
     wrapper_found = wrapper;
 }
