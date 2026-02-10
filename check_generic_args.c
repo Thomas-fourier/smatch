@@ -71,6 +71,8 @@ static void match_func_call(struct expression *expr)
     int arg_index = 0;
     struct expression *arg;
     FOR_EACH_PTR(expr->args, arg) {
+        if (!args[arg_index])
+            return;
         __match_assign(alloc_string(args[arg_index]), arg);
         arg_index++;
     } END_FOR_EACH_PTR(arg);
