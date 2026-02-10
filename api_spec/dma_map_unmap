@@ -21,17 +21,17 @@ dma_add = map_descbuffer(dev, buf, size, attrs)
 
 
 
-dma_unmap_single_attrs(dev, dma_add, size, dir, attrs)
-dma_unmap_page_attrs(dev, dma_add, offset, size, dir, attrs)
-dma_unmap_resource(dev, dma_add, size, dir, attrs)
-__skb_frag_dma_unmap(dev, dma_add, size, dir, attrs)
+dma_unmap_single_attrs(dev, dma_add, size, dir, _)
+dma_unmap_page_attrs(dev, dma_add, size, dir, _)
+dma_unmap_resource(dev, dma_add, size, dir, _)
+__skb_frag_dma_unmap(dev, dma_add, size, dir, _)
 niu_pci_unmap_page(dev, dma_add, _, size, dir)
 niu_pci_unmap_single(dev, dma_add, _, size, dir)
-ib_dma_unmap_single(dev, dma_add, size, dir, attrs)
-ib_dma_unmap_page(dev, dma_add, offset, size, dir, attrs)
+ib_dma_unmap_single(dev, dma_add, size, dir, _)
+ib_dma_unmap_page(dev, dma_add, size, dir, _)
 fc_dma_unmap_single(dev, dma_add, size, dir)
 vring_unmap_single(dev, dma_add, size, dir)
-virtqueue_dma_unmap_single_attrs(dev, dma_add, size, dir, attrs)
-unmap_descbuffer(dev, dma_add, size, attrs)
+virtqueue_dma_unmap_single_attrs(dev, dma_add, size, dir, _)
+unmap_descbuffer(dev, dma_add, size, _)
 
 
