@@ -49,7 +49,7 @@ static void __match_assign(char *left, struct expression *right);
 
 static void match_func_call(struct expression *expr)
 {
-    char *fn_name = expr_to_str(expr);
+    char *fn_name = expr_to_str(expr->fn);
     if (!fn_name)
         return;
 
@@ -71,7 +71,7 @@ static void match_func_call(struct expression *expr)
     int arg_index = 0;
     struct expression *arg;
     FOR_EACH_PTR(expr->args, arg) {
-        __match_assign(args[arg_index], arg);
+        __match_assign(alloc_string(args[arg_index]), arg);
         arg_index++;
     } END_FOR_EACH_PTR(arg);
 
