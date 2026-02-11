@@ -458,6 +458,9 @@ static void __match_assign(char *left, struct expression *right)
 {
     // If one of the side is constant
     sval_t TMP;
+
+    if (right->type == 128)
+        return;
     if (get_value(right, &TMP)) {
         constant_assign(left, TMP.value);
         goto free_left;
