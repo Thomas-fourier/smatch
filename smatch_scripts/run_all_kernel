@@ -8,6 +8,7 @@ API_SPECS=$SMATCH_DIR/api_spec
 find -name \*.c.smatch -exec rm \{\} \;
 rm -f core.*
 make clean
+rm -f core.*
 
 for file in  $(ls $API_SPECS); do
 	dsl_files="$dsl_files --generic-arg-file=$API_SPECS/$file"
