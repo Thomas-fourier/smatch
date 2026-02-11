@@ -40,6 +40,9 @@ static void assign_list(char **args, struct expression_list *params)
 
 static void match_func_start(struct symbol *sm)
 {
+    if (!sm->ident)
+        return;
+
     if (g_hash_table_lookup(function_parameters, sm->ident->name))
         return;
 
