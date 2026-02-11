@@ -17,7 +17,26 @@ static struct calls_rep *all_calls;
 ////////////////////////////////////////////////////////////////////////////////
 // 			Function definition
 ////////////////////////////////////////////////////////////////////////////////
+DECLARE_PTR_LIST(expression_list_list, struct expression_list);
+// Function name to parameters list
 static GHashTable *function_parameters = NULL;
+// Function name to arguments of call instances struct expression_list_list
+static GHashTable *function_called = NULL;
+
+static void __match_assign(char *left, struct expression *right);
+
+static void assign_list(char **args, struct expression_list *params)
+{
+    int arg_index = 0;
+    struct expression *arg;
+    FOR_EACH_PTR(params, arg) {
+        if (!args[arg_index])
+            return;
+        __match_assign(alloc_string(args[arg_index]), arg);
+        arg_index++;
+    } END_FOR_EACH_PTR(arg);
+
+}
 
 static void match_func_start(struct symbol *sm)
 {
@@ -40,12 +59,19 @@ static void match_func_start(struct symbol *sm)
 
     nb_func_args++;
     arguments = realloc(arguments, sizeof(*arguments) * nb_func_args);
-    arguments[nb_func_args - 1] = 0;
+    arguments[nb_func_args - 1] = NULL;
+
+
+    struct expression_list_list *calls = g_hash_table_lookup(function_called, sm->ident->name);
+    if (calls) {
+        struct expression_list *call;
+        FOR_EACH_PTR(calls, call) {
+            assign_list(arguments, call);
+        } END_FOR_EACH_PTR(call);
+    }
 
     g_hash_table_insert(function_parameters, sm->ident->name, arguments);
 }
-
-static void __match_assign(char *left, struct expression *right);
 
 static void match_func_call(struct expression *expr)
 {
@@ -62,21 +88,22 @@ static void match_func_call(struct expression *expr)
     }
 
 
-    char **args;
-    if (!(args = g_hash_table_lookup(function_parameters, fn_name))) {
-        free(fn_name);
+    char **args = g_hash_table_lookup(function_parameters, fn_name);
+    if (!args) {
+        bool free_fn = false;
+        struct expression_list_list *calls = g_hash_table_lookup(function_called, fn_name);
+        if (calls)
+            free_fn = true;
+
+        add_ptr_list(&calls, expr->args);
+        g_hash_table_insert(function_called, fn_name, calls);
+
+        if (free_fn)
+            free(fn_name);
         return;
     }
 
-    int arg_index = 0;
-    struct expression *arg;
-    FOR_EACH_PTR(expr->args, arg) {
-        if (!args[arg_index])
-            return;
-        __match_assign(alloc_string(args[arg_index]), arg);
-        arg_index++;
-    } END_FOR_EACH_PTR(arg);
-
+    assign_list(args, expr->args);
 }
 
 
@@ -577,6 +604,7 @@ void check_generic_args(int id) {
         init_call_rep(i);
 
     function_parameters = g_hash_table_new(g_str_hash, g_str_equal);
+    function_called = g_hash_table_new(g_str_hash, g_str_equal);
 
     add_hook(match_func_start, FUNC_DEF_HOOK);
     add_hook(match_func_call, FUNCTION_CALL_HOOK);
