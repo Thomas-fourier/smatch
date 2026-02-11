@@ -128,7 +128,6 @@ free_l:
         case EXPR_DEREF: {
             char *type = type_to_str(get_type(expr->deref));
             if (!type || !expr->member) {
-                free(type);
                 return NULL;
             }
             asprintf(&res, "(%s)->%s", type, expr->member->name);
