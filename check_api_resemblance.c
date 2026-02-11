@@ -114,7 +114,7 @@ static void match_func(struct expression *expr)
     if (!fn)
         return;
 
-    fprintf(out, "Calling %s in %s\n", fn, get_filename());
+    fprintf(out, "Calling %s in %s:%s\n", fn, get_filename(), get_function());
 
     if (ptr_list_size((struct ptr_list *)expr->args) <= 1) {
         free(fn);
