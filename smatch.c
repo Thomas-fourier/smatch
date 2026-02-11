@@ -21,6 +21,8 @@
 #include "smatch.h"
 #include "smatch_slist.h"
 #include "check_list.h"
+#include <signal.h>
+#include <unistd.h>
 
 char *option_debug_check;
 char *option_debug_var;
@@ -364,6 +366,16 @@ static char *get_data_dir(char *arg0)
 	return NULL;
 }
 
+void segfaulthandler(int _)
+{
+    char gcore[50];
+    sprintf(gcore, "gcore -d \"core\" %d", getpid());
+    system(gcore);
+
+    exit(1);
+}
+
+
 int main(int argc, char **argv)
 {
 	struct string_list *filelist = NULL;
@@ -380,6 +392,9 @@ int main(int argc, char **argv)
 
 	if (argc < 2)
 		help();
+
+
+    signal(SIGSEGV, segfaulthandler);
 
 	/* this gets set back to zero when we parse the first function */
 	final_pass = 1;
