@@ -5,6 +5,7 @@ CMD=$(dirname $(dirname $0))/smatch
 
 make clean
 find -name \*.c.smatch -exec rm \{\} \;
+rm -f core.*
 
 find . -type f | grep -E ".*\.c$" | rev | cut -d. -f2- | rev | awk " {printf \$0 ; print \".o\" } " | \
 	xargs make -j${NR_CPU} $ENDIAN -k CHECK="$CMD -p=kernel --file-output --succeed --generic-arg-file=$(dirname $CMD)/dma_sg_nents_test" C=1
