@@ -96,7 +96,7 @@ static void free_call_list(struct fn_call_list *call_list) {
 
 static void match_func_def(struct symbol *sm)
 {
-    if (__inline_fn)
+    if (__inline_fn || __inline_call)
         return;
 
     fprintf(out, "Defining %s with %d arguments in file s %s\n",
@@ -118,7 +118,7 @@ static bool in_header()
 
 static void match_func(struct expression *expr)
 {
-    if (__inline_fn)
+    if (__inline_fn || __inline_call)
         return;
 
     if (in_header())
