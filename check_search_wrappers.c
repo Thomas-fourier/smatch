@@ -81,6 +81,10 @@ static void match_func_call(struct expression *expr)
     if (__inline_fn || (nb_api_call >= 2))
         return;
 
+    // If we are in an implementation, ignore and continue
+    if (interseting_function(get_function()))
+        return;
+
     char *func_wrapped = expr_to_str(expr->fn);
     if (!func_wrapped)
         return;
