@@ -145,7 +145,7 @@ free_l:
 
         case EXPR_DEREF: {
             char *type = type_to_str(get_type(expr->deref));
-            if (!type || !expr->member) {
+            if (!type || !expr->member || strcmp(type, "struct ") == 0) {
                 return NULL;
             }
             asprintf(&res, "(%s)->%s", type, expr->member->name);
