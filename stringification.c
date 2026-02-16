@@ -115,6 +115,24 @@ char *stringify(struct expression *expr)
                 res = 0;
                 goto free_l;
             }
+            // Sort operands of commutative binop
+            switch (expr->op) {
+                case '+':
+                case '*':
+                case '&':
+                case '|':
+                case '^':
+                case SPECIAL_EQUAL:
+	            case SPECIAL_NOTEQUAL:
+	            case SPECIAL_LOGICAL_AND:
+	            case SPECIAL_LOGICAL_OR: {
+                    if (strcmp(r, l) > 0) {
+                        char *tmp = r;
+                        r = l;
+                        l = tmp;
+                    }
+                }
+            }
             asprintf(&res, "(%s) %c (%s)", l, expr->op, r);
             free(r);
 free_l:
