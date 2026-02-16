@@ -72,3 +72,5 @@ smatch_data/db/sm_hash
 
 # clangd
 compile_commands.json
+
+.vscode
