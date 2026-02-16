@@ -105,9 +105,23 @@ static void match_func_def(struct symbol *sm)
             get_filename());
 }
 
+static bool in_header()
+{
+    const char *filename = get_filename();
+    int filename_name = strlen(filename);
+    if (filename_name >= 2 && filename[filename_name - 1] == 'h' &&
+        filename[filename_name - 2] == '.')
+        return true;
+
+    return false;
+}
+
 static void match_func(struct expression *expr)
 {
     if (__inline_fn)
+        return;
+
+    if (in_header())
         return;
 
     char *fn = expr_to_str(expr->fn);
