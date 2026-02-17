@@ -369,7 +369,7 @@ static char *get_data_dir(char *arg0)
 void segfaulthandler(int _)
 {
     char gcore[50];
-    sprintf(gcore, "gcore -d \"core\" %d", getpid());
+    sprintf(gcore, "gcore %d", getpid());
     system(gcore);
 
     exit(1);
