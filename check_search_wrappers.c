@@ -150,7 +150,7 @@ static void match_func_call(struct expression *expr)
 
     struct statement *parent = expr_get_parent_stmt(expr);
     int nb_args = expression_list_size(expr->args);
-    char **arguments = calloc(nb_args + 1, sizeof(*arguments));
+    char **arguments = calloc(nb_func_args + 1, sizeof(*arguments));
     int nb_common_arg = 0;
     for (int i = 0; i < nb_args; i++) {
         char *arg = get_arg_from_call_expr(expr, i);
@@ -169,7 +169,7 @@ static void match_func_call(struct expression *expr)
         arguments[0] = get_arg_type_from_call(-1, api, api_func);
     if ((float)nb_common_arg / (float)nb_args > 0.45 ||
         (parent && parent->type == STMT_RETURN)) {
-        add_possible_wrapper(func_wrapped, arguments, nb_args);
+        add_possible_wrapper(func_wrapped, arguments, nb_func_args);
     }
 
     free(ret);
