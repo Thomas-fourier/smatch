@@ -50,7 +50,7 @@ static bool parse_decl(char *line, struct dsl_representation *dsl)
     return true;
 }
 
-static bool add_to_arg_pos(char *expr, char *line, int pos, bool key,
+static bool add_to_arg_pos(char *expr, char *line, int pos,
                            struct dsl_representation *dsl)
 {
     int index;
@@ -73,7 +73,6 @@ static bool parse_call(char *line, struct dsl_representation *dsl)
     char buffer[varname_size + 1];
     char *current;
     char *last;
-    bool key = false;
     int i;
     if (1 != sscanf(line, label, buffer))
         parse_error("Impossible to parse line %s", line);
@@ -98,16 +97,13 @@ static bool parse_call(char *line, struct dsl_representation *dsl)
     i = 0;
     do {
         current++;
-        if (1 == sscanf(current, " key "label, buffer))
-            key = true;
-        else if (1 != sscanf(current, label, buffer))
+        if (1 != sscanf(current, label, buffer))
             parse_error("Could not read variable in %s", current);
 
-        if (!add_to_arg_pos(buffer, line, i, key, dsl))
+        if (!add_to_arg_pos(buffer, line, i, dsl))
             return false;
         i++;
         last = current;
-        key = false;
     } while ((current = strchr(last, ',')));
 
     if (!strchr(last, ')'))
@@ -120,19 +116,16 @@ static bool parse_equal(char *line, struct dsl_representation *dsl)
 {
     char *sep;
     char ret_val[varname_size + 1];
-    bool key = false;
     if (!(sep = strchr(line, '=')))
         return false;
 
     if (!parse_call(sep + 1, dsl))
         parse_error("Weird line '%s'", line);
 
-    if (1 == sscanf(line, " key " label, ret_val))
-        key = true;
     else if (1 != sscanf(line, label, ret_val))
         parse_error("Could not parse affectation statement %s", line);
 
-    add_to_arg_pos(ret_val, line, -1, key, dsl);
+    add_to_arg_pos(ret_val, line, -1, dsl);
 
     return true;
 }
