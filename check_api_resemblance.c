@@ -28,6 +28,7 @@ struct fn_call {
     char *func;
     int nb_args;
     char **args;
+    char *macro_name;
 };
 
 DECLARE_PTR_LIST(fn_call_list, struct fn_call);
@@ -75,6 +76,9 @@ static struct fn_call *save_fn_call(struct expression *expr) {
     res->nb_args = nb_args;
     res->args = str;
     res->func = stringify(expr->fn);
+    res->macro_name = alloc_string(get_macro_name(expr->pos));
+    if (res->macro_name)
+        fprintf(stderr, "Macro %s\n", res->macro_name);
     return res;
 }
 
@@ -85,6 +89,7 @@ static void free_call_list(struct fn_call_list *call_list) {
             free_string(call->args[i]);
         free(call->args);
         free(call->func);
+        free(call->macro_name);
         free(call);
     } END_FOR_EACH_PTR(call);
     free_ptr_list(&call_list);
@@ -179,6 +184,24 @@ static score compute_distance(struct fn_call *expr_1,
     return common_args;
 }
 
+static bool macro_correlation(struct fn_call_list *calls_i, int len_i,
+                             struct fn_call_list *calls_j, int len_j)
+{
+    struct fn_call *i, *j;
+    int nb_common_macro = 0;
+
+    FOR_EACH_PTR(calls_i,i); {
+        FOR_EACH_PTR(calls_j, j) {
+            if (i->macro_name && j->macro_name &&
+                strcmp(i->macro_name, j->macro_name) == 0)
+                    nb_common_macro++;
+        } END_FOR_EACH_PTR(j);
+    } END_FOR_EACH_PTR(i);
+
+
+    return ((float) nb_common_macro * 2) / (len_i + len_j) >= 0.5;
+}
+
 static score compute_correlation(struct fn_call_list *calls_i,
                                  struct fn_call_list *calls_j)
 {
@@ -191,6 +214,10 @@ static score compute_correlation(struct fn_call_list *calls_i,
 
     len_i = ptr_list_size((struct ptr_list *)calls_i);
     len_j = ptr_list_size((struct ptr_list *)calls_j);
+
+    if (macro_correlation(calls_i, len_i, calls_j, len_j))
+        return 0;
+
 
     dists = malloc(sizeof(*dists) * len_i);
     for (ind_i = 0; ind_i < len_i; ind_i++)
