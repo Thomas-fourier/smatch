@@ -14,8 +14,8 @@ struct dsl_representation {
 };
 
 
-#define parse_error(...) do { \
-    sm_warning("Parsing error: " __VA_ARGS__);\
+#define parse_error(format, ...) do { \
+    sm_warning("Parsing error in %s: " format, filename, __VA_ARGS__);\
     exit(1);\
 } while (0)
 #define stringify_macro(x) #x
