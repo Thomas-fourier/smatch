@@ -76,7 +76,8 @@ static void match_func_end(void) {
     func_args = 0;
     free(ret);
     ret = 0;
-    free(ret_func_wrapped);
+    if (ret_func_wrapped != wrapper_found)
+        free(ret_func_wrapped);
     ret_func_wrapped = 0;
     if (wrapper_found && get_lineno() - function_start < 30)
         sm_warning_line(function_start, "Possible wrapper found %s %s",
@@ -177,6 +178,7 @@ static void match_func_call(struct expression *expr)
     if ((ret = get_arg_from_call_expr(expr, -1))) {
         free(ret_func_wrapped);
         ret_func_wrapped = func_wrapped;
+        func_wrapped = NULL;
     }
 }
 
@@ -203,7 +205,7 @@ static void match_return(struct expression *expr)
         if (interseting_function(wrapper_found, &api, &api_func))
             wrapper_parameters[0] = get_arg_type_from_call(-1, api, api_func);
 
-        ret_func_wrapped = 0;
+        ret_func_wrapped = NULL;
     }
 
     free(this_ret);
