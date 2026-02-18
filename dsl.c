@@ -94,6 +94,13 @@ static bool parse_call(char *line, struct dsl_representation *dsl)
     for (i = 0; i < dsl->nb_arg_cat; i++)
         dsl->arg_pos[dsl->nb_func_name - 1][i] = -2;
 
+    while (isspace(current[1]))
+        current++;
+
+    // If there are no arguments
+    if (current[1] == ')')
+        return true;
+
     i = 0;
     do {
         current++;
