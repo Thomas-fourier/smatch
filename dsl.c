@@ -3,6 +3,8 @@
 #include "smatch_extra.h"
 #include <ctype.h>
 
+static const char *filename;
+
 /* Tests if a string is in a list. If it is, write index with the index in the
 list if found */
 bool is_expr_in_list(const char *expr, char **list, int len, int *index)
@@ -156,8 +158,9 @@ void init_dsl(struct dsl_representation *dsl)
     return;
 }
 
-void parse_file(const char *filename, struct dsl_representation *res)
+void parse_file(const char *_filename, struct dsl_representation *res)
 {
+    filename = _filename;
     res->filename = alloc_string(filename);
     FILE *file = fopen(filename, "r");
     if (!file)
