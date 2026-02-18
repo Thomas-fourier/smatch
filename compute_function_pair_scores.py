@@ -35,7 +35,7 @@ def parse(filename):
             for fn_name, filename, function in res:
                 if fn_name not in context["call"]:
                     context["call"][fn_name] = set()
-                context["call"][fn_name].add(filename + ":" + function)
+                context["call"][fn_name].add(filename)
 
             res = re.compile(
                     r"^funct pair: ([a-zA-Z0-9_]+) ([a-zA-Z0-9_]+) ([0-9\.]+)"
