@@ -76,15 +76,15 @@ static void match_func_end(void) {
     func_args = 0;
     free(ret);
     ret = 0;
-    if (ret_func_wrapped != wrapper_found)
-        free(ret_func_wrapped);
-    ret_func_wrapped = 0;
     if (wrapper_found && get_lineno() - function_start < 30)
         sm_warning_line(function_start, "Possible wrapper found %s %s",
                         wrapper_found,
                         str_of_wrapper_params(get_function(),
                                               wrapper_parameters,
                                               nb_wrapper_parameters));
+    if (ret_func_wrapped != wrapper_found)
+        free(ret_func_wrapped);
+    ret_func_wrapped = 0;
     free(wrapper_found);
     wrapper_found = NULL;
 }
