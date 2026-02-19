@@ -77,8 +77,6 @@ static struct fn_call *save_fn_call(struct expression *expr) {
     res->args = str;
     res->func = stringify(expr->fn);
     res->macro_name = alloc_string(get_macro_name(expr->pos));
-    if (res->macro_name)
-        fprintf(stderr, "Macro %s\n", res->macro_name);
     return res;
 }
 
@@ -123,7 +121,7 @@ static bool in_header()
 
 static void match_func(struct expression *expr)
 {
-    if (__inline_fn || __inline_call)
+    if (__inline_fn)
         return;
 
     if (in_header())
