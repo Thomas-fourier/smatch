@@ -102,7 +102,7 @@ static void match_func_def(struct symbol *sm)
     if (__inline_fn || __inline_call)
         return;
 
-    fprintf(out, "Defining %s with %d arguments in file s %s\n",
+    fprintf(out, "Defining %s with %d arguments in file %s\n",
             sm->ident->name,
             ptr_list_size((struct ptr_list*)sm->ctype.base_type->arguments),
             get_filename());
