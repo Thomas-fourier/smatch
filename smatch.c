@@ -368,9 +368,19 @@ static char *get_data_dir(char *arg0)
 
 void segfaulthandler(int _)
 {
-    char gcore[50];
-    sprintf(gcore, "gcore %d", getpid());
-    system(gcore);
+	int pid;
+	char id[50];
+	char file_out[50];
+
+	pid = fork();
+	if (pid) {
+		sprintf(id, "attach %d", pid);
+		sprintf(file_out, "gcore core.%d", pid);
+		execlp("gdb", "gdb", "-nx", "--batch", "--readnever", "-ex", id,
+				"-ex", file_out, "-ex", "detach", "-ex", "quit", NULL);
+	} else {
+		sleep(10);
+	}
 
     exit(1);
 }
