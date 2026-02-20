@@ -178,7 +178,10 @@ static void match_func_call(struct expression *expr)
     if ((ret = get_arg_from_call_expr(expr, -1))) {
         free(ret_func_wrapped);
         ret_func_wrapped = func_wrapped;
-        func_wrapped = NULL;
+        if (!wrapper_parameters) {
+            wrapper_parameters = arguments;
+            nb_wrapper_parameters = nb_args;
+        }
     }
 }
 
@@ -196,8 +199,10 @@ static void match_return(struct expression *expr)
 
     if (strcmp(ret, this_ret) == 0) {
         int api, api_func;
-        if (!wrapper_parameters)
+        if (!wrapper_parameters) {
             wrapper_parameters = calloc(1, sizeof(*wrapper_parameters));
+            nb_wrapper_parameters = 1;
+        }
 
         if (!wrapper_found)
             wrapper_found = ret_func_wrapped;
