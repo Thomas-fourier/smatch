@@ -22,12 +22,12 @@ def parse(filename):
     with open(filename) as common_arg_file:
         for line in common_arg_file:
             res = re.compile(
-                    r"^Defining ([a-zA-Z0-9_]+) with ([0-9]+) in file ([a-zA-Z0-9_\-\/\.]+)"
+                    r"^Defining ([a-zA-Z0-9_]+) with ([0-9]+) arguments in file s ([a-zA-Z0-9_\-\/\.]+)"
                 ).findall(line)
             for fn_name, nb_argument, filename in res:
                 if fn_name in context["func_def"]:
-                    print(f"Error: {fn_name} defined multiple times")
-                context["func_def"][fn_name] = [nb_argument, filename]
+                    continue
+                context["func_def"][fn_name] = [int(nb_argument), filename]
 
             res = re.compile(
                     r"^Calling ([a-zA-Z0-9_]+) in ([a-zA-Z0-9_\-\/\.]+):([a-zA-Z0-9_]+)"
@@ -55,8 +55,13 @@ def parse(filename):
 def compute_scores(context):
     res = []
     for fn1 in context["pair_args"]:
+        if (fn1 not in context["func_def"]):
+            continue
         for fn2 in context["pair_args"][fn1]:
             if (len(context["pair_args"][fn1][fn2]) < 100):
+                continue
+
+            if (fn2 not in context["func_def"]):
                 continue
 
             gathered_occurrences = (len(context["call"][fn1]
