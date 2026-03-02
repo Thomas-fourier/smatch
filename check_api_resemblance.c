@@ -160,27 +160,22 @@ static void match_func(struct expression *expr)
 //               Compute distance between functions                      //
 ///////////////////////////////////////////////////////////////////////////
 
-static score compute_distance(struct fn_call *expr_1,
-                              struct fn_call *expr_2)
+static int max_nb_args(struct fn_call_list *calls)
 {
-    int nb_args_i = expr_1->nb_args, nb_args_j = expr_2->nb_args;
-    char **args_i = expr_1->args;
-    char **args_j = expr_2->args;
+    struct fn_call *i;
+    int res = 0;
 
-    int common_args = 0;
-
-    for (int i = 0; i < nb_args_i; i++) {
-        for (int j = 0; j < nb_args_j; j++) {
-            if (args_i[i] && args_j[j] &&
-                strcmp(args_i[i], args_j[j]) == 0) {
-                common_args++;
-                break;
-            }
-        }
-    }
-
-    return common_args;
+    FOR_EACH_PTR(calls, i) {
+        res = max(res, i->nb_args);
+    } END_FOR_EACH_PTR(i);
+    return res;
 }
+
+#define swap(i,j) do {                                          \
+    typeof(i) tmp = j;                                          \
+    j = i;                                                      \
+    i = tmp;                                                    \
+} while (0)
 
 static bool macro_correlation(struct fn_call_list *calls_i, int len_i,
                              struct fn_call_list *calls_j, int len_j)
@@ -200,94 +195,48 @@ static bool macro_correlation(struct fn_call_list *calls_i, int len_i,
     return ((float) nb_common_macro * 2) / (len_i + len_j) >= 0.5;
 }
 
-static score compute_correlation(struct fn_call_list *calls_i,
-                                 struct fn_call_list *calls_j)
+
+static void print_common_args(struct fn_call_list *calls_i,
+                              struct fn_call_list *calls_j)
 {
-    struct fn_call *i, *j;
-    int ind_i, ind_j;
-    score cur_max;
-    score avg_i = 0, avg_j = 0;
-    int len_i, len_j;
-    score **dists;
+    int nb_calls_i = ptr_list_size(calls_i);
+    int nb_calls_j = ptr_list_size(calls_j);
 
-    len_i = ptr_list_size((struct ptr_list *)calls_i);
-    len_j = ptr_list_size((struct ptr_list *)calls_j);
-
-    if (macro_correlation(calls_i, len_i, calls_j, len_j))
-        return 0;
-
-
-    dists = malloc(sizeof(*dists) * len_i);
-    for (ind_i = 0; ind_i < len_i; ind_i++)
-        dists[ind_i] = malloc(sizeof(**dists) * len_j);
-
-    ind_i = 0;
-    FOR_EACH_PTR(calls_i, i) {
-        ind_j = 0;
-        FOR_EACH_PTR(calls_j, j) {
-            dists[ind_i][ind_j] = compute_distance(i, j);
-            ind_j++;
-        } END_FOR_EACH_PTR(j);
-        ind_i++;
-    } END_FOR_EACH_PTR(i);
-
-    ind_i = 0;
-    FOR_EACH_PTR(calls_i,i); {
-        cur_max = 0;
-        for (ind_j = 0; ind_j < len_j; ind_j++)
-            cur_max = max(cur_max, dists[ind_i][ind_j]);
-        avg_i += cur_max;
-        ind_i++;
-    } END_FOR_EACH_PTR(i);
-
-    ind_j = 0;
-    FOR_EACH_PTR(calls_j, j) {
-        cur_max = 0;
-        for (ind_i = 0; ind_i < len_i; ind_i++)
-            cur_max = max(cur_max, dists[ind_i][ind_j]);
-        avg_j += cur_max;
-        ind_j++;
-    } END_FOR_EACH_PTR(j);
-
-
-    for (ind_i = 0; ind_i < len_i; ind_i++)
-        free(dists[ind_i]);
-    free(dists);
-
-
-    return (avg_i / (score)len_i + avg_j / (score)len_j) / 2;
-}
-
-static void add_to_dist(char *fun_i, char *fun_j, score dist, score *distances,
-                        char **func_pair)
-{
-    if (dist < distances[nb_max_pair - 1])
+    if (macro_correlation(calls_i, nb_calls_i, calls_j, nb_calls_j))
         return;
 
-    int j = nb_max_pair - 1, i = 0;
-    while (dist < distances[i] && i < nb_max_pair)
-        i++;
-
-    free(func_pair[j]);
-
-    while (j >= i) {
-        distances[j] = distances[j - 1];
-        func_pair[j] = func_pair[j - 1];
-        j--;
+    if (nb_calls_i < nb_calls_j) {
+        swap(calls_i, calls_j);
+        swap(nb_calls_i, nb_calls_j);
     }
 
-    distances[i] = dist;
+    struct fn_call *i, *j;
+    int nb_args_i = max_nb_args(calls_i);
+    int nb_args_j = max_nb_args(calls_j);
+    int nb_func_same_arg;
 
-    // Order pairs of functions because h_map doesn't always return them in the
-    // same order.
-    if (strcmp(fun_i,fun_j) < 0) {
-        char* temp;
-        temp = fun_i;
-        fun_i = fun_j;
-        fun_j = temp;
+    for (int arg_index_i = 0; arg_index_i < nb_args_i; arg_index_i ++) {
+        for (int arg_index_j = 0; arg_index_j < nb_args_j; arg_index_j ++) {
+            nb_func_same_arg = 0;
+            FOR_EACH_PTR(calls_i, i) {
+                FOR_EACH_PTR(calls_j, j) {
+                    if (arg_index_i < i->nb_args && arg_index_j < j->nb_args &&
+                        i->args[arg_index_i] && j->args[arg_index_j] &&
+                        0 == strcmp(i->args[arg_index_i],
+                                    j->args[arg_index_j])) {
+                        nb_func_same_arg++;
+                        break;
+                    }
+                } END_FOR_EACH_PTR(j);
+            } END_FOR_EACH_PTR(i);
+            if (nb_func_same_arg)
+                fprintf(out, "Same argument: %s.%d %s.%d %f\n",
+                        calls_i->list[0]->func, arg_index_i,
+                        calls_j->list[0]->func, arg_index_j,
+                        (float)nb_func_same_arg /(float)nb_calls_i);
+        }
     }
 
-    asprintf(&func_pair[i], "%s %s", fun_i, fun_j);
 }
 
 static void match_file_end()
@@ -295,11 +244,7 @@ static void match_file_end()
     GHashTableIter i, j;
     char *fun_i, *fun_j;
     struct fn_call_list *calls_i, *calls_j;
-    score distances[nb_max_pair];
-    char *func_pair[nb_max_pair];
 
-    memset(distances, 0xff, nb_max_pair * sizeof(*distances));
-    memset(func_pair, 0x00, nb_max_pair * sizeof(*func_pair));
 
     g_hash_table_iter_init(&i, function_calls);
 
@@ -310,18 +255,11 @@ static void match_file_end()
         g_hash_table_iter_init(&j, function_calls);
         while (g_hash_table_iter_next(&j, (void **)&fun_j,
                                       (void **)&calls_j)) {
-            score dis = compute_correlation(calls_i, calls_j);
-            if (dis > 0.5)
-                add_to_dist(fun_i, fun_j, dis, distances, func_pair);
+            print_common_args(calls_i, calls_j);
         }
 
         free(fun_i);
         free_call_list(calls_i);
-    }
-
-    for (int i = 0; i < nb_max_pair && func_pair[i]; i++) {
-        fprintf(out, "funct pair: %s %f\n", func_pair[i], distances[i]);
-        free(func_pair[i]);
     }
 }
 
