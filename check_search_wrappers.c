@@ -176,7 +176,8 @@ static void match_func_call(struct expression *expr)
     free(ret);
 
     if ((ret = get_arg_from_call_expr(expr, -1))) {
-        free(ret_func_wrapped);
+        if (ret_func_wrapped != wrapper_found)
+            free(ret_func_wrapped);
         ret_func_wrapped = func_wrapped;
         if (!wrapper_parameters) {
             wrapper_parameters = arguments;
