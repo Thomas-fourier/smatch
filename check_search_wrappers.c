@@ -180,7 +180,7 @@ static void match_func_call(struct expression *expr)
         ret_func_wrapped = func_wrapped;
         if (!wrapper_parameters) {
             wrapper_parameters = arguments;
-            nb_wrapper_parameters = nb_args;
+            nb_wrapper_parameters = nb_func_args;
         }
     }
 }
