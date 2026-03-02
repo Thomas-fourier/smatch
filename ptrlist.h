@@ -38,7 +38,7 @@ extern void sort_list(struct ptr_list **, int (*)(const void *, const void *));
 
 extern void concat_ptr_list(struct ptr_list *a, struct ptr_list **b);
 extern void copy_ptr_list(struct ptr_list **h, struct ptr_list *t);
-extern int ptr_list_size(struct ptr_list *);
+extern int __ptr_list_size(struct ptr_list *);
 extern bool ptr_list_empty(const struct ptr_list *head);
 extern bool ptr_list_multiple(const struct ptr_list *head);
 extern int linearize_ptr_list(struct ptr_list *, void **, int);
@@ -88,6 +88,13 @@ extern void __free_ptr_list(struct ptr_list **);
 		struct ptr_list* head = (struct ptr_list*)(list);	\
 		CHECK_TYPE(list, *array);				\
 		linearize_ptr_list(head, (void**)array, size);		\
+	})
+
+#define ptr_list_size(lst) ({								\
+		PTRLIST_TYPE(lst) _;								\
+		(void)_;											\
+		struct ptr_list* head = (struct ptr_list*)(lst);	\
+		__ptr_list_size(head);								\
 	})
 
 ////////////////////////////////////////////////////////////////////////

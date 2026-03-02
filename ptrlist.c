@@ -36,7 +36,7 @@ __ALLOCATOR(struct ptr_list, "rl ptr list", rl_ptrlist);
 // get the size of a ptrlist
 // @head: the head of the list
 // @return: the size of the list given by @head.
-int ptr_list_size(struct ptr_list *head)
+int __ptr_list_size(struct ptr_list *head)
 {
 	int nr = 0;
 
