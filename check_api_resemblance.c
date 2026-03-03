@@ -104,7 +104,7 @@ static void match_func_def(struct symbol *sm)
 
     fprintf(out, "Defining %s with %d arguments in file %s\n",
             sm->ident->name,
-            ptr_list_size((struct ptr_list*)sm->ctype.base_type->arguments),
+            ptr_list_size(sm->ctype.base_type->arguments),
             get_filename());
 }
 
@@ -127,7 +127,7 @@ static void match_func(struct expression *expr)
     if (in_header())
         return;
 
-    char *fn = expr_to_str(expr->fn);
+    char *fn = stringify(expr->fn);
     if (!fn)
         return;
 
