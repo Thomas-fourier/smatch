@@ -17,20 +17,20 @@ static struct calls_rep *all_calls;
 ////////////////////////////////////////////////////////////////////////////////
 // 			Function definition
 ////////////////////////////////////////////////////////////////////////////////
-DECLARE_PTR_LIST(expression_list_list, struct expression_list);
+DECLARE_PTR_LIST(string_list_list, struct string_list);
 // Function name to parameters list
 static GHashTable *function_parameters = NULL;
 // Function name to arguments of call instances struct expression_list_list
 static GHashTable *function_called = NULL;
 
-static void __match_assign(char *left, struct expression *right);
+static void __match_assign(char *left, char *right);
 
-static void assign_list(char **args, struct expression_list *params)
+static void assign_list(char **args, struct string_list *params)
 {
     int arg_index = 0;
-    struct expression *arg;
+    char *arg;
     FOR_EACH_PTR(params, arg) {
-        if (!args[arg_index])
+        if (!args[arg_index] || !arg)
             return;
         __match_assign(alloc_string(args[arg_index]), arg);
         arg_index++;
@@ -65,9 +65,9 @@ static void match_func_start(struct symbol *sm)
     arguments[nb_func_args - 1] = NULL;
 
 
-    struct expression_list_list *calls = g_hash_table_lookup(function_called, sm->ident->name);
+    struct string_list_list *calls = g_hash_table_lookup(function_called, sm->ident->name);
     if (calls) {
-        struct expression_list *call;
+        struct string_list *call;
         FOR_EACH_PTR(calls, call) {
             assign_list(arguments, call);
         } END_FOR_EACH_PTR(call);
@@ -76,8 +76,23 @@ static void match_func_start(struct symbol *sm)
     g_hash_table_insert(function_parameters, sm->ident->name, arguments);
 }
 
+static struct string_list *call_to_string_list(struct expression *expr)
+{
+    struct string_list *res = NULL;
+    struct expression *arg;
+    char *arg_str;
+    
+    FOR_EACH_PTR(expr->args, arg) {
+        arg_str = stringify(arg);
+        add_ptr_list(&res, arg_str);
+    } END_FOR_EACH_PTR(arg);
+
+    return res;
+}
+
 static void match_func_call(struct expression *expr)
 {
+    struct string_list *call_expr;
     char *fn_name = expr_to_str(expr->fn);
     if (!fn_name)
         return;
@@ -90,15 +105,16 @@ static void match_func_call(struct expression *expr)
         }
     }
 
+    call_expr = call_to_string_list(expr);
 
     char **args = g_hash_table_lookup(function_parameters, fn_name);
     if (!args) {
         bool free_fn = false;
-        struct expression_list_list *calls = g_hash_table_lookup(function_called, fn_name);
+        struct string_list_list *calls = g_hash_table_lookup(function_called, fn_name);
         if (calls)
             free_fn = true;
 
-        add_ptr_list(&calls, expr->args);
+        add_ptr_list(&calls, call_expr);
         g_hash_table_insert(function_called, fn_name, calls);
 
         if (free_fn)
@@ -106,7 +122,7 @@ static void match_func_call(struct expression *expr)
         return;
     }
 
-    assign_list(args, expr->args);
+    assign_list(args, call_expr);
 }
 
 
@@ -454,38 +470,22 @@ static void match_func(const char *fn_name, struct expression *expr, void *_call
         push_line_or_free(other_array, fn_name, calls);
 }
 
-static void __match_assign(char *left, struct expression *right)
+static void __match_assign(char *left, char *right)
 {
-    // If one of the side is constant
-    sval_t TMP;
-
-    if (right->type == 128)
-        return;
-    if (get_value(right, &TMP)) {
-        constant_assign(left, TMP.value);
-        goto free_left;
-    }
-
-    char *right_str = stringify(right);
-    if (!right_str)
-        goto free_left;
-
-
-    if (str_is_constant(right_str)) {
+    if (str_is_constant(right)) {
         int right_int;
-        if (1 != sscanf(right_str, "%d", &right_int)) {
-            sm_error("%s scan as int failed", right_str);
+        if (1 != sscanf(right, "%d", &right_int)) {
+            sm_error("%s scan as int failed", right);
             goto free_right;
         }
         constant_assign(left, right_int);
         goto free_right;
     }
 
-    union_(right_str, left);
+    union_(right, left);
 
 free_right:
-    free_string(right_str);
-free_left:
+    free_string(right);
     free_string(left);
     return;
 }
@@ -504,7 +504,13 @@ static void match_assign(struct expression *expr)
     if (!left_str)
         return;
 
-    __match_assign(left_str, expr->right);
+    char *right_str = stringify(expr->right);
+    if (!right_str) {
+        free(left_str);
+        return;
+    }
+
+    __match_assign(left_str, right_str);
 }
 
 static bool exists_similar_call(bool *checked, int index,
