@@ -225,9 +225,11 @@ static void print_common_args(struct fn_call_list *calls_i,
                         0 == strcmp(i->args[arg_index_i],
                                     j->args[arg_index_j])) {
                         nb_func_same_arg++;
-                        break;
+                        goto loop_exit;
                     }
                 } END_FOR_EACH_PTR(j);
+loop_exit:
+                NULL;
             } END_FOR_EACH_PTR(i);
             if (nb_func_same_arg)
                 fprintf(out, "Same argument: %s.%d %s.%d %f\n",
