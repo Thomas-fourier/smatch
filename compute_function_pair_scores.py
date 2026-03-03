@@ -22,7 +22,7 @@ def parse(filename):
     with open(filename) as common_arg_file:
         for line in common_arg_file:
             res = re.compile(
-                    r"^Defining ([a-zA-Z0-9_]+) with ([0-9]+) arguments in file s ([a-zA-Z0-9_\-\/\.]+)"
+                    r"^Defining ([a-zA-Z0-9_]+) with ([0-9]+) arguments in file ([a-zA-Z0-9_\-\/\.]+)"
                 ).findall(line)
             for fn_name, nb_argument, filename in res:
                 if fn_name in context["func_def"]:
