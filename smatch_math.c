@@ -1848,6 +1848,9 @@ int get_value(struct expression *expr, sval_t *res_sval)
 	sval_t sval = {};
 	int i;
 
+	if (!expr || expr->type >= NUM_EXPRESSION)
+		return 0;
+
 	if (get_value_literal(expr, res_sval))
 		return 1;
 
