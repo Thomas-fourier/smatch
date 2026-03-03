@@ -41,8 +41,10 @@ def parse(filename):
                     r"^Same argument: ([a-zA-Z0-9_]+).([0-9]+) ([a-zA-Z0-9_]+).([0-9]+) ([0-9\.]+)"
                 ).findall(line)
             for fn1, arg1, fn2, arg2, score in res:
+                arg1, arg2 = int(arg1), int(arg2)
                 if fn1 > fn2:
                     fn1, fn2 = fn2, fn1
+                    arg1, arg2 = arg2, arg1
                 if (fn1,fn2) not in context["pair_args"]:
                     context["pair_args"][fn1, fn2] = {}
                 if (arg1, arg2) not in context["pair_args"][fn1, fn2]:
