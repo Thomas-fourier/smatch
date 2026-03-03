@@ -53,9 +53,57 @@ def parse(filename):
 
     return context
 
+def create_line(fn, args):
+    res = ""
+    if args[0] != "_":
+        res += args[0]
+        res += " = "
+    
+    res += fn
+    res += "("
+
+    for i in range(1, len(args)):
+        res += args[i]
+        res += ", "
+    
+    res = res[:-2]
+    res += ")"
+    return res
+
+def generate_one_file(fn1, fn2, args, context):
+    args1 = ["_"] * (context["func_def"][fn1][0] + 1)
+    args2 = ["_"] * (context["func_def"][fn2][0] + 1)
+
+    arg_decl = ""
+    i = 0
+
+    for arg1, arg2 in args:
+        this_arg = "var" + str(i)
+        arg_decl += "var " + this_arg + "\n"
+        i += 1
+
+        args1[arg1] = this_arg
+        args2[arg2] = this_arg
+
+    arg_decl += "\n\n"
+    arg_decl += create_line(fn1, args1)
+    arg_decl += "\n"
+    arg_decl += create_line(fn2, args2)
+    arg_decl += "\n"
+
+    return arg_decl
+
+
+def generate_file(functions, context):
+    for fn1, fn2 in functions:
+        # TODO: write to a file
+        contents = generate_one_file(fn1, fn2, functions[fn1, fn2], context)
+    return
+
 
 def compute_scores(context):
     res = []
+    functions = {}
     for fn1, fn2 in context["pair_args"]:
 
         if (fn1 not in context["call"] or fn2 not in context["call"]):
@@ -75,8 +123,16 @@ def compute_scores(context):
             if gathered_occurrences_args < 100:
                 continue
 
-            res.append([score, fn1, arg1, fn2, arg2])
+            if score < 0.75:
+                continue
 
+            res.append([score, fn1, arg1, fn2, arg2])
+            if (fn1, fn2) not in functions:
+                functions[fn1, fn2] = []
+
+            functions[fn1, fn2].append([arg1, arg2])
+
+    generate_file(functions, context)
     res.sort()
     return res
 
