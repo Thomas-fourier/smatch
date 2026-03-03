@@ -38,44 +38,42 @@ def parse(filename):
                 context["call"][fn_name].add(filename)
 
             res = re.compile(
-                    r"^funct pair: ([a-zA-Z0-9_]+) ([a-zA-Z0-9_]+) ([0-9\.]+)"
+                    r"^Same argument: ([a-zA-Z0-9_]+).([0-9]+) ([a-zA-Z0-9_]+).([0-9]+) ([0-9\.]+)"
                 ).findall(line)
-            for fn1, fn2, score in res:
+            for fn1, arg1, fn2, arg2, score in res:
                 if fn1 > fn2:
                     fn1, fn2 = fn2, fn1
-                if fn1 not in context["pair_args"]:
-                    context["pair_args"][fn1] = {}
-                if fn2 not in context["pair_args"][fn1]:
-                    context["pair_args"][fn1][fn2] = []
-                context["pair_args"][fn1][fn2].append(float(score))
-        
+                if (fn1,fn2) not in context["pair_args"]:
+                    context["pair_args"][fn1, fn2] = {}
+                if (arg1, arg2) not in context["pair_args"][fn1, fn2]:
+                    context["pair_args"][fn1, fn2][arg1, arg2] = []
+                context["pair_args"][fn1, fn2][arg1, arg2].append(float(score))
+
     return context
 
 
 def compute_scores(context):
     res = []
-    for fn1 in context["pair_args"]:
-        if (fn1 not in context["func_def"]):
+    for fn1, fn2 in context["pair_args"]:
+
+        if (fn1 not in context["call"] or fn2 not in context["call"]):
             continue
-        for fn2 in context["pair_args"][fn1]:
-            if (len(context["pair_args"][fn1][fn2]) < 100):
+
+        gathered_occurrences = (len(context["call"][fn1]
+                                    .intersection(context["call"][fn2])))
+        occurrence_corelation = ( gathered_occurrences /
+                                max(len(context["call"][fn1]), len(context["call"][fn2])))
+        if gathered_occurrences < 100 or occurrence_corelation < 0.75:
+            continue
+
+        for arg1, arg2 in context["pair_args"][fn1, fn2]:
+            gathered_occurrences_args = len(context["pair_args"][fn1, fn2][arg1, arg2])
+
+            score = np.average(context["pair_args"][fn1, fn2][arg1, arg2]) * occurrence_corelation
+            if gathered_occurrences_args < 100:
                 continue
 
-            if (fn2 not in context["func_def"]):
-                continue
-
-            gathered_occurrences = (len(context["call"][fn1]
-                                        .intersection(context["call"][fn2])))
-            gathered_occurrences_args = len(context["pair_args"][fn1][fn2])
-            occurrence_corelation = ( gathered_occurrences /
-                                    max(len(context["call"][fn1]), len(context["call"][fn2])))
-            score = np.average(context["pair_args"][fn1][fn2]) * occurrence_corelation
-            if fn2 == "dma_mapping_error" and fn1 == "dma_map_single_attrs":
-                print(gathered_occurrences, gathered_occurrences_args, occurrence_corelation, score)
-            if occurrence_corelation < 0.75 or gathered_occurrences_args < 100:
-                continue
-            res.append([score, fn1, fn2])
-
+            res.append([score, fn1, arg1, fn2, arg2])
 
     res.sort()
     return res
@@ -88,7 +86,7 @@ if __name__ == "__main__":
     file.close()
 
 
-    if (os.path.isfile(pkl_file)):
+    if os.path.isfile(pkl_file):
         print("Found Pickle file, using that.")
         file = open(pkl_file, 'rb')
         context = pickle.load(file)
