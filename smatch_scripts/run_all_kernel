@@ -3,7 +3,9 @@
 NR_CPU=`nproc`
 SMATCH_DIR=$(dirname $(dirname $0))
 CMD=$SMATCH_DIR/smatch
-API_SPECS=$SMATCH_DIR/api_spec
+if [ -z $API_SPEC ]; then
+	API_SPECS=$SMATCH_DIR/api_spec
+fi
 
 find -name \*.c.smatch -exec rm \{\} \;
 make clean
