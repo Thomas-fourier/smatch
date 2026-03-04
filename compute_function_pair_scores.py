@@ -4,6 +4,7 @@ import numpy as np
 import pickle
 import hashlib
 import os
+from pathlib import Path
 
 
 def parse(filename):
@@ -95,9 +96,16 @@ def generate_one_file(fn1, fn2, args, context):
 
 
 def generate_file(functions, context):
+    if len(sys.argv) > 2:
+        folder = sys.argv[2]
+    else:
+        folder = os.path.dirname(sys.argv[0]) / Path("generated_spec")
+    os.mkdir(folder)
     for fn1, fn2 in functions:
-        # TODO: write to a file
-        contents = generate_one_file(fn1, fn2, functions[fn1, fn2], context)
+        filename = folder / Path(fn1)
+        with open(filename, "w") as file:
+            contents = generate_one_file(fn1, fn2, functions[fn1, fn2], context)
+            file.write(contents)
     return
 
 
