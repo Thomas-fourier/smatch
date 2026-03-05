@@ -368,23 +368,6 @@ static void print_arg_name(FILE *out, struct calls_rep *calls)
     fprintf(out, "\n\n");
 }
 
-static void print_arg_pos(FILE *out, const struct dsl_representation *dsl)
-{
-    fprintf(out,"Arg positions:\t");
-    for (int j = 0; dsl->arg_cat[j]; j++) 
-        fprintf(out, "%16s", dsl->arg_cat[j]);
-    fprintf(out, "\n");
-
-        for (int i = 0; dsl->func_name[i]; i++) {
-        fprintf(out, "%24s\t", dsl->func_name[i]);
-
-        for (int j = 0; dsl->arg_cat[j]; j++)
-            fprintf(out, "%d\t\t", dsl->arg_pos[i][j]);
-        fprintf(out, "\n");
-    }
-    fprintf(out, "\n");
-}
-
 // Assume that there is only one ternary pattern in the call
 static char **split_array_if_ternary(char **new_arg_name,
                                      struct calls_rep *calls)
@@ -591,7 +574,7 @@ static void init_call_rep(int i) {
     struct calls_rep *calls = &all_calls[i];
     parse_file(filename, (struct dsl_representation *)&calls->dsl);
 
-    if (false) print_arg_pos(stdout, &calls->dsl);
+    if (false) print_dsl_representation(stdout, &calls->dsl);
     
     init_array((void ***)&calls->arg_name, &calls->nb_arg_name);
     calls->arg_name_function = calloc(1, sizeof(*calls->arg_name_function));

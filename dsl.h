@@ -26,6 +26,7 @@ bool is_expr_in_list(const char *expr, char **list, int len, int *index);
 void push_array(void ***array, int *len, void *elt);
 void init_array(void ***list, int *len);
 void parse_file(const char *filename, struct dsl_representation *dsl);
+void print_dsl_representation(FILE *out, const struct dsl_representation *dsl);
 
 
 ////////////////////////////////////////////////////////////////////////////////
