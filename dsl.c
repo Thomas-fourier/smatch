@@ -186,3 +186,21 @@ void parse_file(const char *_filename, struct dsl_representation *res)
     return;
 }
 
+void print_dsl_representation(FILE *out, const struct dsl_representation *dsl)
+{
+    fprintf(out, "%s\n", dsl->filename);
+    fprintf(out,"Arg positions:\t");
+    for (int j = 0; dsl->arg_cat[j]; j++) 
+        fprintf(out, "%16s", dsl->arg_cat[j]);
+    fprintf(out, "\n");
+
+        for (int i = 0; dsl->func_name[i]; i++) {
+        fprintf(out, "%24s\t", dsl->func_name[i]);
+
+        for (int j = 0; dsl->arg_cat[j]; j++)
+            fprintf(out, "%d\t\t", dsl->arg_pos[i][j]);
+        fprintf(out, "\n");
+    }
+    fprintf(out, "\n");
+}
+
