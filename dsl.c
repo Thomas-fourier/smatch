@@ -33,12 +33,27 @@ void init_array(void ***list, int *len) {
     *len = 0;
 }
 
-static bool parse_decl(char *line, struct dsl_representation *dsl)
+static bool parse_decl(const char *line, struct dsl_representation *dsl)
 {
     char buffer[varname_size + 1];
+    const char *var_pos;
     int i;
-    if (1 != sscanf(line, "var "label, buffer))
+    var_pos = strstr(line, "var");
+    if (!var_pos)
         return false;
+
+    for (;line < var_pos; line++) {
+        if (!isspace(*line))
+            return false;
+    }
+    line += 3;
+    if (!isspace(*line))
+        return false;
+
+    while (isspace(*line))
+        line++;
+
+    sscanf(line - 1, label, buffer);
 
     if (is_expr_in_list(buffer, dsl->arg_cat, dsl->nb_arg_cat, &i))
         parse_error("Double declaration of %s", buffer);
