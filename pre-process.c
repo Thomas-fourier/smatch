@@ -206,7 +206,7 @@ static void expand_include_level(struct token *token)
 	replace_with_integer(token, include_level - 1);
 }
 
-static int expand_one_symbol(struct token **list)
+static inline int expand_one_symbol(struct token **list)
 {
 	struct token *token = *list;
 	struct symbol *sym;
