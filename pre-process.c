@@ -650,7 +650,7 @@ static struct token **substitute(struct token **list, const struct token *body, 
 
 	for (; !eof_token(body); body = body->next) {
 		struct token *added, *arg;
-		struct token **tail;
+		struct token **inserted_at;
 		const struct token *t;
 
 		switch (token_type(body)) {
@@ -674,7 +674,6 @@ static struct token **substitute(struct token **list, const struct token *body, 
 			}
 			added = dup_token(t, base_pos);
 			token_type(added) = TOKEN_SPECIAL;
-			tail = &added->next;
 			break;
 
 		case TOKEN_MACRO_ARGUMENT:
@@ -686,13 +685,28 @@ static struct token **substitute(struct token **list, const struct token *body, 
 					state = Placeholder;
 				continue;
 			}
+			if (state == Concat && merge(containing_token(list), arg)) {
+				arg = arg->next;
+				if (eof_token(arg)) {
+					// merged the sole token in
+					state = Normal;
+					continue;
+				}
+				inserted_at = NULL;
+			} else {
+				inserted_at = list;
+			}
 			if (body->argnum & (1 << ARGNUM_CONSUME))
-				tail = move_into(&added, arg);
+				list = move_into(list, arg);
 			else
-				tail = copy(&added, arg);
-			added->pos.newline = body->pos.newline;
-			added->pos.whitespace = body->pos.whitespace;
-			break;
+				list = copy(list, arg);
+			if (inserted_at) {
+				struct token *p = *inserted_at;
+				p->pos.whitespace = body->pos.whitespace;
+				p->pos.newline = 0;
+			}
+			state = Normal;
+			continue;
 
 		case TOKEN_CONCAT:
 			if (state == Placeholder)
@@ -703,7 +717,6 @@ static struct token **substitute(struct token **list, const struct token *body, 
 
 		default:
 			added = dup_token(body, base_pos);
-			tail = &added->next;
 			break;
 		}
 
@@ -711,17 +724,12 @@ static struct token **substitute(struct token **list, const struct token *body, 
 		 * if we got to doing real concatenation, we already have
 		 * added something into the list, so containing_token() is OK.
 		 */
-		if (state == Concat && merge(containing_token(list), added)) {
-			*list = added->next;
-			if (tail != &added->next)
-				list = tail;
-		} else {
+		if (state != Concat || !merge(containing_token(list), added)) {
 			*list = added;
-			list = tail;
+			list = &added->next;
 		}
 		state = Normal;
 	}
-	*list = &eof_token_entry;
 	return list;
 }
 
