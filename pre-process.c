@@ -682,34 +682,14 @@ static struct token **substitute(struct token **list, const struct token *body, 
 	expanding->tainted = 1;
 
 	for (; !eof_token(body); body = body->next) {
-		struct token *added, *arg;
-		struct token **inserted_at;
-		const struct token *t;
+		struct token *added;
 
-		switch (token_type(body)) {
-		case TOKEN_GNU_KLUDGE:
-			/*
-			 * GNU kludge: if we had <comma>##<vararg>, behaviour
-			 * depends on whether we had enough arguments to have
-			 * a vararg.  If we did, ## is just ignored.  Otherwise
-			 * both , and ## are ignored.  Worse, there can be
-			 * an arbitrary number of ##<arg> in between; if all of
-			 * those are empty, we act as if they hadn't been there,
-			 * otherwise we act as if the kludge didn't exist.
-			 */
-			t = body;
-			if (handle_kludge(&body, args)) {
-				if (state == Concat)
-					state = Normal;
-				else
-					state = Placeholder;
-				continue;
-			}
-			added = dup_token(t, base_pos);
-			token_type(added) = TOKEN_SPECIAL;
-			break;
+		if (token_type(body) <= TOKEN_LAST_NORMAL) {
+			added = dup_token(body, base_pos);
+		} else if (token_type(body) == TOKEN_MACRO_ARGUMENT) {
+			struct token **inserted_at;
+			struct token *arg;
 
-		case TOKEN_MACRO_ARGUMENT:
 			arg = do_argument(body, args, expanding);
 			if (!arg || eof_token(arg)) {
 				if (state == Concat)
@@ -740,15 +720,33 @@ static struct token **substitute(struct token **list, const struct token *body, 
 			}
 			state = Normal;
 			continue;
-
-		case TOKEN_CONCAT:
+		} else if (token_type(body) == TOKEN_CONCAT) {
 			if (state == Placeholder)
 				state = Normal;
 			else
 				state = Concat;
 			continue;
-
-		case TOKEN_VA_OPT:
+		} else if (token_type(body) == TOKEN_GNU_KLUDGE) {
+			const struct token *t = body;
+			/*
+			 * GNU kludge: if we had <comma>##<vararg>, behaviour
+			 * depends on whether we had enough arguments to have
+			 * a vararg.  If we did, ## is just ignored.  Otherwise
+			 * both , and ## are ignored.  Worse, there can be
+			 * an arbitrary number of ##<arg> in between; if all of
+			 * those are empty, we act as if they hadn't been there,
+			 * otherwise we act as if the kludge didn't exist.
+			 */
+			if (handle_kludge(&body, args)) {
+				if (state == Concat)
+					state = Normal;
+				else
+					state = Placeholder;
+				continue;
+			}
+			added = dup_token(t, base_pos);
+			token_type(added) = TOKEN_SPECIAL;
+		} else if (token_type(body) == TOKEN_VA_OPT) {
 			// entering va_opt?
 			if (!is_end_va_opt(body)) {
 				if (skip_va_opt(args, expanding)) {
@@ -774,9 +772,7 @@ static struct token **substitute(struct token **list, const struct token *body, 
 			}
 			list = saved_list;
 			state = saved_state;
-			break;
-
-		case TOKEN_VA_OPT_STR:
+		} else if (token_type(body) == TOKEN_VA_OPT_STR) {
 			// entering #va_opt
 			if (!skip_va_opt(args, expanding)) {
 				saved_state = state;
@@ -787,10 +783,8 @@ static struct token **substitute(struct token **list, const struct token *body, 
 				continue;
 			}
 			added = empty_string(base_pos);
-			break;
-
-		default:
-			added = dup_token(body, base_pos);
+		} else {
+			sparse_error(body->pos, "bad token type(%d)", token_type(body));
 			break;
 		}
 
