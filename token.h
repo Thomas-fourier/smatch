@@ -100,8 +100,6 @@ enum token_type {
 	TOKEN_STREAMBEGIN,
 	TOKEN_STREAMEND,
 	TOKEN_MACRO_ARGUMENT,
-	TOKEN_STR_ARGUMENT,
-	TOKEN_QUOTED_ARGUMENT,
 	TOKEN_CONCAT,
 	TOKEN_GNU_KLUDGE,
 	TOKEN_UNTAINT,
@@ -177,8 +175,18 @@ struct argcount {
 	unsigned str:10;
 };
 
+enum arg_kind {
+	ARG_QUOTED = 0,
+	ARG_NORMAL = 1,
+	ARG_STR = 2,
+};
+
 enum {
-	ARGNUM_BITS_STOLEN
+	ARGNUM_BITS_STOLEN = 2
+};
+
+enum {
+	ARGNUM_KIND_MASK = 3
 };
 
 /*
