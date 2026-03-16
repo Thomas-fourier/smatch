@@ -255,7 +255,7 @@ static void expand_list(struct token **list)
 
 static void preprocessor_line(struct stream *stream, struct token **line);
 
-static struct token *collect_arg(struct token *prev, int vararg, const struct position *pos)
+static struct token *collect_arg(struct token *prev, bool vararg, const struct position *pos)
 {
 	struct stream *stream = input_streams + prev->pos.stream;
 	struct token **p = &prev->next;
@@ -314,76 +314,66 @@ struct arg {
 
 static int collect_arguments(struct token *start, struct symbol *sym, struct arg *args, struct token *what)
 {
+	int fixed = sym->fixed_args;
+	bool vararg = sym->vararg;
 	struct token *arglist = sym->arglist;
-	int wanted = sym->fixed_args + sym->vararg;
-	struct token *next = NULL;
-	int count = 0;
+	struct argcount *p;
+	struct token *next = NULL, *v = NULL;
+	const char *err;
+	int commas;
 
 	arglist = arglist->next;	/* skip counter */
 
-	if (!wanted) {
-		next = collect_arg(start, 0, &what->pos);
-		if (eof_token(next))
+	for (commas = 0; commas < fixed; commas++) {
+		next = collect_arg(start, false, &what->pos);
+		if (token_type(next) != TOKEN_SPECIAL)
 			goto Eclosing;
-		if (!eof_token(start->next) || !match_op(next, ')')) {
-			count++;
-			goto Emany;
-		}
-	} else {
-		for (count = 0; count < wanted; count++) {
-			struct argcount *p = &arglist->next->count;
-			next = collect_arg(start, p->vararg, &what->pos);
-			if (eof_token(next))
-				goto Eclosing;
-			if (p->vararg && wanted == 1 && eof_token(start->next))
-				break;
-			arglist = arglist->next->next;
-			args[count].arg = start->next;
-			args[count].n_normal = p->normal;
-			args[count].n_quoted = p->quoted;
-			args[count].n_str = p->str;
-			if (match_op(next, ')')) {
-				count++;
-				break;
-			}
-			start = next;
-		}
-		if (count == wanted && !match_op(next, ')'))
-			goto Emany;
-		if (count == wanted - 1) {
-			struct argcount *p = &arglist->next->count;
-			if (!p->vararg)
+		p = &arglist->next->count;
+		arglist = arglist->next->next;
+		args[commas].arg = start->next;
+		args[commas].n_normal = p->normal;
+		args[commas].n_quoted = p->quoted;
+		args[commas].n_str = p->str;
+		if (!match_op(next, ',')) {
+			if (commas < fixed - 1)
 				goto Efew;
-			args[count].arg = NULL;
-			args[count].n_normal = p->normal;
-			args[count].n_quoted = p->quoted;
-			args[count].n_str = p->str;
+			break;
 		}
-		if (count < wanted - 1)
-			goto Efew;
+		start = next;
+	}
+	if (commas == fixed) {
+		next = collect_arg(start, true, &what->pos);
+		if (token_type(next) != TOKEN_SPECIAL)
+			goto Eclosing;
+		v = start->next;
+		if (fixed == 0 && eof_token(v))
+			v = NULL;
+	}
+	if (v && !vararg)
+		goto Eexcess;
+	if (vararg) {
+		p = &arglist->next->count;
+		args[fixed].arg = v;
+		args[fixed].n_normal = p->normal;
+		args[fixed].n_quoted = p->quoted;
+		args[fixed].n_str = p->str;
 	}
 	what->next = next->next;
 	return 1;
 
 Efew:
-	sparse_error(what->pos, "macro \"%s\" requires %d arguments, but only %d given",
-		show_token(what), wanted, count);
+	err = "too few arguments provided to";
+	next = next->next;
 	goto out;
-Emany:
-	while (match_op(next, ',')) {
-		next = collect_arg(next, 0, &what->pos);
-		count++;
-	}
-	if (eof_token(next))
-		goto Eclosing;
-	sparse_error(what->pos, "macro \"%s\" passed %d arguments, but takes just %d",
-		show_token(what), count, wanted);
+Eexcess:
+	err = "too many arguments provided to";
+	next = next->next;
 	goto out;
 Eclosing:
-	sparse_error(what->pos, "unterminated argument list invoking macro \"%s\"",
-		show_token(what));
+	err = "unterminated argument list invoking";
 out:
-	what->next = next->next;
+	sparse_error(what->pos, "%s macro \"%s\"", err, show_ident(sym->ident));
+	what->next = next;
 	return 0;
 }
 
@@ -1107,7 +1097,7 @@ static inline void set_arg_count(struct token *token)
 {
 	token_type(token) = TOKEN_ARG_COUNT;
 	token->count.normal = token->count.quoted =
-	token->count.str = token->count.vararg = 0;
+	token->count.str = 0;
 }
 
 static struct token *parse_arguments(struct token *list)
@@ -1148,7 +1138,6 @@ static struct token *parse_arguments(struct token *list)
 			if (match_op(next->next, ')')) {
 				set_arg_count(next);
 				macro_vararg = macro_nargs - 1;
-				next->count.vararg = 1;
 				next = next->next;
 				arg->next->next = &eof_token_entry;
 				return next->next;
@@ -1176,7 +1165,6 @@ static struct token *parse_arguments(struct token *list)
 			return NULL;
 		set_arg_count(next);
 		macro_vararg = macro_nargs - 1;
-		next->count.vararg = 1;
 		next = next->next;
 		arg->next->next = &eof_token_entry;
 		return next;

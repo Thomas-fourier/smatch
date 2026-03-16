@@ -175,7 +175,6 @@ struct argcount {
 	unsigned normal:10;
 	unsigned quoted:10;
 	unsigned str:10;
-	unsigned vararg:1;
 };
 
 /*
