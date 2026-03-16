@@ -102,6 +102,8 @@ enum token_type {
 	TOKEN_MACRO_ARGUMENT,
 	TOKEN_CONCAT,
 	TOKEN_GNU_KLUDGE,
+	TOKEN_VA_OPT,
+	TOKEN_VA_OPT_STR,
 	TOKEN_UNTAINT,
 	TOKEN_IF,
 	TOKEN_SKIP_GROUPS,
@@ -199,6 +201,7 @@ struct token {
 		unsigned int special;
 		struct string *string;
 		int argnum;
+		struct token *va_opt_linkage;
 		char embedded[4];
 	};
 };
