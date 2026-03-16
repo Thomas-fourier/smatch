@@ -177,6 +177,10 @@ struct argcount {
 	unsigned str:10;
 };
 
+enum {
+	ARGNUM_BITS_STOLEN
+};
+
 /*
  * This is a very common data structure, it should be kept
  * as small as humanly possible. Big (rare) types go as

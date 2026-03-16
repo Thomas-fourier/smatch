@@ -624,11 +624,16 @@ static struct token **copy(struct token **where, struct token *list)
 	return where;
 }
 
+static inline int argnum(const struct token *arg)
+{
+	return arg->argnum >> ARGNUM_BITS_STOLEN;
+}
+
 static int handle_kludge(const struct token **p, struct arg *args)
 {
 	const struct token *t = (*p)->next->next;
 	while (1) {
-		struct arg *v = &args[t->argnum];
+		struct arg *v = &args[argnum(t)];
 		if (token_type(t->next) != TOKEN_CONCAT) {
 			if (v->arg) {
 				/* ignore the first ## */
@@ -681,13 +686,13 @@ static struct token **substitute(struct token **list, const struct token *body, 
 			break;
 
 		case TOKEN_STR_ARGUMENT:
-			arg = args[body->argnum].str;
-			count = &args[body->argnum].n_str;
+			arg = args[argnum(body)].str;
+			count = &args[argnum(body)].n_str;
 			goto copy_arg;
 
 		case TOKEN_QUOTED_ARGUMENT:
-			arg = args[body->argnum].arg;
-			count = &args[body->argnum].n_quoted;
+			arg = args[argnum(body)].arg;
+			count = &args[argnum(body)].n_quoted;
 			if (!arg || eof_token(arg)) {
 				if (state == Concat)
 					state = Normal;
@@ -698,8 +703,8 @@ static struct token **substitute(struct token **list, const struct token *body, 
 			goto copy_arg;
 
 		case TOKEN_MACRO_ARGUMENT:
-			arg = args[body->argnum].expanded;
-			count = &args[body->argnum].n_normal;
+			arg = args[argnum(body)].expanded;
+			count = &args[argnum(body)].n_normal;
 			if (eof_token(arg)) {
 				state = Normal;
 				continue;
@@ -1219,7 +1224,7 @@ static int try_arg(struct token *token, enum token_type type, struct token *argl
 	for (int i = 0; i < nr; i++)
 		arglist = arglist->next->next;
 
-	token->argnum = nr;
+	token->argnum = nr << ARGNUM_BITS_STOLEN;
 	token_type(token) = type;
 	switch (type) {
 	case TOKEN_MACRO_ARGUMENT:
@@ -2356,7 +2361,7 @@ static void dump_macro(struct symbol *sym)
 			/* fall-through */
 		case TOKEN_QUOTED_ARGUMENT:
 		case TOKEN_MACRO_ARGUMENT:
-			printf("%s", show_ident(args[token->argnum]));
+			printf("%s", show_ident(args[argnum(token)]));
 			break;
 		default:
 			printf("%s", show_token(token));
