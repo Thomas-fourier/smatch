@@ -241,10 +241,6 @@ const char *show_token(const struct token *token)
 		sprintf(buffer, "<untaint>");
 		return buffer;
 
-	case TOKEN_ARG_COUNT:
-		sprintf(buffer, "<argcnt>");
-		return buffer;
-
 	default:
 		sprintf(buffer, "unhandled token type '%d' ", token_type(token));
 		return buffer;

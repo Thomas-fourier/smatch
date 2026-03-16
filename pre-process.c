@@ -1000,7 +1000,6 @@ static int token_different(struct token *t1, struct token *t2)
 	case TOKEN_IDENT:
 		different = t1->ident != t2->ident;
 		break;
-	case TOKEN_ARG_COUNT:
 	case TOKEN_UNTAINT:
 	case TOKEN_CONCAT:
 	case TOKEN_GNU_KLUDGE:
@@ -1077,22 +1076,12 @@ Eargs:
 	return false;
 }
 
-static inline void set_arg_count(struct token *token)
-{
-	token_type(token) = TOKEN_ARG_COUNT;
-}
-
 static struct token *parse_arguments(struct token *list)
 {
 	struct token *arg = list->next, *next = list;
 
-	set_arg_count(list);
-
-	if (match_op(arg, ')')) {
-		next = arg->next;
-		list->next = &eof_token_entry;
-		return next;
-	}
+	if (match_op(arg, ')'))
+		return arg;
 
 	while (token_type(arg) == TOKEN_IDENT) {
 		if (arg->ident == &__VA_ARGS___ident)
@@ -1102,26 +1091,18 @@ static struct token *parse_arguments(struct token *list)
 
 		next = arg->next;
 		if (match_op(next, ',')) {
-			set_arg_count(next);
 			arg = next->next;
 			continue;
 		}
 
-		if (match_op(next, ')')) {
-			set_arg_count(next);
-			next = next->next;
-			arg->next->next = &eof_token_entry;
+		if (match_op(next, ')'))
 			return next;
-		}
 
 		/* normal cases are finished here */
 
 		if (match_op(next, SPECIAL_ELLIPSIS)) {
 			if (match_op(next->next, ')')) {
-				set_arg_count(next);
 				macro_vararg = macro_nargs - 1;
-				next = next->next;
-				arg->next->next = &eof_token_entry;
 				return next->next;
 			}
 
@@ -1143,10 +1124,7 @@ static struct token *parse_arguments(struct token *list)
 			goto Enotclosed;
 		if (!macro_add_arg(arg->pos, &__VA_ARGS___ident))
 			return NULL;
-		set_arg_count(next);
 		macro_vararg = macro_nargs - 1;
-		next = next->next;
-		arg->next->next = &eof_token_entry;
 		return next;
 	}
 
@@ -1483,14 +1461,19 @@ static int do_handle_define(struct stream *stream, struct token **line, struct t
 	expansion = left->next;
 	if (!expansion->pos.whitespace) {
 		if (match_op(expansion, '(')) {
-			arglist = expansion;
-			expansion = parse_arguments(expansion);
-			if (!expansion) {
+			struct token *last = parse_arguments(expansion);
+			if (!last) {
 				macro_nargs = 0;
 				macro_vararg = -1;
 				return 1;
 			}
+			// last points to ) at the end of arguments,
+			// expansion starts right after that,
+			// everything up to that point is arglist.
 			macro_funclike = true;
+			arglist = expansion;
+			expansion = last->next;
+			last->next = &eof_token_entry;
 		} else if (!eof_token(expansion)) {
 			warning(expansion->pos,
 				"no whitespace before object-like macro body");
@@ -2281,20 +2264,14 @@ static void dump_macro(struct symbol *sym)
 	printf("#define %s", show_ident(sym->ident));
 	token = sym->arglist;
 	if (token) {
-		const char *sep = "";
 		int narg = 0;
-		putchar('(');
 		for (; !eof_token(token); token = token->next) {
-			if (token_type(token) == TOKEN_ARG_COUNT)
-				continue;
-			printf("%s%s", sep, show_token(token));
+			printf("%s", show_token(token));
 			if (token_type(token) == TOKEN_IDENT)
 				args[narg++] = token->ident;
-			sep = ",";
 		}
 		if (narg < nargs)
 			args[narg] = &__VA_ARGS___ident;
-		putchar(')');
 	}
 
 	token = sym->expansion;
