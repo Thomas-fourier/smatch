@@ -613,10 +613,15 @@ static struct token **move_into(struct token **where, struct token *list)
 static struct token **copy(struct token **where, struct token *list)
 {
 	while (!eof_token(list)) {
-		struct token *token;
-		token = dup_token(list, &list->pos);
-		if (token_type(token) == TOKEN_IDENT && token->ident->tainted)
-			token->pos.noexpand = 1;
+		struct position pos = list->pos;
+		struct token *token = __alloc_token(0);
+
+		token->ident = list->ident;
+		if (pos.type == TOKEN_STRING || pos.type == TOKEN_WIDE_STRING)
+			list->string->immutable = 1;
+		if (pos.type == TOKEN_IDENT && list->ident->tainted)
+			pos.noexpand = 1;
+		token->pos = pos;
 		*where = token;
 		where = &token->next;
 		list = list->next;
