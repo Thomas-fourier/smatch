@@ -307,16 +307,17 @@ struct arg {
 	struct token *arg[3];
 };
 
-static int collect_arguments(struct token *start, struct symbol *sym, struct arg *args, struct token *what)
+static int collect_arguments(struct token *what, int fixed, bool vararg, struct arg *args)
 {
-	int fixed = sym->fixed_args;
-	bool vararg = sym->vararg;
+	struct token *start = scan_next(&what->next);
 	struct token *next = NULL, *v = NULL;
 	const char *err;
 	int commas;
 
 	memset(args, 0, sizeof(struct arg) * (fixed + 1));
 
+	if (!match_op(start, '('))
+		return 0;
 	for (commas = 0; commas < fixed; commas++) {
 		next = collect_arg(start, false, &what->pos);
 		if (token_type(next) != TOKEN_SPECIAL)
@@ -355,7 +356,7 @@ Eexcess:
 Eclosing:
 	err = "unterminated argument list invoking";
 out:
-	sparse_error(what->pos, "%s macro \"%s\"", err, show_ident(sym->ident));
+	sparse_error(what->pos, "%s macro \"%s\"", err, show_ident(what->ident));
 	what->next = next;
 	return 0;
 }
@@ -808,23 +809,20 @@ static struct token **substitute(struct token **list, const struct token *body, 
 
 static int expand(struct token **list, struct symbol *sym)
 {
-	struct token *last;
+	struct token *next;
 	struct token *token = *list;
 	struct token **tail;
 	struct token *expansion = sym->expansion;
 	struct arg args[sym->fixed_args + 1];
 
-	if (sym->arglist) {
-		if (!match_op(scan_next(&token->next), '('))
-			return 1;
-		if (!collect_arguments(token->next, sym, args, token))
-			return 1;
-	}
+	if (sym->arglist &&
+	    !collect_arguments(token, sym->fixed_args, sym->vararg, args))
+		return 1;
 
 	if (sym->expand)
 		return sym->expand(token, args) ? 0 : 1;
 
-	last = token->next;
+	next = token->next;
 	tail = substitute(list, expansion, args);
 	/*
 	 * Note that it won't be eof - at least TOKEN_UNTAINT will be there.
@@ -834,7 +832,7 @@ static int expand(struct token **list, struct symbol *sym)
 	 */
 	(*list)->pos.newline = token->pos.newline;
 	(*list)->pos.whitespace = token->pos.whitespace;
-	*tail = last;
+	*tail = next;
 
 	return 0;
 }
