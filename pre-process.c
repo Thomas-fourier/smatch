@@ -1166,7 +1166,7 @@ struct arg_state {
 	struct token *needs_str;
 };
 
-static int try_arg(struct token *token, enum arg_kind kind, struct arg_state args[])
+static int check_arg(struct token *token, struct arg_state args[])
 {
 	struct ident *ident = token->ident;
 	int nr;
@@ -1181,8 +1181,14 @@ static int try_arg(struct token *token, enum arg_kind kind, struct arg_state arg
 		return 0;
 
 	nr = nr == macro_vararg ? 0 : nr + 1;
-	token->argnum = (nr << ARGNUM_BITS_STOLEN) | kind;
+	token->argnum = nr << ARGNUM_BITS_STOLEN;
 	token_type(token) = TOKEN_MACRO_ARGUMENT;
+	return nr + 1;
+}
+
+static void seen_arg(struct token *token, enum arg_kind kind, struct arg_state args[], int nr)
+{
+	token->argnum |= kind;
 	switch (kind) {
 	case ARG_QUOTED:
 		args[nr].needs_raw = token;
@@ -1197,7 +1203,6 @@ static int try_arg(struct token *token, enum arg_kind kind, struct arg_state arg
 			args[nr].needs_raw = token;
 		args[nr].needs_str = token;
 	}
-	return nr == 0 ? 2 : 1;
 }
 
 static struct token *handle_hash(struct token **p, struct arg_state args[])
@@ -1205,8 +1210,12 @@ static struct token *handle_hash(struct token **p, struct arg_state args[])
 	struct token *token = *p;
 	if (macro_funclike) {
 		struct token *next = token->next;
-		if (!try_arg(next, ARG_STR, args))
+		int nr = check_arg(next, args);
+
+		if (!nr)
 			goto Equote;
+
+		seen_arg(next, ARG_STR, args, nr - 1);
 		next->pos.whitespace = token->pos.whitespace;
 		__free_token(token);
 		token = *p = next;
@@ -1226,12 +1235,10 @@ static struct token *handle_hashhash(struct token *token, struct arg_state args[
 	struct token *last = token;
 	struct token *concat;
 	int state = match_op(token, ',');
-	
-	try_arg(token, ARG_QUOTED, args);
+	int nr;
 
 	while (1) {
 		struct token *t;
-		int is_arg;
 
 		/* eat duplicate ## */
 		concat = token->next;
@@ -1251,10 +1258,13 @@ static struct token *handle_hashhash(struct token *token, struct arg_state args[
 				return NULL;
 		}
 
-		is_arg = try_arg(t, ARG_QUOTED, args);
+		nr = check_arg(t, args);
+		if (nr > 0)
+			seen_arg(t, ARG_QUOTED, args, nr - 1);
 
-		if (state == 1 && is_arg) {
-			state = is_arg;
+		if (state == 1 && nr > 0) {
+			if (nr == 1)
+				state = 2;
 		} else {
 			last = t;
 			state = match_op(t, ',');
@@ -1280,6 +1290,7 @@ static struct token *parse_expansion(struct token *expansion, struct ident *name
 	struct arg_state args[slots] = {};
 	struct token *token = expansion;
 	struct token **p;
+	int nr;
 
 	if (match_op(token, SPECIAL_HASHHASH))
 		goto Econcat;
@@ -1290,12 +1301,16 @@ static struct token *parse_expansion(struct token *expansion, struct ident *name
 			if (!token)
 				return NULL;
 		}
+		nr = check_arg(token, args);
 		if (match_op(token->next, SPECIAL_HASHHASH)) {
+			if (nr > 0)
+				seen_arg(token, ARG_QUOTED, args, nr - 1);
 			token = handle_hashhash(token, args);
 			if (!token)
 				return NULL;
 		} else {
-			try_arg(token, ARG_NORMAL, args);
+			if (nr > 0)
+				seen_arg(token, ARG_NORMAL, args, nr - 1);
 		}
 	}
 	for (int i = 0; i < slots; i++) {
