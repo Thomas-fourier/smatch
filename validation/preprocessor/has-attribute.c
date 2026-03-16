@@ -6,6 +6,8 @@ __has_attribute()??? Quesako?
 #endif
 
 123 __has_attribute(nothinx) def
+#define A packed
+456 __has_attribute(A)
 
 #if __has_attribute(nothinx)
 #error "not a attribute!"
@@ -49,6 +51,7 @@ __has_attribute()??? Quesako?
 
 "has __has_attribute(), yeah!"
 123 0 def
+456 1
 "ok gcc"
 "ok gcc ignore"
 "ok sparse specific"

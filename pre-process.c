@@ -2000,9 +2000,16 @@ static int handle_nondirective(struct stream *stream, struct token **line, struc
 	return 1;
 }
 
+static struct token *first_arg(struct arg *args)
+{
+	struct token *arg = args[0].arg;
+	expand_list(&arg);
+	return arg;
+}
+
 static bool expand_has_attribute(struct token *token, struct arg *args)
 {
-	struct token *arg = args[0].expanded;
+	struct token *arg = first_arg(args);
 	struct symbol *sym;
 
 	if (token_type(arg) != TOKEN_IDENT) {
@@ -2017,7 +2024,7 @@ static bool expand_has_attribute(struct token *token, struct arg *args)
 
 static bool expand_has_builtin(struct token *token, struct arg *args)
 {
-	struct token *arg = args[0].expanded;
+	struct token *arg = first_arg(args);
 	struct symbol *sym;
 
 	if (token_type(arg) != TOKEN_IDENT) {
@@ -2032,7 +2039,7 @@ static bool expand_has_builtin(struct token *token, struct arg *args)
 
 static bool expand_has_extension(struct token *token, struct arg *args)
 {
-	struct token *arg = args[0].expanded;
+	struct token *arg = first_arg(args);
 	struct ident *ident;
 	bool val = false;
 
@@ -2057,7 +2064,7 @@ static bool expand_has_extension(struct token *token, struct arg *args)
 
 static bool expand_has_feature(struct token *token, struct arg *args)
 {
-	struct token *arg = args[0].expanded;
+	struct token *arg = first_arg(args);
 	struct ident *ident;
 	bool val = false;
 
@@ -2103,7 +2110,7 @@ static void create_arglist(struct symbol *sym, int count)
 		token_type(id) = TOKEN_IDENT;
 		uses = __alloc_token(0);
 		token_type(uses) = TOKEN_ARG_COUNT;
-		uses->count.normal = 1;
+		uses->count.quoted = 1;
 
 		*next = id;
 		id->next = uses;

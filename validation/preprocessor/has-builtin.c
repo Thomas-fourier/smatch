@@ -28,6 +28,8 @@ constant_p
 #endif
 
 123 __has_builtin(abc) def
+#define A __builtin_constant_p
+456 __has_builtin(A)
 
 /*
  * check-name: has-builtin
@@ -39,5 +41,6 @@ constant_p
 abs
 constant_p
 123 0 def
+456 1
  * check-output-end
  */
