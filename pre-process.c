@@ -583,18 +583,21 @@ static int merge(struct token *left, struct token *right)
 	return 0;
 }
 
-static struct token *dup_token(const struct token *token, struct position *streampos)
+static inline struct token *dup_token(const struct token *token, struct position *streampos)
 {
 	struct position pos = *streampos;
 	struct token *alloc = __alloc_token(0);
+	struct position pos2 = token->pos;
 
-	alloc->pos = token->pos;
-	alloc->number = token->number;
-	alloc->pos.stream = pos.stream;
-	alloc->pos.line = pos.line;
-	alloc->pos.pos = pos.pos;
-	if (token_type(alloc) == TOKEN_STRING || token_type(alloc) == TOKEN_WIDE_STRING)
+	alloc->ident = token->ident;
+	pos2.stream = pos.stream;
+	pos2.line = pos.line;
+	pos2.pos = pos.pos;
+	if (pos2.type == TOKEN_STRING || pos2.type == TOKEN_WIDE_STRING)
 		token->string->immutable = 1;
+	if (pos2.type == TOKEN_IDENT && token->ident->tainted)
+		pos2.noexpand = 1;
+	alloc->pos = pos2;
 	return alloc;	
 }
 
@@ -728,9 +731,6 @@ static struct token **substitute(struct token **list, const struct token *body, 
 
 		default:
 			added = dup_token(body, base_pos);
-			if (token_type(body) == TOKEN_IDENT &&
-			    added->ident->tainted)
-				added->pos.noexpand = 1;
 			tail = &added->next;
 			break;
 		}
