@@ -312,9 +312,10 @@ struct arg {
 	int n_str;
 };
 
-static int collect_arguments(struct token *start, struct token *arglist, struct arg *args, struct token *what)
+static int collect_arguments(struct token *start, struct symbol *sym, struct arg *args, struct token *what)
 {
-	int wanted = arglist->count.normal;
+	struct token *arglist = sym->arglist;
+	int wanted = sym->fixed_args + sym->vararg;
 	struct token *next = NULL;
 	int count = 0;
 
@@ -760,7 +761,7 @@ static int expand(struct token **list, struct symbol *sym)
 	struct ident *expanding = token->ident;
 	struct token **tail;
 	struct token *expansion = sym->expansion;
-	int nargs = sym->arglist ? sym->arglist->count.normal : 0;
+	int nargs = sym->fixed_args + sym->vararg;
 	struct arg args[nargs];
 
 	if (expanding->tainted) {
@@ -771,7 +772,7 @@ static int expand(struct token **list, struct symbol *sym)
 	if (sym->arglist) {
 		if (!match_op(scan_next(&token->next), '('))
 			return 1;
-		if (!collect_arguments(token->next, sym->arglist, args, token))
+		if (!collect_arguments(token->next, sym, args, token))
 			return 1;
 		expand_arguments(nargs, args);
 	}
@@ -1087,6 +1088,21 @@ static int token_list_different(struct token *list1, struct token *list2)
 	}
 }
 
+static int macro_nargs = 0;
+static int macro_vararg = -1;
+static bool macro_funclike = false;
+
+static bool macro_add_arg(struct position pos, struct ident *ident)
+{
+	if (macro_nargs == 1024)
+		goto Eargs;
+	macro_nargs++;
+	return true;
+Eargs:
+	sparse_error(pos, "too many arguments in macro definition");
+	return false;
+}
+
 static inline void set_arg_count(struct token *token)
 {
 	token_type(token) = TOKEN_ARG_COUNT;
@@ -1097,7 +1113,6 @@ static inline void set_arg_count(struct token *token)
 static struct token *parse_arguments(struct token *list)
 {
 	struct token *arg = list->next, *next = list;
-	struct argcount *count = &list->count;
 
 	set_arg_count(list);
 
@@ -1110,10 +1125,10 @@ static struct token *parse_arguments(struct token *list)
 	while (token_type(arg) == TOKEN_IDENT) {
 		if (arg->ident == &__VA_ARGS___ident)
 			goto Eva_args;
-		if (!++count->normal)
-			goto Eargs;
-		next = arg->next;
+		if (!macro_add_arg(arg->pos, arg->ident))
+			return NULL;
 
+		next = arg->next;
 		if (match_op(next, ',')) {
 			set_arg_count(next);
 			arg = next->next;
@@ -1132,6 +1147,7 @@ static struct token *parse_arguments(struct token *list)
 		if (match_op(next, SPECIAL_ELLIPSIS)) {
 			if (match_op(next->next, ')')) {
 				set_arg_count(next);
+				macro_vararg = macro_nargs - 1;
 				next->count.vararg = 1;
 				next = next->next;
 				arg->next->next = &eof_token_entry;
@@ -1156,9 +1172,10 @@ static struct token *parse_arguments(struct token *list)
 		arg->ident = &__VA_ARGS___ident;
 		if (!match_op(next, ')'))
 			goto Enotclosed;
-		if (!++count->normal)
-			goto Eargs;
+		if (!macro_add_arg(arg->pos, &__VA_ARGS___ident))
+			return NULL;
 		set_arg_count(next);
+		macro_vararg = macro_nargs - 1;
 		next->count.vararg = 1;
 		next = next->next;
 		arg->next->next = &eof_token_entry;
@@ -1188,9 +1205,6 @@ Enotclosed:
 Eva_args:
 	sparse_error(arg->pos, "__VA_ARGS__ can only appear in the expansion of a C99 variadic macro");
 	return NULL;
-Eargs:
-	sparse_error(arg->pos, "too many arguments in macro definition");
-	return NULL;
 }
 
 static int try_arg(struct token *token, enum token_type type, struct token *arglist)
@@ -1198,7 +1212,7 @@ static int try_arg(struct token *token, enum token_type type, struct token *argl
 	struct ident *ident = token->ident;
 	int nr;
 
-	if (!arglist || token_type(token) != TOKEN_IDENT)
+	if (!macro_funclike || token_type(token) != TOKEN_IDENT)
 		return 0;
 
 	arglist = arglist->next;
@@ -1221,7 +1235,7 @@ static int try_arg(struct token *token, enum token_type type, struct token *argl
 				n = ++count->str;
 			}
 			if (n)
-				return count->vararg ? 2 : 1;
+				return nr == macro_vararg ? 2 : 1;
 			/*
 			 * XXX - need saner handling of that
 			 * (>= 1024 instances of argument)
@@ -1236,7 +1250,7 @@ static int try_arg(struct token *token, enum token_type type, struct token *argl
 static struct token *handle_hash(struct token **p, struct token *arglist)
 {
 	struct token *token = *p;
-	if (arglist) {
+	if (macro_funclike) {
 		struct token *next = token->next;
 		if (!try_arg(next, TOKEN_STR_ARGUMENT, arglist))
 			goto Equote;
@@ -1354,7 +1368,7 @@ static int do_define(struct position pos, struct token *token, struct ident *nam
 
 	expansion = parse_expansion(expansion, arglist, name);
 	if (!expansion)
-		return 1;
+		goto out;
 
 	sym = lookup_symbol(name, NS_MACRO | NS_UNDEF);
 	if (sym) {
@@ -1388,6 +1402,8 @@ static int do_define(struct position pos, struct token *token, struct ident *nam
 	if (!ret) {
 		sym->expansion = expansion;
 		sym->arglist = arglist;
+		sym->vararg = macro_vararg >= 0;
+		sym->fixed_args = macro_nargs - sym->vararg;
 		if (token) /* Free the "define" token, but not the rest of the line */
 			__free_token(token);
 	}
@@ -1396,6 +1412,9 @@ static int do_define(struct position pos, struct token *token, struct ident *nam
 	sym->used_in = NULL;
 	sym->attr = attr;
 out:
+	macro_nargs = 0;
+	macro_vararg = -1;
+	macro_funclike = false;
 	return ret;
 }
 
@@ -1490,8 +1509,12 @@ static int do_handle_define(struct stream *stream, struct token **line, struct t
 		if (match_op(expansion, '(')) {
 			arglist = expansion;
 			expansion = parse_arguments(expansion);
-			if (!expansion)
+			if (!expansion) {
+				macro_nargs = 0;
+				macro_vararg = -1;
 				return 1;
+			}
+			macro_funclike = true;
 		} else if (!eof_token(expansion)) {
 			warning(expansion->pos,
 				"no whitespace before object-like macro body");
@@ -2075,8 +2098,9 @@ static void create_arglist(struct symbol *sym, int count)
 
 	token = __alloc_token(0);
 	token_type(token) = TOKEN_ARG_COUNT;
-	token->count.normal = count;
 	sym->arglist = token;
+	sym->fixed_args = count;
+	sym->vararg = 0;
 	next = &token->next;
 
 	while (count--) {
@@ -2300,7 +2324,7 @@ static int is_VA_ARGS_token(struct token *token)
 
 static void dump_macro(struct symbol *sym)
 {
-	int nargs = sym->arglist ? sym->arglist->count.normal : 0;
+	int nargs = sym->fixed_args + sym->vararg;
 	struct token *args[nargs];
 	struct token *token;
 
