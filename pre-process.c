@@ -1078,16 +1078,24 @@ static int token_list_different(struct token *list1, struct token *list2)
 	}
 }
 
+static struct ident *macro_arg_name[1024];
 static int macro_nargs = 0;
 static int macro_vararg = -1;
 static bool macro_funclike = false;
 
 static bool macro_add_arg(struct position pos, struct ident *ident)
 {
+	for (int i = 0; i < macro_nargs; i++) {
+		if (ident == macro_arg_name[i])
+			goto Edup_arg;
+	}
 	if (macro_nargs == 1024)
 		goto Eargs;
-	macro_nargs++;
+	macro_arg_name[macro_nargs++] = ident;
 	return true;
+Edup_arg:
+	sparse_error(pos, "duplicate macro parameter \"%s\"", show_ident(ident));
+	return false;
 Eargs:
 	sparse_error(pos, "too many arguments in macro definition");
 	return false;
@@ -1157,8 +1165,6 @@ static struct token *parse_arguments(struct token *list)
 
 	if (match_op(arg, SPECIAL_ELLIPSIS)) {
 		next = arg->next;
-		token_type(arg) = TOKEN_IDENT;
-		arg->ident = &__VA_ARGS___ident;
 		if (!match_op(next, ')'))
 			goto Enotclosed;
 		if (!macro_add_arg(arg->pos, &__VA_ARGS___ident))
@@ -1198,41 +1204,41 @@ Eva_args:
 static int try_arg(struct token *token, enum token_type type, struct token *arglist)
 {
 	struct ident *ident = token->ident;
-	int nr;
+	int nr, n;
 
 	if (!macro_funclike || token_type(token) != TOKEN_IDENT)
 		return 0;
 
+	for (nr = 0; nr < macro_nargs && macro_arg_name[nr] != ident; nr++)
+		;
+
+	if (nr == macro_nargs)
+		return 0;
+
 	arglist = arglist->next;
+	for (int i = 0; i < nr; i++)
+		arglist = arglist->next->next;
 
-	for (nr = 0; !eof_token(arglist); nr++, arglist = arglist->next->next) {
-		if (arglist->ident == ident) {
-			struct argcount *count = &arglist->next->count;
-			int n;
-
-			token->argnum = nr;
-			token_type(token) = type;
-			switch (type) {
-			case TOKEN_MACRO_ARGUMENT:
-				n = ++count->normal;
-				break;
-			case TOKEN_QUOTED_ARGUMENT:
-				n = ++count->quoted;
-				break;
-			default:
-				n = ++count->str;
-			}
-			if (n)
-				return nr == macro_vararg ? 2 : 1;
-			/*
-			 * XXX - need saner handling of that
-			 * (>= 1024 instances of argument)
-			 */
-			token_type(token) = TOKEN_ERROR;
-			return -1;
-		}
+	token->argnum = nr;
+	token_type(token) = type;
+	switch (type) {
+	case TOKEN_MACRO_ARGUMENT:
+		n = ++arglist->next->count.normal;
+		break;
+	case TOKEN_QUOTED_ARGUMENT:
+		n = ++arglist->next->count.quoted;
+		break;
+	default:
+		n = ++arglist->next->count.str;
 	}
-	return 0;
+	if (n)
+		return nr == macro_vararg ? 2 : 1;
+	/*
+	 * XXX - need saner handling of that
+	 * (>= 1024 instances of argument)
+	 */
+	token_type(token) = TOKEN_ERROR;
+	return -1;
 }
 
 static struct token *handle_hash(struct token **p, struct token *arglist)
@@ -2304,16 +2310,10 @@ struct token * preprocess(struct token *token)
 	return token;
 }
 
-static int is_VA_ARGS_token(struct token *token)
-{
-	return (token_type(token) == TOKEN_IDENT) &&
-		(token->ident == &__VA_ARGS___ident);
-}
-
 static void dump_macro(struct symbol *sym)
 {
 	int nargs = sym->fixed_args + sym->vararg;
-	struct token *args[nargs];
+	struct ident *args[nargs];
 	struct token *token;
 
 	printf("#define %s", show_ident(sym->ident));
@@ -2325,13 +2325,13 @@ static void dump_macro(struct symbol *sym)
 		for (; !eof_token(token); token = token->next) {
 			if (token_type(token) == TOKEN_ARG_COUNT)
 				continue;
-			if (is_VA_ARGS_token(token))
-				printf("%s...", sep);
-			else
-				printf("%s%s", sep, show_token(token));
-			args[narg++] = token;
+			printf("%s%s", sep, show_token(token));
+			if (token_type(token) == TOKEN_IDENT)
+				args[narg++] = token->ident;
 			sep = ",";
 		}
+		if (narg < nargs)
+			args[narg] = &__VA_ARGS___ident;
 		putchar(')');
 	}
 
@@ -2349,8 +2349,8 @@ static void dump_macro(struct symbol *sym)
 			/* fall-through */
 		case TOKEN_QUOTED_ARGUMENT:
 		case TOKEN_MACRO_ARGUMENT:
-			token = args[token->argnum];
-			/* fall-through */
+			printf("%s", show_ident(args[token->argnum]));
+			break;
 		default:
 			printf("%s", show_token(token));
 		}
