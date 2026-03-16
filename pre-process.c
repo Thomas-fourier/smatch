@@ -321,7 +321,7 @@ static int collect_arguments(struct token *start, struct symbol *sym, struct arg
 		next = collect_arg(start, false, &what->pos);
 		if (token_type(next) != TOKEN_SPECIAL)
 			goto Eclosing;
-		args[commas].arg[ARG_QUOTED] = start->next;
+		args[commas + 1].arg[ARG_QUOTED] = start->next;
 		if (!match_op(next, ',')) {
 			if (commas < fixed - 1)
 				goto Efew;
@@ -340,7 +340,7 @@ static int collect_arguments(struct token *start, struct symbol *sym, struct arg
 	if (v && !vararg)
 		goto Eexcess;
 	if (vararg)
-		args[fixed].arg[ARG_QUOTED] = v;
+		args[0].arg[ARG_QUOTED] = v;
 	what->next = next->next;
 	return 1;
 
@@ -740,8 +740,7 @@ static int expand(struct token **list, struct symbol *sym)
 	struct ident *expanding = token->ident;
 	struct token **tail;
 	struct token *expansion = sym->expansion;
-	int nargs = sym->fixed_args + sym->vararg;
-	struct arg args[nargs];
+	struct arg args[sym->fixed_args + 1];
 
 	if (expanding->tainted) {
 		token->pos.noexpand = 1;
@@ -1181,6 +1180,7 @@ static int try_arg(struct token *token, enum arg_kind kind, struct arg_state arg
 	if (nr == macro_nargs)
 		return 0;
 
+	nr = nr == macro_vararg ? 0 : nr + 1;
 	token->argnum = (nr << ARGNUM_BITS_STOLEN) | kind;
 	token_type(token) = TOKEN_MACRO_ARGUMENT;
 	switch (kind) {
@@ -1197,7 +1197,7 @@ static int try_arg(struct token *token, enum arg_kind kind, struct arg_state arg
 			args[nr].needs_raw = token;
 		args[nr].needs_str = token;
 	}
-	return nr == macro_vararg ? 2 : 1;
+	return nr == 0 ? 2 : 1;
 }
 
 static struct token *handle_hash(struct token **p, struct arg_state args[])
@@ -1276,7 +1276,8 @@ Econcat:
 
 static struct token *parse_expansion(struct token *expansion, struct ident *name)
 {
-	struct arg_state args[macro_nargs] = {};
+	int slots = macro_nargs + (macro_vararg < 0);
+	struct arg_state args[slots] = {};
 	struct token *token = expansion;
 	struct token **p;
 
@@ -1297,7 +1298,7 @@ static struct token *parse_expansion(struct token *expansion, struct ident *name
 			try_arg(token, ARG_NORMAL, args);
 		}
 	}
-	for (int i = 0; i < macro_nargs; i++) {
+	for (int i = 0; i < slots; i++) {
 		if (args[i].needs_str)
 			args[i].needs_str->argnum |= 1 << ARGNUM_CONSUME;
 		if (args[i].needs_expanded)
@@ -1975,7 +1976,7 @@ static int handle_nondirective(struct stream *stream, struct token **line, struc
 
 static struct token *first_arg(struct arg *args)
 {
-	struct token *arg = args[0].arg[ARG_QUOTED];
+	struct token *arg = args[1].arg[ARG_QUOTED];
 	expand_list(&arg);
 	return arg;
 }
@@ -2265,21 +2266,22 @@ struct token * preprocess(struct token *token)
 
 static void dump_macro(struct symbol *sym)
 {
-	int nargs = sym->fixed_args + sym->vararg;
-	struct ident *args[nargs];
+	int fixed_args = sym->fixed_args;
+	struct ident *args[fixed_args + 1];
 	struct token *token;
 
 	printf("#define %s", show_ident(sym->ident));
 	token = sym->arglist;
 	if (token) {
-		int narg = 0;
-		for (; !eof_token(token); token = token->next) {
+		args[0] = &__VA_ARGS___ident;
+		for (int n = 1; !eof_token(token); token = token->next) {
 			printf("%s", show_token(token));
-			if (token_type(token) == TOKEN_IDENT)
-				args[narg++] = token->ident;
+			if (token_type(token) == TOKEN_IDENT) {
+				args[n] = token->ident;
+				if (n++ == fixed_args)
+					n = 0;
+			}
 		}
-		if (narg < nargs)
-			args[narg] = &__VA_ARGS___ident;
 	}
 
 	token = sym->expansion;
