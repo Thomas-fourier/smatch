@@ -419,6 +419,18 @@ static struct token *stringify(struct token *arg)
 	return token;
 }
 
+static struct token *empty_string(const struct position *pos)
+{
+	struct token *token = __alloc_token(0);
+	static struct string empty = {.immutable = 1, .length = 1, .data = ""};
+
+	token->pos = *pos;
+	token_type(token) = TOKEN_STRING;
+	token->string = &empty;
+	token->next = &eof_token_entry;
+	return token;
+}
+
 /*
  * Possibly valid combinations:
  *  - ident + ident -> ident
@@ -645,11 +657,28 @@ static bool is_end_va_opt(const struct token *token)
 	return eof_token(token->next);
 }
 
+static bool skip_va_opt(struct arg *args, struct ident *expanding)
+{
+	struct token *arg = args[0].arg[ARG_NORMAL];
+	if (arg)
+		return eof_token(arg);
+	arg = args[0].arg[ARG_QUOTED];
+	if (!arg || eof_token(arg))
+		return true;
+	arg = dup_list(arg);
+	expanding->tainted = 0;
+	expand_list(&arg);
+	expanding->tainted = 1;
+	args[0].arg[ARG_NORMAL] = arg;
+	return eof_token(arg);
+}
+
 static struct token **substitute(struct token **list, const struct token *body, struct arg *args)
 {
 	struct position *base_pos = &(*list)->pos;
-	enum {Normal, Placeholder, Concat} state = Normal;
+	enum {Normal, Placeholder, Concat} state = Normal, saved_state = Normal;
 	struct ident *expanding = (*list)->ident;
+	struct token **saved_list = NULL, *va_opt_list;
 
 	expanding->tainted = 1;
 
@@ -719,6 +748,47 @@ static struct token **substitute(struct token **list, const struct token *body, 
 			else
 				state = Concat;
 			continue;
+
+		case TOKEN_VA_OPT:
+			// entering va_opt?
+			if (!is_end_va_opt(body)) {
+				if (skip_va_opt(args, expanding)) {
+					if (state == Concat)
+						state = Normal;
+					else
+						state = Placeholder;
+					continue;
+				}
+				body = body->va_opt_linkage;
+				continue;
+			}
+			body = body->va_opt_linkage;
+			// leaving va_opt?
+			if (token_type(body) == TOKEN_VA_OPT)
+				continue;
+			// leaving #va_opt
+			if (list == &va_opt_list) {
+				added = empty_string(base_pos);
+			} else {
+				*list = &eof_token_entry;
+				added = stringify(va_opt_list);
+			}
+			list = saved_list;
+			state = saved_state;
+			break;
+
+		case TOKEN_VA_OPT_STR:
+			// entering #va_opt
+			if (!skip_va_opt(args, expanding)) {
+				saved_state = state;
+				state = Normal;
+				saved_list = list;
+				list = &va_opt_list;
+				body = body->va_opt_linkage;
+				continue;
+			}
+			added = empty_string(base_pos);
+			break;
 
 		default:
 			added = dup_token(body, base_pos);
@@ -1202,9 +1272,11 @@ struct arg_state {
 	struct token *needs_raw;
 	struct token *needs_expanded;
 	struct token *needs_str;
+	bool seen_uncond_expand;
+	bool seen_uncond_str;
 };
 
-static bool in_va_opt;
+static bool in_va_opt, seen_va_opt;
 
 static struct token **parse_body(struct token **list, struct arg_state args[]);
 
@@ -1221,6 +1293,23 @@ static int parse_va_opt(struct token *token, struct arg_state args[])
 
 	if (!match_op(next, '('))
 		goto Eunterminated;
+	if (!seen_va_opt) {
+		/*
+		 * The first __VA_OPT__() will need an expanded __VA_ARGS__.
+		 * if we had no prior expanded occurrences of __VA_ARGS__,
+		 * we'll need its unexpanded form to survive until that point.
+		 * Only the cannibalization of unexpended form needs to be
+		 * prevented; cannibalization of expanded form doesn't matter.
+		 * We only want to know if it's an empty list, i.e. equal to
+		 * &eof_token_entry, and the pointer stored in struct args
+		 * ->arg[ARG_NORMAL] doesn't change when we get to the last
+		 * expanded occurrence of __VA_ARGS__ and consume the list
+		 * it's pointing to.
+		 */
+		if (!args[0].needs_expanded)
+			args[0].needs_raw = token;
+		seen_va_opt = true;
+	}
 	token_type(token) = TOKEN_VA_OPT;
 	token->va_opt_linkage = next;
 	next->next->pos.whitespace = token->pos.whitespace;
@@ -1292,13 +1381,19 @@ static void seen_arg(struct token *token, enum arg_kind kind, struct arg_state a
 		args[nr].needs_raw = token;
 		break;
 	case ARG_NORMAL:
-		if (!args[nr].needs_expanded)
+		if (!args[nr].seen_uncond_expand &&
+		    (!in_va_opt || !args[nr].needs_expanded)) {
+			args[nr].seen_uncond_expand = !in_va_opt;
 			args[nr].needs_raw = token;
+		}
 		args[nr].needs_expanded = token;
 		break;
 	default: // ARG_STR
-		if (!args[nr].needs_str)
+		if (!args[nr].seen_uncond_str &&
+		    (!in_va_opt || !args[nr].needs_str)) {
+			args[nr].seen_uncond_str = !in_va_opt;
 			args[nr].needs_raw = token;
+		}
 		args[nr].needs_str = token;
 	}
 }
@@ -1436,6 +1531,7 @@ static struct token *parse_expansion(struct token *expansion, struct ident *name
 	struct token *token;
 
 	tail = parse_body(&expansion, args);
+	seen_va_opt = false;
 	if (!tail)
 		return NULL;
 	for (int i = 0; i < slots; i++) {
@@ -1445,6 +1541,8 @@ static struct token *parse_expansion(struct token *expansion, struct ident *name
 			args[i].needs_expanded->argnum |= 1 << ARGNUM_CONSUME;
 		if (args[i].needs_raw) {
 			struct token *p = args[i].needs_raw;
+			if (token_type(p) != TOKEN_MACRO_ARGUMENT)
+				continue;
 			if (argkind(p) == ARG_QUOTED)
 				p->argnum |= 1 << ARGNUM_CONSUME;
 			else if (argkind(p) == ARG_NORMAL)
