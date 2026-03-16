@@ -305,31 +305,23 @@ static struct token *collect_arg(struct token *prev, bool vararg, const struct p
 
 struct arg {
 	struct token *arg[3];
-	int count[3];
 };
 
 static int collect_arguments(struct token *start, struct symbol *sym, struct arg *args, struct token *what)
 {
 	int fixed = sym->fixed_args;
 	bool vararg = sym->vararg;
-	struct token *arglist = sym->arglist;
-	struct argcount *p;
 	struct token *next = NULL, *v = NULL;
 	const char *err;
 	int commas;
 
-	arglist = arglist->next;	/* skip counter */
+	memset(args, 0, sizeof(struct arg) * (fixed + 1));
 
 	for (commas = 0; commas < fixed; commas++) {
 		next = collect_arg(start, false, &what->pos);
 		if (token_type(next) != TOKEN_SPECIAL)
 			goto Eclosing;
-		p = &arglist->next->count;
-		arglist = arglist->next->next;
 		args[commas].arg[ARG_QUOTED] = start->next;
-		args[commas].count[ARG_NORMAL] = p->normal;
-		args[commas].count[ARG_QUOTED] = p->quoted;
-		args[commas].count[ARG_STR] = p->str;
 		if (!match_op(next, ',')) {
 			if (commas < fixed - 1)
 				goto Efew;
@@ -347,13 +339,8 @@ static int collect_arguments(struct token *start, struct symbol *sym, struct arg
 	}
 	if (v && !vararg)
 		goto Eexcess;
-	if (vararg) {
-		p = &arglist->next->count;
+	if (vararg)
 		args[fixed].arg[ARG_QUOTED] = v;
-		args[fixed].count[ARG_NORMAL] = p->normal;
-		args[fixed].count[ARG_QUOTED] = p->quoted;
-		args[fixed].count[ARG_STR] = p->str;
-	}
 	what->next = next->next;
 	return 1;
 
@@ -430,29 +417,6 @@ static struct token *stringify(struct token *arg)
 	token->string = string;
 	token->next = &eof_token_entry;
 	return token;
-}
-
-static void expand_arguments(int count, struct arg *args)
-{
-	int i;
-	for (i = 0; i < count; i++) {
-		struct token *arg = args[i].arg[ARG_QUOTED];
-		if (!arg)
-			arg = &eof_token_entry;
-		if (args[i].count[ARG_STR])
-			args[i].arg[ARG_STR] = stringify(arg);
-		if (args[i].count[ARG_NORMAL]) {
-			if (!args[i].count[ARG_QUOTED]) {
-				args[i].arg[ARG_NORMAL] = arg;
-				args[i].arg[ARG_QUOTED] = NULL;
-			} else if (eof_token(arg)) {
-				args[i].arg[ARG_NORMAL] = arg;
-			} else {
-				args[i].arg[ARG_NORMAL] = dup_list(arg);
-			}
-			expand_list(&args[i].arg[ARG_NORMAL]);
-		}
-	}
 }
 
 /*
@@ -651,11 +615,38 @@ static int handle_kludge(const struct token **p, struct arg *args)
 	}
 }
 
+static struct token *do_argument(const struct token *body,
+				 struct arg *args,
+				 struct ident *expanding)
+{
+	struct token *arg = args[argnum(body)].arg[argkind(body)];
+	if (arg)
+		return arg;
+	arg = args[argnum(body)].arg[ARG_QUOTED];
+	if (!arg)
+		arg = &eof_token_entry;
+	if (argkind(body) == ARG_NORMAL) {
+		if (!eof_token(arg)) {
+			if (!(body->argnum & (1 << ARGNUM_CONSUME_EXPAND)))
+				arg = dup_list(arg);
+			expanding->tainted = 0;
+			expand_list(&arg);
+			expanding->tainted = 1;
+		}
+		return args[argnum(body)].arg[ARG_NORMAL] = arg;
+	}
+	if (argkind(body) == ARG_STR)
+		return args[argnum(body)].arg[ARG_STR] = stringify(arg);
+	return arg;	// ARG_QUOTED
+}
+
 static struct token **substitute(struct token **list, const struct token *body, struct arg *args)
 {
 	struct position *base_pos = &(*list)->pos;
-	int *count;
 	enum {Normal, Placeholder, Concat} state = Normal;
+	struct ident *expanding = (*list)->ident;
+
+	expanding->tainted = 1;
 
 	for (; !eof_token(body); body = body->next) {
 		struct token *added, *arg;
@@ -687,8 +678,7 @@ static struct token **substitute(struct token **list, const struct token *body, 
 			break;
 
 		case TOKEN_MACRO_ARGUMENT:
-			arg = args[argnum(body)].arg[argkind(body)];
-			count = &args[argnum(body)].count[argkind(body)];
+			arg = do_argument(body, args, expanding);
 			if (!arg || eof_token(arg)) {
 				if (state == Concat)
 					state = Normal;
@@ -696,7 +686,7 @@ static struct token **substitute(struct token **list, const struct token *body, 
 					state = Placeholder;
 				continue;
 			}
-			if (!--*count)
+			if (body->argnum & (1 << ARGNUM_CONSUME))
 				tail = move_into(&added, arg);
 			else
 				tail = copy(&added, arg);
@@ -755,13 +745,10 @@ static int expand(struct token **list, struct symbol *sym)
 			return 1;
 		if (!collect_arguments(token->next, sym, args, token))
 			return 1;
-		expand_arguments(nargs, args);
 	}
 
 	if (sym->expand)
 		return sym->expand(token, args) ? 0 : 1;
-
-	expanding->tainted = 1;
 
 	last = token->next;
 	tail = substitute(list, expansion, args);
@@ -1093,8 +1080,6 @@ Eargs:
 static inline void set_arg_count(struct token *token)
 {
 	token_type(token) = TOKEN_ARG_COUNT;
-	token->count.normal = token->count.quoted =
-	token->count.str = 0;
 }
 
 static struct token *parse_arguments(struct token *list)
@@ -1190,10 +1175,16 @@ Eva_args:
 	return NULL;
 }
 
-static int try_arg(struct token *token, enum arg_kind kind, struct token *arglist)
+struct arg_state {
+	struct token *needs_raw;
+	struct token *needs_expanded;
+	struct token *needs_str;
+};
+
+static int try_arg(struct token *token, enum arg_kind kind, struct arg_state args[])
 {
 	struct ident *ident = token->ident;
-	int nr, n;
+	int nr;
 
 	if (!macro_funclike || token_type(token) != TOKEN_IDENT)
 		return 0;
@@ -1204,38 +1195,31 @@ static int try_arg(struct token *token, enum arg_kind kind, struct token *arglis
 	if (nr == macro_nargs)
 		return 0;
 
-	arglist = arglist->next;
-	for (int i = 0; i < nr; i++)
-		arglist = arglist->next->next;
-
 	token->argnum = (nr << ARGNUM_BITS_STOLEN) | kind;
 	token_type(token) = TOKEN_MACRO_ARGUMENT;
 	switch (kind) {
-	case ARG_NORMAL:
-		n = ++arglist->next->count.normal;
-		break;
 	case ARG_QUOTED:
-		n = ++arglist->next->count.quoted;
+		args[nr].needs_raw = token;
 		break;
-	default:
-		n = ++arglist->next->count.str;
+	case ARG_NORMAL:
+		if (!args[nr].needs_expanded)
+			args[nr].needs_raw = token;
+		args[nr].needs_expanded = token;
+		break;
+	default: // ARG_STR
+		if (!args[nr].needs_str)
+			args[nr].needs_raw = token;
+		args[nr].needs_str = token;
 	}
-	if (n)
-		return nr == macro_vararg ? 2 : 1;
-	/*
-	 * XXX - need saner handling of that
-	 * (>= 1024 instances of argument)
-	 */
-	token_type(token) = TOKEN_ERROR;
-	return -1;
+	return nr == macro_vararg ? 2 : 1;
 }
 
-static struct token *handle_hash(struct token **p, struct token *arglist)
+static struct token *handle_hash(struct token **p, struct arg_state args[])
 {
 	struct token *token = *p;
 	if (macro_funclike) {
 		struct token *next = token->next;
-		if (!try_arg(next, ARG_STR, arglist))
+		if (!try_arg(next, ARG_STR, args))
 			goto Equote;
 		next->pos.whitespace = token->pos.whitespace;
 		__free_token(token);
@@ -1251,13 +1235,13 @@ Equote:
 }
 
 /* token->next is ## */
-static struct token *handle_hashhash(struct token *token, struct token *arglist)
+static struct token *handle_hashhash(struct token *token, struct arg_state args[])
 {
 	struct token *last = token;
 	struct token *concat;
 	int state = match_op(token, ',');
 	
-	try_arg(token, ARG_QUOTED, arglist);
+	try_arg(token, ARG_QUOTED, args);
 
 	while (1) {
 		struct token *t;
@@ -1276,12 +1260,12 @@ static struct token *handle_hashhash(struct token *token, struct token *arglist)
 			goto Econcat;
 
 		if (match_op(t, '#')) {
-			t = handle_hash(&concat->next, arglist);
+			t = handle_hash(&concat->next, args);
 			if (!t)
 				return NULL;
 		}
 
-		is_arg = try_arg(t, ARG_QUOTED, arglist);
+		is_arg = try_arg(t, ARG_QUOTED, args);
 
 		if (state == 1 && is_arg) {
 			state = is_arg;
@@ -1304,8 +1288,9 @@ Econcat:
 	return NULL;
 }
 
-static struct token *parse_expansion(struct token *expansion, struct token *arglist, struct ident *name)
+static struct token *parse_expansion(struct token *expansion, struct ident *name)
 {
+	struct arg_state args[macro_nargs] = {};
 	struct token *token = expansion;
 	struct token **p;
 
@@ -1314,19 +1299,30 @@ static struct token *parse_expansion(struct token *expansion, struct token *argl
 
 	for (p = &expansion; !eof_token(token); p = &token->next, token = *p) {
 		if (match_op(token, '#')) {
-			token = handle_hash(p, arglist);
+			token = handle_hash(p, args);
 			if (!token)
 				return NULL;
 		}
 		if (match_op(token->next, SPECIAL_HASHHASH)) {
-			token = handle_hashhash(token, arglist);
+			token = handle_hashhash(token, args);
 			if (!token)
 				return NULL;
 		} else {
-			try_arg(token, ARG_NORMAL, arglist);
+			try_arg(token, ARG_NORMAL, args);
 		}
-		if (token_type(token) == TOKEN_ERROR)
-			goto Earg;
+	}
+	for (int i = 0; i < macro_nargs; i++) {
+		if (args[i].needs_str)
+			args[i].needs_str->argnum |= 1 << ARGNUM_CONSUME;
+		if (args[i].needs_expanded)
+			args[i].needs_expanded->argnum |= 1 << ARGNUM_CONSUME;
+		if (args[i].needs_raw) {
+			struct token *p = args[i].needs_raw;
+			if (argkind(p) == ARG_QUOTED)
+				p->argnum |= 1 << ARGNUM_CONSUME;
+			else if (argkind(p) == ARG_NORMAL)
+				p->argnum |= 1 << ARGNUM_CONSUME_EXPAND;
+		}
 	}
 	token = alloc_token(&expansion->pos);
 	token_type(token) = TOKEN_UNTAINT;
@@ -1338,9 +1334,6 @@ static struct token *parse_expansion(struct token *expansion, struct token *argl
 Econcat:
 	sparse_error(token->pos, "'##' cannot appear at the ends of macro expansion");
 	return NULL;
-Earg:
-	sparse_error(token->pos, "too many instances of argument in body");
-	return NULL;
 }
 
 static int do_define(struct position pos, struct token *token, struct ident *name,
@@ -1349,7 +1342,7 @@ static int do_define(struct position pos, struct token *token, struct ident *nam
 	struct symbol *sym;
 	int ret = 1;
 
-	expansion = parse_expansion(expansion, arglist, name);
+	expansion = parse_expansion(expansion, name);
 	if (!expansion)
 		goto out;
 

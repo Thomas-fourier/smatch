@@ -182,12 +182,16 @@ enum arg_kind {
 };
 
 enum {
-	ARGNUM_BITS_STOLEN = 2
+	ARGNUM_CONSUME = 2,
+	ARGNUM_CONSUME_EXPAND,
+	ARGNUM_BITS_STOLEN
 };
 
 enum {
-	ARGNUM_KIND_MASK = 3
+	ARGNUM_KIND_MASK = (1 << ARGNUM_CONSUME) - 1
 };
+
+// _Static_assert(ARGNUM_KIND_MASK >= ARG_STR)
 
 /*
  * This is a very common data structure, it should be kept
