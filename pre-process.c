@@ -507,7 +507,7 @@ static int merge(struct token *left, struct token *right)
 	switch (res) {
 	case TOKEN_IDENT:
 		left->ident = built_in_ident(buffer);
-		left->pos.noexpand = 0;
+		left->pos.noexpand = left->ident->tainted;
 		return 1;
 
 	case TOKEN_NUMBER:
@@ -529,13 +529,11 @@ static int merge(struct token *left, struct token *right)
 	case TOKEN_WIDE_CHAR:
 	case TOKEN_WIDE_STRING:
 		token_type(left) = res;
-		left->pos.noexpand = 0;
 		left->string = right->string;
 		return 1;
 
 	case TOKEN_WIDE_CHAR_EMBEDDED_0 ... TOKEN_WIDE_CHAR_EMBEDDED_3:
 		token_type(left) = res;
-		left->pos.noexpand = 0;
 		memcpy(left->embedded, right->embedded, 4);
 		return 1;
 
@@ -812,15 +810,9 @@ static int expand(struct token **list, struct symbol *sym)
 {
 	struct token *last;
 	struct token *token = *list;
-	struct ident *expanding = token->ident;
 	struct token **tail;
 	struct token *expansion = sym->expansion;
 	struct arg args[sym->fixed_args + 1];
-
-	if (expanding->tainted) {
-		token->pos.noexpand = 1;
-		return 1;
-	}
 
 	if (sym->arglist) {
 		if (!match_op(scan_next(&token->next), '('))
