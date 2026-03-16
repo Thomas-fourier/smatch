@@ -598,15 +598,23 @@ static struct token *dup_token(const struct token *token, struct position *strea
 	return alloc;	
 }
 
-static struct token **copy(struct token **where, struct token *list, int *count)
+static struct token **move_into(struct token **where, struct token *list)
 {
-	int need_copy = --*count;
+	*where = list;
+	while (!eof_token(list)) {
+		if (token_type(list) == TOKEN_IDENT && list->ident->tainted)
+			list->pos.noexpand = 1;
+		where = &list->next;
+		list = *where;
+	}
+	return where;
+}
+
+static struct token **copy(struct token **where, struct token *list)
+{
 	while (!eof_token(list)) {
 		struct token *token;
-		if (need_copy)
-			token = dup_token(list, &list->pos);
-		else
-			token = list;
+		token = dup_token(list, &list->pos);
 		if (token_type(token) == TOKEN_IDENT && token->ident->tainted)
 			token->pos.noexpand = 1;
 		*where = token;
@@ -698,7 +706,10 @@ static struct token **substitute(struct token **list, const struct token *body, 
 				continue;
 			}
 		copy_arg:
-			tail = copy(&added, arg, count);
+			if (!--*count)
+				tail = move_into(&added, arg);
+			else
+				tail = copy(&added, arg);
 			added->pos.newline = body->pos.newline;
 			added->pos.whitespace = body->pos.whitespace;
 			break;
