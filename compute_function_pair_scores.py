@@ -104,9 +104,18 @@ def generate_file(functions, context):
         folder = sys.argv[2]
     else:
         folder = os.path.dirname(sys.argv[0]) / Path("generated_spec")
+    if os.path.exists(folder):
+        os.system("rm -rf " + folder)
     os.mkdir(folder)
     for fn1, fn2 in functions:
-        filename = folder / Path(fn1)
+        if len(functions[fn1, fn2]) == 1:
+            continue
+        base_filename = folder / Path(fn1)
+        filename = base_filename
+        i = 0
+        while os.path.isfile(filename):
+            filename = str(base_filename) + "_" + str(i)
+            i += 1
         with open(filename, "w") as file:
             contents = generate_one_file(fn1, fn2, functions[fn1, fn2], context)
             file.write(contents)
