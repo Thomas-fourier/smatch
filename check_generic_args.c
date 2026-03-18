@@ -330,16 +330,29 @@ static bool two_args_are_same(char *char1, char *char2)
     return false;
 }
 
-static bool args_are_same(char **arg_name_1, char **arg_name_2,
+/**
+ * Returns 0 if half less than half the arguments are the same,
+ * returns 1 if more that half are the same,
+ * returns 2 if all the arguments are the same.
+ */
+static int args_are_same(char **arg_name_1, char **arg_name_2,
                           struct calls_rep *calls)
 {
+    int nb_args = 0, nb_common_args = 0;
     for (int i = 0; i < calls->dsl.nb_arg_cat; i++) {
         if (arg_name_1[i] && arg_name_2[i]) {
+            nb_args += 1;
             if (!two_args_are_same(arg_name_1[i], arg_name_2[i]))
-                return false;
+                nb_common_args += 1;
         }
     }
-    return true;
+    if (nb_common_args * 2 < nb_args)
+        return 0;
+
+    if (nb_common_args < nb_args)
+        return 1;
+
+    return 2;
 }
 
 static void print_arg_name(FILE *out, struct calls_rep *calls)
@@ -379,7 +392,7 @@ static char **split_array_if_ternary(char **new_arg_name,
     for (int i = 0; i < calls->dsl.nb_arg_cat; i++) {
         if (new_arg_name[i] && (mark_index = strstr(new_arg_name[i], "?"))) {
             if (new_array) {
-                sm_warning( "Two ternary patterns on the same file");
+                sm_warning( "Two ternary patterns on the same line");
                 continue;
             }
             new_array = malloc(sizeof(*new_array) * calls->dsl.nb_arg_cat);
@@ -496,14 +509,15 @@ static void match_assign(struct expression *expr)
     __match_assign(left_str, right_str);
 }
 
-static bool exists_similar_call(bool *checked, int index,
+static int exists_similar_call(bool *checked, int index,
                                 struct calls_rep *calls)
 {
     if (!calls->arg_name_function)
         return true;
     if (!calls->arg_name)
         return true;
-    bool ret = false;
+    int ret = false;
+    int cur_res = false;
     for (int j = 0; j < calls->nb_arg_name; j++) {
         if (j == index)
             continue;
@@ -511,10 +525,15 @@ static bool exists_similar_call(bool *checked, int index,
         if (checked[j] && ret)
             continue;
 
-        if (strcmp(calls->arg_name_function[index], calls->arg_name_function[j]) != 0 &&
-            args_are_same(calls->arg_name[index], calls->arg_name[j], calls)) {
+        if (strcmp(calls->arg_name_function[index], calls->arg_name_function[j]) != 0){
+            cur_res = args_are_same(calls->arg_name[index], calls->arg_name[j], calls);
+
+            if (cur_res == 2) {
                 checked[j] = true;
-                ret = true;
+                ret = 2;
+            } else {
+                ret = cur_res > ret ? cur_res : ret;
+            }
         }
     }
     return ret;
@@ -551,14 +570,18 @@ static void match_file_end_calls(struct calls_rep *calls)
     for (int i = 0; i < calls->nb_arg_name; i++) {
         if (checked[i])
             continue;
-        if (exists_similar_call(checked, i, calls))
-            continue;
-
-        fprintf(sm_outfd,
-                "%s warn: Possible function not matched %s in interface %s\n",
-                calls->arg_name_location[i], calls->arg_name_function[i],
-                calls->dsl.filename);
-
+        switch (exists_similar_call(checked, i, calls)) {
+            case 0:
+            case 2:
+                break;
+            case 1:
+                fprintf(sm_outfd,
+                        "%s warn: Possible function not matched %s in interface %s\n",
+                        calls->arg_name_location[i], calls->arg_name_function[i],
+                        calls->dsl.filename);
+            default:
+                sm_warning("Wrong return value of similar call.");
+        }
     }
 
     free(checked);
