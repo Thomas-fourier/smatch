@@ -78,13 +78,17 @@ def generate_one_file(fn1, fn2, args, context):
     arg_decl = ""
     i = 0
 
+    arg_decl += "var "
     for arg1, arg2 in args:
         this_arg = "var" + str(i)
-        arg_decl += "var " + this_arg + "\n"
         i += 1
+        arg_decl += this_arg  + ", "
+
 
         args1[arg1] = this_arg
         args2[arg2] = this_arg
+
+    arg_decl = arg_decl[:-2]
 
     arg_decl += "\n\n"
     arg_decl += create_line(fn1, args1)
