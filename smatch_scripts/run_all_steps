@@ -1,0 +1,26 @@
+#!/bin/bash
+
+SMATCH_DIR=$(dirname $(dirname $0))
+SMATCH_SCRIPTS=$SMATCH_DIR/smatch_scripts
+SPEC_DIR=$SMATCH_DIR/generated_spec
+
+# Generate DSL
+SMATCH_ARG="--resemblance" $SMATCH_SCRIPTS/run_all_kernel
+python3 $SMATCH_SCRIPTS/compute_function_pair_scores.py smatch.log $SPEC_DIR
+
+
+# Run checker
+run_check() {
+    SMATCH_ARG="--check-api --wrappers" API_SPECS="$SPEC_DIR" $SMATCH_SCRIPTS/run_all_kernel
+}
+
+run_check
+while [ -f ".run_smatch_again" ]; do
+    rm -f ".run_smatch_again"
+    run_check
+done
+
+for i in $SPEC_DIR/* ; do
+     grep "../$i\$" smatch.warning  > errors/$(basename $i)
+done
+
