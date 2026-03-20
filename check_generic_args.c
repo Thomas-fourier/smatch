@@ -509,8 +509,7 @@ static void match_assign(struct expression *expr)
     __match_assign(left_str, right_str);
 }
 
-static int exists_similar_call(bool *checked, int index,
-                                struct calls_rep *calls)
+static int exists_similar_call(int index, struct calls_rep *calls)
 {
     if (!calls->arg_name_function)
         return true;
@@ -522,14 +521,10 @@ static int exists_similar_call(bool *checked, int index,
         if (j == index)
             continue;
 
-        if (checked[j] && ret)
-            continue;
-
         if (strcmp(calls->arg_name_function[index], calls->arg_name_function[j]) != 0){
             cur_res = args_are_same(calls->arg_name[index], calls->arg_name[j], calls);
 
             if (cur_res == 2) {
-                checked[j] = true;
                 ret = 2;
             } else {
                 ret = cur_res > ret ? cur_res : ret;
@@ -565,12 +560,9 @@ static void match_file_end_calls(struct calls_rep *calls)
         return;
     }
 
-    bool *checked = calloc(calls->nb_arg_name, sizeof(*checked));
 
     for (int i = 0; i < calls->nb_arg_name; i++) {
-        if (checked[i])
-            continue;
-        switch (exists_similar_call(checked, i, calls)) {
+        switch (exists_similar_call(i, calls)) {
             case 0:
             case 2:
                 break;
@@ -583,8 +575,6 @@ static void match_file_end_calls(struct calls_rep *calls)
                 sm_warning("Wrong return value of similar call.");
         }
     }
-
-    free(checked);
 }
 
 static void match_file_end() {
