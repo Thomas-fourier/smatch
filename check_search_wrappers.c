@@ -4,15 +4,15 @@
 #include "stringification.h"
 
 static struct dsl_representation *apis;
-char **func_args = NULL;
-int nb_func_args = 0;
-char *ret = NULL;
-char *ret_func_wrapped;
-int nb_api_call = 0;
-char *wrapper_found = NULL;
-char **wrapper_parameters = NULL;
-int nb_wrapper_parameters;
-int function_start;
+static char **func_args = NULL;
+static int nb_func_args = 0;
+static char *ret = NULL;
+static char *ret_func_wrapped;
+static int nb_api_call = 0;
+static char *wrapper_found = NULL;
+static char **wrapper_parameters = NULL;
+static int nb_wrapper_parameters;
+static int function_start;
 
 
 static int id;
@@ -64,7 +64,7 @@ static char *str_of_wrapper_params(char *fn, char **params, int nb_params)
     res[offset] = ')';
     res[offset + 1] = '\0';
 
-    return res;
+    return alloc_string(res);
 }
 
 static void match_func_end(void) {
@@ -76,12 +76,19 @@ static void match_func_end(void) {
     func_args = 0;
     free(ret);
     ret = 0;
-    if (wrapper_found && get_lineno() - function_start < 30)
+    if (wrapper_found) {
+        char *line = str_of_wrapper_params(get_function(),
+                                           wrapper_parameters,
+                                           nb_wrapper_parameters);
         sm_warning_line(function_start, "Possible wrapper found %s %s",
-                        wrapper_found,
-                        str_of_wrapper_params(get_function(),
-                                              wrapper_parameters,
-                                              nb_wrapper_parameters));
+                        wrapper_found, line);
+        nb_possible_wrappers++;
+        possible_wrapper_names = realloc(possible_wrapper_names,
+                                         nb_possible_wrappers * sizeof(*possible_wrapper_names));
+        possible_wrappers = realloc(possible_wrappers, nb_possible_wrappers * sizeof(*possible_wrappers));
+        possible_wrapper_names[nb_possible_wrappers - 1] = alloc_string(wrapper_found);
+        possible_wrappers[nb_possible_wrappers - 1] = line;
+    }
     if (ret_func_wrapped != wrapper_found)
         free(ret_func_wrapped);
     ret_func_wrapped = 0;
