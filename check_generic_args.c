@@ -342,7 +342,7 @@ static int args_are_same(char **arg_name_1, char **arg_name_2,
     for (int i = 0; i < calls->dsl.nb_arg_cat; i++) {
         if (arg_name_1[i] && arg_name_2[i]) {
             nb_args += 1;
-            if (!two_args_are_same(arg_name_1[i], arg_name_2[i]))
+            if (two_args_are_same(arg_name_1[i], arg_name_2[i]))
                 nb_common_args += 1;
         }
     }
