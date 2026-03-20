@@ -547,7 +547,57 @@ static bool all_funcs_are_same(struct calls_rep *calls)
     return true;
 }
 
-static void match_file_end_calls(struct calls_rep *calls)
+static void print_all_warnings(char **warnings, int nb_warnings)
+{
+    for (int i = 0; i < nb_warnings; i++) {
+        fprintf(sm_outfd, "%s", warnings[i]);
+    }
+}
+
+static void add_to_file(char *filename, char *possible_wrappers)
+{
+    char *line;
+    size_t len;
+    // TODO: put lock on the file
+    FILE *file = fopen(filename, "r+");
+    while (getline(&line, &len, file) > 0) {
+        if (strstr(line, possible_wrappers)) {
+            fclose(file);
+            return;
+        }
+    }
+    fprintf(file, "%s\n", possible_wrappers);
+    fclose(file);
+
+    // Create file to note that the analysis must be run again
+    fclose(fopen(".run_smatch_again", "w"));
+
+}
+
+static void possible_not_match(struct calls_rep *calls, int i, char ***warnings,
+                               int *nb_warnings)
+{
+    for (int j = 0; j < nb_possible_wrappers; j++) {
+        if (strcmp(calls->arg_name_function[i], possible_wrapper_names[j])) {
+            fprintf(stderr, "This is going it be a DSL rerun\n");
+            // Write the DSL
+            add_to_file(calls->dsl.filename, possible_wrappers[j]);
+            // mark to redo
+        }
+    }
+
+    (*nb_warnings)++;
+    *warnings = realloc(*warnings, (*nb_warnings) * sizeof(**warnings));
+    asprintf(&(*warnings)[*nb_warnings - 1],
+            "%s warn: Possible function not matched %s in interface %s\n",
+            calls->arg_name_location[i], calls->arg_name_function[i],
+            calls->dsl.filename);
+
+    // print_all_warnings(*warnings, *nb_warnings);
+}
+
+static void match_file_end_calls(struct calls_rep *calls, char ***warns,
+                                 int *nb_warns)
 {
     if (false) print_arg_name(stderr, calls);
 
@@ -567,19 +617,22 @@ static void match_file_end_calls(struct calls_rep *calls)
             case 2:
                 break;
             case 1:
-                fprintf(sm_outfd,
-                        "%s warn: Possible function not matched %s in interface %s\n",
-                        calls->arg_name_location[i], calls->arg_name_function[i],
-                        calls->dsl.filename);
+                possible_not_match(calls, i, warns, nb_warns);
+                break;
             default:
                 sm_warning("Wrong return value of similar call.");
         }
     }
 }
 
-static void match_file_end() {
+static void match_file_end(void)
+{
+    char **warnings = NULL;
+    int nb_warnings = 0;
     for (int i = 0; i < nb_generic_args_file; i++)
-        match_file_end_calls(&all_calls[i]);
+        match_file_end_calls(&all_calls[i], &warnings, &nb_warnings);
+
+    print_all_warnings(warnings, nb_warnings);
 }
 
 static void init_call_rep(int i) {

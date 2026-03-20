@@ -339,6 +339,14 @@ extern FILE *caller_info_fd;
 extern int sm_nr_checks;
 extern int sm_nr_errors;
 
+
+/**
+ * check_wrappers.h
+ */
+extern char **possible_wrappers;
+extern char **possible_wrapper_names;
+extern int nb_possible_wrappers;
+
 /*
  * How to use these routines:
  *
