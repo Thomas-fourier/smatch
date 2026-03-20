@@ -7,6 +7,10 @@ if [ -z $API_SPEC ]; then
 	API_SPECS=$SMATCH_DIR/api_spec
 fi
 
+if [-z $SMATCH_ARG]; then
+	SMATCH_ARG="--wrappers --resemblance --check-api"
+fi
+
 find -name \*.c.smatch -exec rm \{\} \;
 rm -f core.*
 make clean
@@ -20,13 +24,12 @@ find . -type f -name "*.c" | sort | uniq | rev |\
 	cut -d. -f2- |\
 	rev | awk " {printf \$0 ; print \".o\" } " | \
 	xargs make -j${NR_CPU} -k --output-sync CHECK="$CMD -p=kernel --spammy --file-output\
-		--succeed $dsl_files --wrappers --resemblance --check-api" C=1 2>&1 |\
+		--succeed $dsl_files $SMATCH_ARG" C=1 2>&1 |\
 	tee smatch.log
 
 
 find -name \*.c.smatch -exec grep -F -e "Possible function not matched"\
-		-e "is the only of the interface"\
-		-e "Possible wrapper found" \{\} \;  >\
+		-e "is the only of the interface" \{\} \;  >\
 			smatch.warning
 
 
