@@ -7,7 +7,7 @@ if [ -z $API_SPEC ]; then
 	API_SPECS=$SMATCH_DIR/api_spec
 fi
 
-if [-z $SMATCH_ARG]; then
+if [ -z $SMATCH_ARG ]; then
 	SMATCH_ARG="--wrappers --resemblance --check-api"
 fi
 
