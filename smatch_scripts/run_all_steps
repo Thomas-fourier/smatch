@@ -20,6 +20,11 @@ while [ -f ".run_smatch_again" ]; do
     run_check
 done
 
+if [ -e errors ]; then
+    rm -rf errors
+fi
+mkdir errors
+
 for i in $SPEC_DIR/* ; do
      grep "../$i\$" smatch.warning  > errors/$(basename $i)
 done
