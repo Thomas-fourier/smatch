@@ -556,7 +556,7 @@ static void print_all_warnings(char **warnings, int nb_warnings)
 
 static void add_to_file(char *filename, char *possible_wrappers)
 {
-    char *line;
+    char *line = NULL;
     size_t len;
     // TODO: put lock on the file
     FILE *file = fopen(filename, "r+");
