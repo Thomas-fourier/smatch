@@ -9,9 +9,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <glib.h>
+#include <unistd.h>
 
 static int my_id;
 static struct calls_rep *all_calls;
+
+#define run_again_filename ".run_smatch_again"
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -554,23 +557,32 @@ static void print_all_warnings(char **warnings, int nb_warnings)
     }
 }
 
-static void add_to_file(char *filename, char *possible_wrappers)
+static bool grep_in_file(FILE *file, char *search)
 {
     char *line = NULL;
     size_t len;
-    // TODO: put lock on the file
-    FILE *file = fopen(filename, "r+");
     while (getline(&line, &len, file) > 0) {
-        if (strstr(line, possible_wrappers)) {
-            fclose(file);
-            return;
+        if (strstr(line, search)) {
+            return true;
         }
     }
+
+    return false;
+}
+
+static void add_to_file(char *filename, char *possible_wrappers)
+{
+    // TODO: put lock on the file
+    FILE *file = fopen(filename, "r+");
+    if (grep_in_file(file, possible_wrappers)) {
+        fclose(file);
+        return;
+}
     fprintf(file, "%s\n", possible_wrappers);
     fclose(file);
 
     // Create file to note that the analysis must be run again
-    fclose(fopen(".run_smatch_again", "w"));
+    fclose(fopen(run_again_filename, "w"));
 
 }
 
@@ -578,12 +590,8 @@ static void possible_not_match(struct calls_rep *calls, int i, char ***warnings,
                                int *nb_warnings)
 {
     for (int j = 0; j < nb_possible_wrappers; j++) {
-        if (strcmp(calls->arg_name_function[i], possible_wrapper_names[j])) {
-            fprintf(stderr, "This is going it be a DSL rerun\n");
-            // Write the DSL
+        if (strcmp(calls->arg_name_function[i], possible_wrapper_names[j]) == 0)
             add_to_file(calls->dsl.filename, possible_wrappers[j]);
-            // mark to redo
-        }
     }
 
     (*nb_warnings)++;
@@ -632,7 +640,8 @@ static void match_file_end(void)
     for (int i = 0; i < nb_generic_args_file; i++)
         match_file_end_calls(&all_calls[i], &warnings, &nb_warnings);
 
-    print_all_warnings(warnings, nb_warnings);
+    if (access(run_again_filename, F_OK) != 0)
+        print_all_warnings(warnings, nb_warnings);
 }
 
 static void init_call_rep(int i) {
