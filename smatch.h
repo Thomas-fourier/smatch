@@ -325,6 +325,7 @@ extern int sm_nr_errors;
  * check_wrappers.h
  */
 extern char **possible_wrappers;
+/** name of the function wrapped */
 extern char **possible_wrapper_names;
 extern int nb_possible_wrappers;
 
