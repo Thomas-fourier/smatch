@@ -79,8 +79,13 @@ static bool add_to_arg_pos(char *expr, char *line, int pos,
     if (strcmp("_", expr) == 0)
         return true;
 
-    if (!is_expr_in_list(expr, dsl->arg_cat, dsl->nb_arg_cat, &index))
-        parse_error("Argument %s not declared.", expr);
+    if (!is_expr_in_list(expr, dsl->arg_cat, dsl->nb_arg_cat, &index)) {
+        sm_warning("Argument %s not declared.", expr);
+        dsl->nb_func_name--;
+        free(dsl->arg_pos[dsl->nb_func_name]);
+        free(dsl->func_name[dsl->nb_func_name]);
+        return false;
+    }
 
     if (dsl->arg_pos[dsl->nb_func_name - 1][index] != -2)
         parse_error("Argument %s used multiple times in %s", expr, line);
@@ -153,7 +158,8 @@ static bool parse_equal(char *line, struct dsl_representation *dsl)
     else if (1 != sscanf(line, label, ret_val))
         parse_error("Could not parse affectation statement %s", line);
 
-    add_to_arg_pos(ret_val, line, -1, dsl);
+    if (!add_to_arg_pos(ret_val, line, -1, dsl))
+        return false;
 
     return true;
 }
@@ -198,7 +204,7 @@ void parse_file(const char *_filename, struct dsl_representation *res)
         if (parse_decl(line, res)) continue;
         if (parse_equal(line, res)) continue;
         if (parse_call(line, res)) continue;
-        parse_error("File %s: line %s could not be parsed", filename, line);
+        sm_warning("File %s: line %s could not be parsed", filename, line);
     }
 
     free(line);
