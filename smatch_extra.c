@@ -250,16 +250,21 @@ static void set_extra_true_false_helper(const char *name, struct symbol *sym,
 					struct smatch_state *true_state,
 					struct smatch_state *false_state)
 {
-	struct stree *true_stree, *false_stree;
+	struct stree *true_stree = NULL, *false_stree = NULL;
 	struct sm_state *tmp;
 
-	__push_fake_cur_stree();
-	call_extra_nomod_hooks(name, sym, expr, true_state);
-	true_stree = __pop_fake_cur_stree();
 
-	__push_fake_cur_stree();
-	call_extra_nomod_hooks(name, sym, expr, false_state);
-	false_stree = __pop_fake_cur_stree();
+	if (true_state) {
+		__push_fake_cur_stree();
+		call_extra_nomod_hooks(name, sym, expr, true_state);
+		true_stree = __pop_fake_cur_stree();
+	}
+
+	if (false_state) {
+		__push_fake_cur_stree();
+		call_extra_nomod_hooks(name, sym, expr, false_state);
+		false_stree = __pop_fake_cur_stree();
+	}
 
 	/* FIXME: do we need a set_true_false_sm() function? */
 	FOR_EACH_SM(true_stree, tmp) {
