@@ -107,7 +107,7 @@ def generate_file(functions, context):
     if os.path.exists(folder):
         os.system("rm -rf " + folder)
     os.mkdir(folder)
-    for fn1, fn2 in functions:
+    for fn1, fn2 in sorted(functions.keys()):
         if len(functions[fn1, fn2]) == 1:
             continue
         base_filename = folder / Path(fn1)
