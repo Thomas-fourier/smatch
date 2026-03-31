@@ -80,18 +80,24 @@ static bool add_to_arg_pos(char *expr, char *line, int pos,
         return true;
 
     if (!is_expr_in_list(expr, dsl->arg_cat, dsl->nb_arg_cat, &index)) {
-        sm_warning("Argument %s not declared.", expr);
-        dsl->nb_func_name--;
-        free(dsl->arg_pos[dsl->nb_func_name]);
-        free(dsl->func_name[dsl->nb_func_name]);
-        return false;
+        sm_warning("File %s: Argument %s not declared.", filename, expr);
+        goto err_out;
     }
 
-    if (dsl->arg_pos[dsl->nb_func_name - 1][index] != -2)
-        parse_error("Argument %s used multiple times in %s", expr, line);
+    if (dsl->arg_pos[dsl->nb_func_name - 1][index] != -2) {
+        sm_warning("File %s: Argument %s used multiple times in %s", filename, expr, line);
+        goto err_out;
+    }
 
     dsl->arg_pos[dsl->nb_func_name - 1][index] = pos;
     return true;
+
+err_out:
+    dsl->nb_func_name--;
+    free(dsl->arg_pos[dsl->nb_func_name]);
+    free(dsl->func_name[dsl->nb_func_name]);
+    return false;
+
 }
 
 static bool parse_call(char *line, struct dsl_representation *dsl)
