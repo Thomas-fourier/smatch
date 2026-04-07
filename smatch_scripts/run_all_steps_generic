@@ -1,0 +1,34 @@
+#!/bin/bash
+
+SMATCH_DIR=$(dirname $(dirname $0))
+SMATCH_SCRIPTS=$SMATCH_DIR/smatch_scripts
+SPEC_DIR=$SMATCH_DIR/generated_spec
+
+# Generate DSL
+$SMATCH_SCRIPTS/test_generic.sh --resemblance
+python3 $SMATCH_SCRIPTS/compute_function_pair_scores.py smatch.log $SPEC_DIR
+
+for file in  $(ls $SPEC_DIR); do
+	dsl_files="$dsl_files --generic-arg-file=$SPEC_DIR/$file"
+done
+
+# Run checker
+run_check() {
+    $SMATCH_SCRIPTS/test_generic.sh --check-api --wrappers $dsl_files
+}
+
+run_check
+while [ -f ".run_smatch_again" ]; do
+    rm -f ".run_smatch_again"
+    run_check
+done
+
+if [ -e errors ]; then
+    rm -rf errors
+fi
+mkdir errors
+
+for i in $SPEC_DIR/* ; do
+     grep "$i\$" smatch.warning  > errors/$(basename $i)
+done
+
