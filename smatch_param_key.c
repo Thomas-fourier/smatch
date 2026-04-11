@@ -613,7 +613,7 @@ char *get_param_var_sym_var_sym(const char *name, struct symbol *sym, struct exp
 	return get_param_var_sym_var_sym_helper(LATE, name, sym, ret_expr, sym_p);
 }
 
-char *get_param_name_sym(struct expression *expr, struct symbol **sym_p)
+static char *get_param_name_sym(struct expression *expr, struct symbol **sym_p)
 {
 	struct symbol *sym;
 	const char *ret = NULL;
