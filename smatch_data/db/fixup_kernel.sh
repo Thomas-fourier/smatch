@@ -194,9 +194,22 @@ update return_states set value = '(-4095)-0' where function = 'usb_submit_urb' a
 
 /* delete some function pointers which are sometimes byte units */
 delete from caller_info where function = '(struct i2c_algorithm)->master_xfer' and type = 1027;
+delete from caller_info where function = '(struct i2c_algorithm)->master_xfer_atomic' and type = 1027;
 
 /* this if from READ_ONCE().  We can't know anything about the data.  */
 delete from type_info where key = '(union anonymous)->__val';
+
+/* This is overloaded to be either length or timeout...  Ugh. */
+delete from type_info where type = 8040 and key = '(struct sg_header)->reply_len';
+delete from type_info where type = 8040 and key = '(struct sg_io_hdr)->dxfer_len';
+
+/* In DRM these can be either pages or bytes depending on the driver.  Crazy! */
+delete from type_info where type = 8040 and key = '(struct drm_mm_node)->size';
+delete from type_info where type = 8040 and key = '(struct ttm_mem_reg)->start';
+delete from type_info where type = 8040 and key = '(struct ttm_mem_reg)->size';
+delete from type_info where type = 8040 and key = '(struct page)->private';
+delete from type_info where type = 8040 and key = '(struct list_head)->next';
+delete from type_info where type = 8040 and key = '(struct list_head)->prev';
 
 /* This is RIO_BAD_SIZE */
 delete from return_states where file = ${DRIVERS_RAPIDIO_ACCESS} and return = '129';
