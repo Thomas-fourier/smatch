@@ -154,8 +154,8 @@ void add_refcount_dec_hook(name_sym_hook *hook)
 	add_ptr_list(&dec_hooks, hook);
 }
 
-void call_hooks(struct name_sym_fn_list *hooks, struct expression *expr,
-		const char *name, struct symbol *sym)
+static void call_hooks(struct name_sym_fn_list *hooks, struct expression *expr,
+		       const char *name, struct symbol *sym)
 {
 	name_sym_hook *hook;
 
