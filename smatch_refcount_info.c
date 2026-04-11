@@ -29,7 +29,6 @@ STATE(init);
 STATE(inc);
 STATE(dec);
 STATE(ignore);
-STATE(gone);
 
 struct ref_func_info {
 	const char *name;
@@ -137,22 +136,6 @@ static struct ref_func_info func_table[] = {
 
 	{ "find_process", REFCOUNT_INC, -1, "$->ref.refcount.refs.counter", &valid_ptr_min_sval, &valid_ptr_max_sval, &match_find_process },
 };
-
-static struct smatch_state *unmatched_state(struct sm_state *sm)
-{
-	if (parent_is_null_var_sym(sm->name, sm->sym))
-		return &gone;
-	return &undefined;
-}
-
-static struct smatch_state *merge_states(struct smatch_state *s1, struct smatch_state *s2)
-{
-	if (s1 == &gone)
-		return s2;
-	if (s2 == &gone)
-		return s1;
-	return &merged;
-}
 
 static struct name_sym_fn_list *init_hooks, *inc_hooks, *dec_hooks;
 
@@ -397,12 +380,9 @@ void register_refcount_info(int id)
 		}
 	}
 
-	add_merge_hook(my_id, &merge_states);
 	add_return_info_callback(my_id, &match_return_info);
 	add_hook(match_asm, ASM_HOOK);
 
 	select_return_param_key(REFCOUNT_INC, &refcount_inc);
 	select_return_param_key(REFCOUNT_DEC, &refcount_dec);
-
-	add_unmatched_state_hook(my_id, &unmatched_state);
 }
