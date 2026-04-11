@@ -38,6 +38,7 @@ struct stree {
 	size_t      count;
 	int stree_id;
 	int references;
+	int line;
 };
 
 void free_stree(struct stree **avl);

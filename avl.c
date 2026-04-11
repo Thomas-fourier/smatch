@@ -219,6 +219,8 @@ static AvlNode *lookup(const struct stree *avl, AvlNode *node, const struct sm_s
  */
 static bool insert_sm(struct stree *avl, AvlNode **p, const struct sm_state *sm)
 {
+	avl->line = sm->line;
+
 	if (*p == NULL) {
 		*p = mkNode(sm);
 		avl->count++;

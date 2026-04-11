@@ -751,6 +751,7 @@ static void match_states_stree(struct stree **one, struct stree **two)
 			__pop_fake_cur_stree_fast();
 			sm = alloc_state_no_name(one_iter.sm->owner, one_iter.sm->name,
 						  one_iter.sm->sym, tmp_state);
+			sm->line = (*two)->line;
 			add_ptr_list(&add_to_two, sm);
 			avl_iter_next(&one_iter);
 		} else if (cmp_tracker(one_iter.sm, two_iter.sm) == 0) {
@@ -764,6 +765,7 @@ static void match_states_stree(struct stree **one, struct stree **two)
 			__pop_fake_cur_stree_fast();
 			sm = alloc_state_no_name(two_iter.sm->owner, two_iter.sm->name,
 						  two_iter.sm->sym, tmp_state);
+			sm->line = (*one)->line;
 			add_ptr_list(&add_to_one, sm);
 			avl_iter_next(&two_iter);
 		}
