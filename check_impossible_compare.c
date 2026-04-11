@@ -38,6 +38,7 @@ static const char *kernel_macros[] = {
 	"TSL2591_ALS_MAX_VALUE",
 	"UBIFS_COMPR_TYPES_CNT",
 	"XFS_MAX_CRC_AG_BLOCKS",
+	"QCOMTEE_OBJECT_ID_END",
 	NULL
 };
 
