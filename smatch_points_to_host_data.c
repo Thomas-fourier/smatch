@@ -357,6 +357,9 @@ void register_points_to_host_data(int id)
 {
 	my_id = id;
 
+	// DELETE AFTER MAY 10 2023
+	return;
+
 	if (option_project != PROJ_KERNEL)
 		return;
 
