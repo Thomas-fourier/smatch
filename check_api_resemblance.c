@@ -102,6 +102,9 @@ static void match_func_def(struct symbol *sm)
     if (__inline_fn || __inline_call)
         return;
 
+    if (!sm || !sm->ident || !sm->ident->name)
+        return;
+
     fprintf(out, "Defining %s with %d arguments in file %s\n",
             sm->ident->name,
             ptr_list_size(sm->ctype.base_type->arguments),
