@@ -105,7 +105,7 @@ def generate_file(functions, context):
     else:
         folder = os.path.dirname(sys.argv[0]) / Path("generated_spec")
     if os.path.exists(folder):
-        os.system("rm -rf " + folder)
+        os.system("rm -rf " + str(folder))
     os.mkdir(folder)
     for fn1, fn2 in sorted(functions.keys()):
         if len(functions[fn1, fn2]) == 1:
