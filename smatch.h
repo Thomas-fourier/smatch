@@ -1115,6 +1115,7 @@ extern char *option_debug_var;
 extern char *option_state_cnt;
 extern char *option_process_function;
 extern char *option_project_str;
+extern char *option_strip_path;
 extern char *bin_dir;
 extern char *data_dir;
 extern int option_no_data;

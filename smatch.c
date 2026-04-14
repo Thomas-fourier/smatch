@@ -27,6 +27,7 @@ char *option_debug_var;
 char *option_state_cnt;
 char *option_process_function;
 char *option_project_str = (char *)"smatch_generic";
+char *option_strip_path = NULL;
 static char *option_db_file = (char *)"smatch_db.sqlite";
 enum project_type option_project = PROJ_NONE;
 char *bin_dir;
@@ -205,6 +206,12 @@ void parse_args(int *argcp, char ***argvp)
 			(*argvp)[1] = (*argvp)[0];
 			found = 1;
 		}
+		if (!found && !strncmp((*argvp)[1], "--strip-path=", 13)) {
+			option_strip_path = (*argvp)[1] + 13;
+			(*argvp)[1] = (*argvp)[0];
+			found = 1;
+		}
+
 		if (!found && !strncmp((*argvp)[1], "--db-file=", 10)) {
 			option_db_file = (*argvp)[1] + 10;
 			(*argvp)[1] = (*argvp)[0];

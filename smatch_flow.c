@@ -128,7 +128,21 @@ int outside_of_function(void)
 	return cur_func_sym == NULL;
 }
 
-const char *get_filename(void)
+static const char *filter_name(const char *filename)
+{
+	int len;
+
+	if (!option_strip_path)
+		return filename;
+
+	len = strlen(option_strip_path);
+	if (strncmp(filename, option_strip_path, len) == 0)
+		filename += len;
+
+	return filename;
+}
+
+static const char *get_filename_unfiltered(void)
 {
 	if (option_info && option_full_path)
 		return full_base_file;
@@ -139,11 +153,33 @@ const char *get_filename(void)
 	return filename;
 }
 
-const char *get_base_file(void)
+const char *get_filename(void)
+{
+	static const char *prev, *filtered_name;
+
+	if (prev == get_filename_unfiltered())
+		return filtered_name;
+	prev = get_filename_unfiltered();
+	filtered_name = filter_name(prev);
+	return filtered_name;
+}
+
+const char *get_base_file_unfiltered(void)
 {
 	if (option_full_path)
 		return full_base_file;
 	return base_file;
+}
+
+const char *get_base_file(void)
+{
+	static const char *prev, *filtered_name;
+
+	if (prev == get_base_file_unfiltered())
+		return filtered_name;
+	prev = get_base_file_unfiltered();
+	filtered_name = filter_name(prev);
+	return filtered_name;
 }
 
 unsigned long long get_file_id(void)
