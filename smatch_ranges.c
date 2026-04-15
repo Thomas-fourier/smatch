@@ -1725,8 +1725,12 @@ struct range_list *rl_intersection(struct range_list *one, struct range_list *tw
 
 static struct range_list *handle_mod_rl(struct range_list *left, struct range_list *right)
 {
+	sval_t left_sval;
 	sval_t zero;
 	sval_t max;
+
+	if (rl_to_sval(left, &left_sval) && left_sval.value == 0)
+		return alloc_rl(left_sval, left_sval);
 
 	max = rl_max(right);
 	if (sval_is_max(max))
@@ -1824,6 +1828,10 @@ static struct range_list *handle_divide_rl(struct range_list *left, struct range
 	struct range_list *left_neg, *left_pos, *right_neg, *right_pos;
 	struct range_list *neg_neg, *neg_pos, *pos_neg, *pos_pos;
 	struct range_list *ret;
+	sval_t left_sval;
+
+	if (rl_to_sval(left, &left_sval) && left_sval.value == 0)
+		return alloc_rl(left_sval, left_sval);
 
 	if (is_whole_rl(right))
 		return NULL;
@@ -1871,7 +1879,12 @@ static struct range_list *ptr_add_mult(struct range_list *left, int op, struct r
 
 static struct range_list *handle_mult_rl(struct range_list *left, int op, struct range_list *right)
 {
-	sval_t min, max;
+	sval_t sval, min, max;
+
+	if (rl_to_sval(left, &sval) && sval.value == 0)
+		return alloc_rl(sval, sval);
+	if (rl_to_sval(right, &sval) && sval.value == 0)
+		return alloc_rl(sval, sval);
 
 	if (type_is_ptr(rl_type(left)) || type_is_ptr(rl_type(right)))
 		return ptr_add_mult(left, op, right);
@@ -1889,7 +1902,13 @@ static struct range_list *handle_mult_rl(struct range_list *left, int op, struct
 
 static struct range_list *handle_add_rl(struct range_list *left, int op, struct range_list *right)
 {
-	sval_t min, max;
+	sval_t sval, min, max;
+
+	// FIXME: Are the clones necessary in these helpers?
+	if (rl_to_sval(left, &sval) && sval.value == 0)
+		return clone_rl(right);
+	if (rl_to_sval(right, &sval) && sval.value == 0)
+		return clone_rl(left);
 
 	if (type_is_ptr(rl_type(left)) || type_is_ptr(rl_type(right)))
 		return ptr_add_mult(left, op, right);
@@ -1909,9 +1928,13 @@ static struct range_list *handle_sub_rl(struct range_list *left_orig, struct ran
 {
 	struct range_list *left_rl, *right_rl;
 	struct symbol *type;
-	sval_t min, max;
+	sval_t min, max, sval;
 	sval_t min_ll, max_ll, res_ll;
 	sval_t tmp;
+
+	if (rl_to_sval(right_orig, &sval) && sval.value == 0)
+		return clone_rl(left_orig);
+	// TODO: handle 0 - foo
 
 	/* TODO:  These things should totally be using dranges where possible */
 
@@ -1996,7 +2019,12 @@ static struct range_list *handle_XOR_rl(struct range_list *left, struct range_li
 {
 	unsigned long long left_set, left_maybe;
 	unsigned long long right_set, right_maybe;
-	sval_t zero, max;
+	sval_t sval, zero, max;
+
+	if (rl_to_sval(left, &sval) && sval.value == 0)
+		return clone_rl(right);
+	if (rl_to_sval(right, &sval) && sval.value == 0)
+		return clone_rl(left);
 
 	left_set = rl_bits_always_set(left);
 	left_maybe = rl_bits_maybe_set(left);
@@ -2029,8 +2057,13 @@ static struct range_list *handle_AND_rl(struct range_list *left, struct range_li
 {
 	struct bit_info *one, *two;
 	struct range_list *rl;
-	sval_t min, max, zero, bits_sval;
+	sval_t min, max, zero, bits_sval, sval;
 	unsigned long long bits;
+
+	if (rl_to_sval(left, &sval) && sval.value == 0)
+		return alloc_rl(sval, sval);
+	if (rl_to_sval(right, &sval) && sval.value == 0)
+		return alloc_rl(sval, sval);
 
 	one = rl_to_binfo(left);
 	two = rl_to_binfo(right);

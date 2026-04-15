@@ -554,6 +554,13 @@ static bool handle_mod_rl(struct expression *expr, int implied, int *recurse_cnt
 		*res = alloc_rl(sval, sval);
 		return true;
 	}
+
+	if (get_implied_value(expr->left, &left) && left.value == 0) {
+		left = sval_cast(get_type(expr), left);
+		*res = alloc_rl(left, left);
+		return true;
+	}
+
 	/* if we can't figure out the right side it's probably hopeless */
 	if (!get_implied_value_internal(expr->right, recurse_cnt, &right))
 		return false;
