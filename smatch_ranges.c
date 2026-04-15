@@ -410,6 +410,24 @@ static sval_t sub_one(sval_t sval)
 	return sval;
 }
 
+static struct symbol *get_binop_type(struct range_list *left, struct range_list *right)
+{
+	struct symbol *type;
+
+	/*
+	 * This doesn't work for all binops.  SHIFTS in particular.  That's
+	 * why this function is marked as static because you have to know when
+	 * it's appropriate to use it.
+	 */
+
+	type = &int_ctype;
+	if (type_positive_bits(rl_type(left)) > type_positive_bits(type))
+		type = rl_type(left);
+	if (type_positive_bits(rl_type(right)) > type_positive_bits(type))
+		type = rl_type(right);
+	return type;
+}
+
 void filter_by_comparison(struct range_list **rl, int comparison, struct range_list *right)
 {
 	struct range_list *left_orig = *rl;
@@ -422,11 +440,7 @@ void filter_by_comparison(struct range_list **rl, int comparison, struct range_l
 	    comparison == IMPOSSIBLE_COMPARISON)
 		return;
 
-	cast_type = rl_type(left_orig);
-	if (sval_type_max(rl_type(left_orig)).uvalue < sval_type_max(rl_type(right_orig)).uvalue)
-		cast_type = rl_type(right_orig);
-	if (sval_type_max(cast_type).uvalue < INT_MAX)
-		cast_type = &int_ctype;
+	cast_type = get_binop_type(left_orig, right_orig);
 
 	min = sval_type_min(cast_type);
 	max = sval_type_max(cast_type);
@@ -484,11 +498,7 @@ static struct range_list *filter_by_comparison_call(const char *c, struct expres
 	if (!get_implied_rl(arg, &right_orig))
 		return start_rl;
 
-	type = &int_ctype;
-	if (type_positive_bits(rl_type(start_rl)) > type_positive_bits(type))
-		type = rl_type(start_rl);
-	if (type_positive_bits(rl_type(right_orig)) > type_positive_bits(type))
-		type = rl_type(right_orig);
+	type = get_binop_type(start_rl, right_orig);
 
 	casted_start = cast_rl(type, start_rl);
 	right_orig = cast_rl(type, right_orig);
@@ -1221,12 +1231,7 @@ int rl_equiv(struct range_list *one, struct range_list *two)
 		return 0;
 
 	if (rl_type(one) != rl_type(two)) {
-		type = rl_type(one);
-		if (type_positive_bits(type) < type_positive_bits(rl_type(two)))
-			type = rl_type(two);
-		if (type_positive_bits(type) < 31)
-			type = &int_ctype;
-
+		type = get_binop_type(one, two);
 		one = cast_rl(type, one);
 		two = cast_rl(type, two);
 	}
@@ -1365,11 +1370,7 @@ int possibly_true(struct expression *left, int comparison, struct expression *ri
 	get_absolute_rl(left, &rl_left);
 	get_absolute_rl(right, &rl_right);
 
-	type = rl_type(rl_left);
-	if (type_positive_bits(type) < type_positive_bits(rl_type(rl_right)))
-		type = rl_type(rl_right);
-	if (type_positive_bits(type) < 31)
-		type = &int_ctype;
+	type = get_binop_type(rl_left, rl_right);
 
 	rl_left = cast_rl(type, rl_left);
 	rl_right = cast_rl(type, rl_right);
@@ -1392,11 +1393,7 @@ int possibly_false(struct expression *left, int comparison, struct expression *r
 	get_absolute_rl(left, &rl_left);
 	get_absolute_rl(right, &rl_right);
 
-	type = rl_type(rl_left);
-	if (type_positive_bits(type) < type_positive_bits(rl_type(rl_right)))
-		type = rl_type(rl_right);
-	if (type_positive_bits(type) < 31)
-		type = &int_ctype;
+	type = get_binop_type(rl_left, rl_right);
 
 	rl_left = cast_rl(type, rl_left);
 	rl_right = cast_rl(type, rl_right);
@@ -1420,11 +1417,7 @@ int possibly_true_rl(struct range_list *left_ranges, int comparison, struct rang
 	if (comparison == IMPOSSIBLE_COMPARISON)
 		return 0;
 
-	type = rl_type(left_ranges);
-	if (type_positive_bits(type) < type_positive_bits(rl_type(right_ranges)))
-		type = rl_type(right_ranges);
-	if (type_positive_bits(type) < 31)
-		type = &int_ctype;
+	type = get_binop_type(left_ranges, right_ranges);
 
 	left_ranges = cast_rl(type, left_ranges);
 	right_ranges = cast_rl(type, right_ranges);
@@ -1448,11 +1441,7 @@ int possibly_false_rl(struct range_list *left_ranges, int comparison, struct ran
 	if (comparison == IMPOSSIBLE_COMPARISON)
 		return 0;
 
-	type = rl_type(left_ranges);
-	if (type_positive_bits(type) < type_positive_bits(rl_type(right_ranges)))
-		type = rl_type(right_ranges);
-	if (type_positive_bits(type) < 31)
-		type = &int_ctype;
+	type = get_binop_type(left_ranges, right_ranges);
 
 	left_ranges = cast_rl(type, left_ranges);
 	right_ranges = cast_rl(type, right_ranges);
@@ -1911,11 +1900,7 @@ static struct range_list *handle_sub_rl(struct range_list *left_orig, struct ran
 	if (!left_orig || !right_orig)
 		return NULL;
 
-	type = &int_ctype;
-	if (type_positive_bits(rl_type(left_orig)) > type_positive_bits(type))
-		type = rl_type(left_orig);
-	if (type_positive_bits(rl_type(right_orig)) > type_positive_bits(type))
-		type = rl_type(right_orig);
+	type = get_binop_type(left_orig, right_orig);
 
 	left_rl = cast_rl(type, left_orig);
 	right_rl = cast_rl(type, right_orig);
