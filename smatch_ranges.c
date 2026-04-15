@@ -2150,15 +2150,6 @@ struct range_list *rl_binop(struct range_list *left, int op, struct range_list *
 	case '+':
 		ret = handle_add_rl(left, op, right);
 		break;
-	case '|':
-		ret = handle_OR_rl(left, right);
-		break;
-	case '^':
-		ret = handle_XOR_rl(left, right);
-		break;
-	case '&':
-		ret = handle_AND_rl(left, right);
-		break;
 	case '-':
 		ret = handle_sub_rl(left, right);
 		break;
@@ -2166,6 +2157,15 @@ struct range_list *rl_binop(struct range_list *left, int op, struct range_list *
 		return handle_rshift(left, right);
 	case SPECIAL_LEFTSHIFT:
 		return handle_lshift(left, right);
+	case '&':
+		ret = handle_AND_rl(left, right);
+		break;
+	case '^':
+		ret = handle_XOR_rl(left, right);
+		break;
+	case '|':
+		ret = handle_OR_rl(left, right);
+		break;
 	}
 
 	return ret;
