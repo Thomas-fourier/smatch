@@ -2100,18 +2100,8 @@ static struct range_list *handle_rshift(struct range_list *left_orig, struct ran
 
 struct range_list *rl_binop(struct range_list *left, int op, struct range_list *right)
 {
-	struct symbol *cast_type;
 	sval_t left_sval, right_sval;
 	struct range_list *ret = NULL;
-
-	cast_type = rl_type(left);
-	if (sval_type_max(rl_type(left)).uvalue < sval_type_max(rl_type(right)).uvalue)
-		cast_type = rl_type(right);
-	if (sval_type_max(cast_type).uvalue < INT_MAX)
-		cast_type = &int_ctype;
-
-	left = cast_rl(cast_type, left);
-	right = cast_rl(cast_type, right);
 
 	if (!left && !right)
 		return NULL;
@@ -2119,6 +2109,14 @@ struct range_list *rl_binop(struct range_list *left, int op, struct range_list *
 	if (rl_to_sval(left, &left_sval) && rl_to_sval(right, &right_sval)) {
 		sval_t val = sval_binop(left_sval, op, right_sval);
 		return alloc_rl(val, val);
+	}
+
+	if (op != SPECIAL_RIGHTSHIFT &&
+	    op != SPECIAL_LEFTSHIFT) {
+		struct symbol *cast_type = get_binop_type(left, right);
+
+		left = cast_rl(cast_type, left);
+		right = cast_rl(cast_type, right);
 	}
 
 	switch (op) {
