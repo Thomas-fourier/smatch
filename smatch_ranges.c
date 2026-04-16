@@ -1928,7 +1928,7 @@ static struct range_list *ptr_add_mult(struct range_list *left, int op, struct r
 	return alloc_whole_rl(rl_type(left));
 }
 
-static struct range_list *handle_mult_rl(struct range_list *left, int op, struct range_list *right)
+static struct range_list *handle_mult_rl(struct range_list *left, struct range_list *right)
 {
 	sval_t sval, min, max;
 
@@ -1940,18 +1940,18 @@ static struct range_list *handle_mult_rl(struct range_list *left, int op, struct
 	if (type_is_ptr(rl_type(left)) || type_is_ptr(rl_type(right)))
 		return ptr_add_mult(left, op, right);
 
-	if (sval_binop_overflows(rl_min(left), op, rl_min(right)))
+	if (sval_binop_overflows(rl_min(left), '*', rl_min(right)))
 		return NULL;
-	min = sval_binop(rl_min(left), op, rl_min(right));
+	min = sval_binop(rl_min(left), '*', rl_min(right));
 
-	if (sval_binop_overflows(rl_max(left), op, rl_max(right)))
+	if (sval_binop_overflows(rl_max(left), '*', rl_max(right)))
 		return NULL;
-	max = sval_binop(rl_max(left), op, rl_max(right));
+	max = sval_binop(rl_max(left), '*', rl_max(right));
 
 	return alloc_rl(min, max);
 }
 
-static struct range_list *handle_add_rl(struct range_list *left, int op, struct range_list *right)
+static struct range_list *handle_add_rl(struct range_list *left, struct range_list *right)
 {
 	sval_t sval, min, max;
 
@@ -1962,15 +1962,15 @@ static struct range_list *handle_add_rl(struct range_list *left, int op, struct 
 		return clone_rl(left);
 
 	if (type_is_ptr(rl_type(left)) || type_is_ptr(rl_type(right)))
-		return ptr_add_mult(left, op, right);
+		return ptr_add_mult(left, '+', right);
 
-	if (sval_binop_overflows(rl_min(left), op, rl_min(right)))
+	if (sval_binop_overflows(rl_min(left), '+', rl_min(right)))
 		return NULL;
-	min = sval_binop(rl_min(left), op, rl_min(right));
+	min = sval_binop(rl_min(left), '+', rl_min(right));
 
-	if (sval_binop_overflows(rl_max(left), op, rl_max(right)))
+	if (sval_binop_overflows(rl_max(left), '+', rl_max(right)))
 		return NULL;
-	max = sval_binop(rl_max(left), op, rl_max(right));
+	max = sval_binop(rl_max(left), '+', rl_max(right));
 
 	return alloc_rl(min, max);
 }
@@ -2233,10 +2233,10 @@ struct range_list *rl_binop(struct range_list *left, int op, struct range_list *
 		ret = handle_divide_rl(left, right);
 		break;
 	case '*':
-		ret = handle_mult_rl(left, op, right);
+		ret = handle_mult_rl(left, right);
 		break;
 	case '+':
-		ret = handle_add_rl(left, op, right);
+		ret = handle_add_rl(left, right);
 		break;
 	case '-':
 		ret = handle_sub_rl(left, right);
