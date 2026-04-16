@@ -756,21 +756,21 @@ static bool handle_binop_rl_helper(struct expression *expr, int implied, int *re
 	switch (expr->op) {
 	case '%':
 		return handle_mod_rl(expr, implied, recurse_cnt, res);
-	case '&':
-		return handle_bitwise_AND(expr, implied, recurse_cnt, res);
-	case '|':
-	case '^':
-		return use_rl_binop(expr, implied, recurse_cnt, res);
-	case SPECIAL_RIGHTSHIFT:
-		return handle_right_shift(expr, implied, recurse_cnt, res);
-	case SPECIAL_LEFTSHIFT:
-		return handle_left_shift(expr, implied, recurse_cnt, res);
+	case '/':
+		return handle_divide_rl(left_rl, right_rl, implied, recurse_cnt, res);
 	case '+':
 		return handle_add_rl(expr, left_rl, right_rl, implied, recurse_cnt, res);
 	case '-':
 		return handle_subtract_rl(expr, implied, recurse_cnt, res);
-	case '/':
-		return handle_divide_rl(left_rl, right_rl, implied, recurse_cnt, res);
+	case SPECIAL_RIGHTSHIFT:
+		return handle_right_shift(expr, implied, recurse_cnt, res);
+	case SPECIAL_LEFTSHIFT:
+		return handle_left_shift(expr, implied, recurse_cnt, res);
+	case '&':
+		return handle_bitwise_AND(expr, implied, recurse_cnt, res);
+	case '^':
+	case '|':
+		return use_rl_binop(expr, implied, recurse_cnt, res);
 	}
 
 	if (!left_rl || !right_rl)
