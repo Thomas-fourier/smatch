@@ -56,12 +56,12 @@ struct range_list *rl_one(void)
 }
 
 enum {
-	RL_EXACT,
-	RL_HARD,
-	RL_FUZZY,
-	RL_IMPLIED,
-	RL_ABSOLUTE,
-	RL_REAL_ABSOLUTE,
+	RL_EXACT,	  /* returns a single value */
+	RL_HARD,	  /* returns a hard max (kind of bogus?) */
+	RL_FUZZY,	  /* related to hard max (kind of bogus?) */
+	RL_IMPLIED,	  /* some sort of useful range */
+	RL_ABSOLUTE,	  /* if we don't have a state then use the whole rl */
+	RL_REAL_ABSOLUTE, /* use any information that we have */
 };
 
 static bool last_stmt_rl(struct statement *stmt, int implied, int *recurse_cnt, struct range_list **res, sval_t *res_sval)
