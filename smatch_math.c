@@ -744,7 +744,6 @@ static bool handle_binop_rl_helper(struct expression *expr, int implied, int *re
 	struct range_list *left_rl = NULL;
 	struct range_list *right_rl = NULL;
 	struct range_list *rl;
-	sval_t min, max;
 
 	type = get_promoted_type(get_type(expr->left), get_type(expr->right));
 	if (!get_rl_internal(expr->left, implied, recurse_cnt, &left_rl))
@@ -780,21 +779,8 @@ static bool handle_binop_rl_helper(struct expression *expr, int implied, int *re
 		return use_rl_binop(expr, implied, recurse_cnt, res);
 	}
 
-	if (!left_rl || !right_rl)
-		return false;
-
-	if (sval_binop_overflows(rl_min(left_rl), expr->op, rl_min(right_rl)) ||
-	    sval_binop_overflows(rl_max(left_rl), expr->op, rl_max(right_rl))) {
-		min = sval_type_min(type);
-		max = sval_type_max(type);
-	} else {
-		min = sval_binop(rl_min(left_rl), expr->op, rl_min(right_rl));
-		max = sval_binop(rl_max(left_rl), expr->op, rl_max(right_rl));
-	}
-
-	*res = alloc_rl(min, max);
+	*res = rl_binop(left_rl, expr->op, right_rl);
 	return true;
-
 }
 
 static bool handle_binop_rl(struct expression *expr, int implied, int *recurse_cnt, struct range_list **res, sval_t *res_sval)
