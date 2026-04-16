@@ -1937,8 +1937,6 @@ static struct range_list *handle_mult_rl(struct range_list *left, struct range_l
 	if (rl_to_sval(right, &sval) && sval.value == 0)
 		return alloc_rl(sval, sval);
 
-	if (type_is_ptr(rl_type(left)) || type_is_ptr(rl_type(right)))
-		return ptr_add_mult(left, op, right);
 
 	if (sval_binop_overflows(rl_min(left), '*', rl_min(right)))
 		return NULL;
