@@ -271,11 +271,16 @@ static bool handle_preop_rl(struct expression *expr, int implied, int *recurse_c
 
 static bool handle_divide_rl(struct range_list *left_rl, struct range_list *right_rl, int implied, int *recurse_cnt, struct range_list **res)
 {
-	if (!left_rl || !right_rl)
-		return false;
+	sval_t left_sval;
 
-	if (implied != RL_REAL_ABSOLUTE) {
-		if (is_whole_rl(left_rl) || is_whole_rl(right_rl))
+	if (rl_to_sval(left_rl, &left_sval) && left_sval.value == 0) {
+		*res = alloc_rl(left_sval, left_sval);
+		return true;
+	}
+	// FIXME: handle user controlled divide by negative
+
+	if (is_whole_rl(left_rl) || is_whole_rl(right_rl)) {
+		if (implied != RL_REAL_ABSOLUTE)
 			return false;
 	}
 

@@ -1818,26 +1818,54 @@ static struct range_list *get_pos_rl(struct range_list *rl)
 	return ret;
 }
 
-static struct range_list *divide_rl_helper(struct range_list *left, struct range_list *right)
+enum pos_neg {
+	POS_POS,
+	POS_NEG,
+	NEG_POS,
+	NEG_NEG
+};
+
+static struct range_list *divide_rl_helper(enum pos_neg pos_neg, struct range_list *left, struct range_list *right)
 {
-	sval_t right_min, right_max;
+	sval_t high_left, high_right, low_left, low_right;
 	sval_t min, max;
+
+	/* can't divide by zero */
+	if (pos_neg == POS_POS || pos_neg == NEG_POS)
+		right = rl_filter(right, alloc_rl(int_zero, int_zero));
 
 	if (!left || !right)
 		return NULL;
 
-	/* let's assume we never divide by zero */
-	right_min = rl_min(right);
-	right_max = rl_max(right);
-	if (right_min.value == 0 && right_max.value == 0)
-		return NULL;
-	if (right_min.value == 0)
-		right_min.value = 1;
-	if (right_max.value == 0)
-		right_max.value = -1;
+	switch (pos_neg) {
+	case POS_POS:
+		high_left = rl_max(left);
+		high_right = rl_min(right);
+		low_left = rl_min(left);
+		low_right = rl_max(right);
+		break;
+	case POS_NEG:
+		high_left = rl_min(left);
+		high_right = rl_min(right);
+		low_left = rl_max(left);
+		low_right = rl_max(right);
+		break;
+	case NEG_POS:
+		low_left = rl_min(left);
+		low_right = rl_min(right);
+		high_left = rl_max(left);
+		high_right = rl_max(right);
+		break;
+	case NEG_NEG:
+		high_left = rl_min(left);
+		high_right = rl_max(right);
+		low_left = rl_max(left);
+		low_right = rl_min(right);
+		break;
+	}
 
-	max = sval_binop(rl_max(left), '/', right_min);
-	min = sval_binop(rl_min(left), '/', right_max);
+	min = sval_binop(low_left, '/', low_right);
+	max = sval_binop(high_left, '/', high_right);
 
 	return alloc_rl(min, max);
 }
@@ -1852,18 +1880,22 @@ static struct range_list *handle_divide_rl(struct range_list *left, struct range
 	if (rl_to_sval(left, &left_sval) && left_sval.value == 0)
 		return alloc_rl(left_sval, left_sval);
 
-	if (is_whole_rl(right))
+	if (is_whole_rl(left))
 		return NULL;
+	if (is_whole_rl(right)) {
+		// FIXME: this ignores negative divides
+		return left;
+	}
 
 	left_neg = get_neg_rl(left);
 	left_pos = get_pos_rl(left);
 	right_neg = get_neg_rl(right);
 	right_pos = get_pos_rl(right);
 
-	neg_neg = divide_rl_helper(left_neg, right_neg);
-	neg_pos = divide_rl_helper(left_neg, right_pos);
-	pos_neg = divide_rl_helper(left_pos, right_neg);
-	pos_pos = divide_rl_helper(left_pos, right_pos);
+	pos_pos = divide_rl_helper(POS_POS, left_pos, right_pos);
+	pos_neg = divide_rl_helper(POS_NEG, left_pos, right_neg);
+	neg_pos = divide_rl_helper(NEG_POS, left_neg, right_pos);
+	neg_neg = divide_rl_helper(NEG_NEG, left_neg, right_neg);
 
 	ret = rl_union(neg_neg, neg_pos);
 	ret = rl_union(ret, pos_neg);
