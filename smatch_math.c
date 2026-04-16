@@ -742,9 +742,11 @@ static bool handle_binop_rl_helper(struct expression *expr, int implied, int *re
 	sval_t min, max;
 
 	type = get_promoted_type(get_type(expr->left), get_type(expr->right));
-	get_rl_internal(expr->left, implied, recurse_cnt, &left_rl);
+	if (!get_rl_internal(expr->left, implied, recurse_cnt, &left_rl))
+		left_rl = alloc_whole_rl(type);
 	left_rl = cast_rl(type, left_rl);
-	get_rl_internal(expr->right, implied, recurse_cnt, &right_rl);
+	if (!get_rl_internal(expr->right, implied, recurse_cnt, &right_rl))
+		right_rl = alloc_whole_rl(type);
 	right_rl = cast_rl(type, right_rl);
 
 	rl = handle_implied_binop(left_rl, expr->op, right_rl);
