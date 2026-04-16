@@ -542,7 +542,7 @@ static bool handle_subtract_rl(struct expression *expr, int implied, int *recurs
 
 static bool handle_mod_rl(struct expression *expr, int implied, int *recurse_cnt, struct range_list **res)
 {
-	struct range_list *rl;
+	struct range_list *right_rl, *left_rl;
 	sval_t left, right, sval;
 
 	if (implied == RL_EXACT) {
@@ -560,19 +560,18 @@ static bool handle_mod_rl(struct expression *expr, int implied, int *recurse_cnt
 		*res = alloc_rl(left, left);
 		return true;
 	}
+	// FIXME: handle negative user controlled mod
 
-	/* if we can't figure out the right side it's probably hopeless */
-	if (!get_implied_value_internal(expr->right, recurse_cnt, &right))
+	if (!get_rl_internal(expr->left, implied, recurse_cnt, &left_rl))
 		return false;
+	if (!get_rl_internal(expr->right, implied, recurse_cnt, &right_rl) ||
+	     is_whole_rl(right_rl)) {
+		if (implied != RL_ABSOLUTE &&
+		    implied != RL_REAL_ABSOLUTE)
+			return false;
+	}
 
-	right = sval_cast(get_type(expr), right);
-	right.value--;
-
-	if (get_rl_internal(expr->left, implied, recurse_cnt, &rl) && rl &&
-	    rl_max(rl).uvalue < right.uvalue)
-		right.uvalue = rl_max(rl).uvalue;
-
-	*res = alloc_rl(sval_cast(right.type, zero), right);
+	*res = rl_binop(left_rl, '%', right_rl);
 	return true;
 }
 

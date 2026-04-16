@@ -1726,11 +1726,26 @@ struct range_list *rl_intersection(struct range_list *one, struct range_list *tw
 static struct range_list *handle_mod_rl(struct range_list *left, struct range_list *right)
 {
 	sval_t left_sval;
-	sval_t zero;
-	sval_t max;
+	sval_t zero = { .type = rl_type(left), .value = 0 };
+	sval_t min, max;
 
 	if (rl_to_sval(left, &left_sval) && left_sval.value == 0)
 		return alloc_rl(left_sval, left_sval);
+	if (is_whole_rl(right)) {
+		/*
+		 * FIXME: if we divide by -1 then it's the same as multiplying
+		 * by -1.  However, most time handling this condition would
+		 * just lead to false positives.  The exception would be if
+		 * the user controls the divisor.  That needs to be done from
+		 * smatch_math.c.  But really there should be an:
+		 * if (!type_signed(rl_type(right))) here.
+		 */
+		if (sval_is_negative(rl_min(left)))
+			min = rl_min(left);
+		else
+			min = zero;
+		return alloc_rl(min, rl_max(left));
+	}
 
 	max = rl_max(right);
 	if (sval_is_max(max))
@@ -1738,13 +1753,17 @@ static struct range_list *handle_mod_rl(struct range_list *left, struct range_li
 	if (max.value == 0)
 		return NULL;
 	max.value--;
-	if (sval_is_negative(max))
-		return NULL;
 	if (sval_cmp(rl_max(left), max) < 0)
-		return left;
-	zero = max;
-	zero.value = 0;
-	return alloc_rl(zero, max);
+		max = rl_max(left);
+
+	if (sval_is_negative(rl_min(right))) {
+		min = rl_min(right);
+		min.value++;
+	} else {
+		min = zero;
+	}
+
+	return alloc_rl(min, max);
 }
 
 static struct range_list *get_neg_rl(struct range_list *rl)
