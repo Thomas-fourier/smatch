@@ -2162,8 +2162,11 @@ struct range_list *rl_binop(struct range_list *left, int op, struct range_list *
 		return alloc_rl(val, val);
 	}
 
-	if (op != SPECIAL_RIGHTSHIFT &&
-	    op != SPECIAL_LEFTSHIFT) {
+	if (op == SPECIAL_RIGHTSHIFT ||
+	    op == SPECIAL_LEFTSHIFT) {
+		if (type_positive_bits(rl_type(left)) < 31)
+			left = cast_rl(&int_ctype, left);
+	} else {
 		struct symbol *cast_type = get_binop_type(left, right);
 
 		left = cast_rl(cast_type, left);
