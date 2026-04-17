@@ -440,19 +440,36 @@ static bool handle_add_rl(struct expression *expr,
 	return true;
 }
 
+static bool has_negative_information(struct range_list *rl)
+{
+	struct data_range *drange;
+
+	if (!rl)
+		return false;
+	drange = first_ptr_list((struct ptr_list *)rl);
+	if (!sval_is_negative(drange->min))
+		return false;
+	if (!sval_is_min(drange->min))
+		return true;
+	if (!sval_is_negative(drange->max))
+		return false;
+	if (drange->max.value == -1)
+		return false;
+	return true;
+}
+
 static bool handle_subtract_rl(struct expression *expr, int implied, int *recurse_cnt, struct range_list **res)
 {
 	struct symbol *type = get_type(expr);
-	struct range_list *left_orig, *right_orig;
 	struct range_list *left_rl, *right_rl;
-	sval_t min, max, tmp;
+	struct range_list *filter = NULL;
+	struct range_list *ret;
 	int comparison;
 	int offset;
 
 	offset = handle_offset_subtraction(expr);
 	if (offset >= 0) {
-		tmp.type = type;
-		tmp.value = offset;
+		sval_t tmp = { .type = type, .value = offset };
 
 		*res = alloc_rl(tmp, tmp);
 		return true;
@@ -462,13 +479,19 @@ static bool handle_subtract_rl(struct expression *expr, int implied, int *recurs
 		return true;
 
 	comparison = get_comparison(expr->left, expr->right);
+	if (comparison == SPECIAL_EQUAL) {
+		sval_t tmp = { .type = type, .value = 0 };
 
-	if (!get_rl_internal(expr->left, implied, recurse_cnt, &left_orig))
+		*res = alloc_rl(tmp, tmp);
+		return true;
+	}
+
+	if (!get_rl_internal(expr->left, implied, recurse_cnt, &left_rl))
 		return false;
-	left_rl = cast_rl(type, left_orig);
-	if (!get_rl_internal(expr->right, implied, recurse_cnt, &right_orig))
+	left_rl = cast_rl(type, left_rl);
+	if (!get_rl_internal(expr->right, implied, recurse_cnt, &right_rl))
 		return false;
-	right_rl = cast_rl(type, right_orig);
+	right_rl = cast_rl(type, right_rl);
 
 	if (is_whole_rl(left_rl) || is_whole_rl(right_rl)) {
 		if (implied != RL_ABSOLUTE &&
@@ -476,59 +499,35 @@ static bool handle_subtract_rl(struct expression *expr, int implied, int *recurs
 			return false;
 	}
 
-	/* negative values complicate everything fix this later */
-	if (sval_is_negative(rl_min(right_rl)))
+	// Note: this makes some assumptions that if we have a comparison then
+	// both numbers are positive.  That's probably a fair assumption most
+	// of the time.  It also ignores <.  Really negatives are not common
+	// in the kernel.
+	if (type_signed(type) &&
+	    comparison && show_special(comparison)[0] == '>' &&
+	    !has_negative_information(left_rl) &&
+	    !has_negative_information(right_rl)) {
+		sval_t minus_one = { .type = type, .value = -1 };
+		sval_t zero = { .type = type, .value = 0 };
+		sval_t limit;
+
+		if (show_special(comparison)[1] == '=')
+			limit = minus_one;
+		else
+			limit = zero;
+
+		filter = alloc_rl(sval_type_min(type), limit);
+		left_rl = rl_filter(left_rl, filter);
+		right_rl = rl_filter(right_rl, filter);
+	}
+
+	ret = rl_binop(left_rl, '-', right_rl);
+	if (!ret)
 		return false;
-	max = rl_max(left_rl);
-	min = sval_type_min(type);
+	if (filter)
+		ret = rl_filter(ret, filter);
 
-	switch (comparison) {
-	case '>':
-	case SPECIAL_UNSIGNED_GT:
-		min = sval_type_val(type, 1);
-		max = rl_max(left_rl);
-		break;
-	case SPECIAL_GTE:
-	case SPECIAL_UNSIGNED_GTE:
-		min = sval_type_val(type, 0);
-		max = rl_max(left_rl);
-		break;
-	case SPECIAL_EQUAL:
-		min = sval_type_val(type, 0);
-		max = sval_type_val(type, 0);
-		break;
-	case '<':
-	case SPECIAL_UNSIGNED_LT:
-		max = sval_type_val(type, -1);
-		break;
-	case SPECIAL_LTE:
-	case SPECIAL_UNSIGNED_LTE:
-		max = sval_type_val(type, 0);
-		break;
-	default:
-		if (!left_orig || !right_orig)
-			return false;
-		*res = rl_binop(left_rl, '-', right_rl);
-		return true;
-	}
-
-	if (!max_is_unknown_max(right_rl) &&
-	    !sval_binop_overflows(rl_min(left_rl), '-', rl_max(right_rl))) {
-		tmp = sval_binop(rl_min(left_rl), '-', rl_max(right_rl));
-		if (sval_cmp(tmp, min) > 0)
-			min = tmp;
-	}
-
-	if (!sval_is_max(rl_max(left_rl))) {
-		tmp = sval_binop(rl_max(left_rl), '-', rl_min(right_rl));
-		if (sval_cmp(tmp, max) < 0)
-			max = tmp;
-	}
-
-	if (sval_is_min(min) && sval_is_max(max))
-		return false;
-
-	*res = cast_rl(type, alloc_rl(min, max));
+	*res = ret;
 	return true;
 }
 

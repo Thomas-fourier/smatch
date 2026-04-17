@@ -2029,63 +2029,55 @@ static struct range_list *handle_add_rl(struct range_list *left, struct range_li
 	return alloc_rl(min, max);
 }
 
-static struct range_list *handle_sub_rl(struct range_list *left_orig, struct range_list *right_orig)
+static struct range_list *sub_rl_helper(enum pos_neg pos_neg, struct range_list *left, struct range_list *right)
 {
-	struct range_list *left_rl, *right_rl;
-	struct symbol *type;
-	sval_t min, max, sval;
-	sval_t min_ll, max_ll, res_ll;
-	sval_t tmp;
+	sval_t high_left, high_right, low_left, low_right;
+	sval_t min, max;
 
-	if (rl_to_sval(right_orig, &sval) && sval.value == 0)
-		return clone_rl(left_orig);
-	// TODO: handle 0 - foo
-
-	/* TODO:  These things should totally be using dranges where possible */
-
-	if (!left_orig || !right_orig)
+	if (!left || !right)
 		return NULL;
 
-	type = get_binop_type(left_orig, right_orig);
+	low_left = rl_min(left);
+	low_right = rl_max(right);
+	high_left = rl_max(left);
+	high_right = rl_min(right);
 
-	left_rl = cast_rl(type, left_orig);
-	right_rl = cast_rl(type, right_orig);
+	if (sval_binop_overflows(low_left, '-', low_right) ||
+	    sval_binop_overflows(high_left, '-', high_right))
+		return alloc_whole_rl(rl_type(left));
 
-	max = rl_max(left_rl);
-	min = sval_type_min(type);
-
-	min_ll = rl_min(left_rl);
-	min_ll.type = &llong_ctype;
-	max_ll = rl_max(right_rl);
-	max_ll.type = &llong_ctype;
-	res_ll = min_ll;
-	res_ll.value = min_ll.value - max_ll.value;
-
-	if (!sval_binop_overflows(rl_min(left_rl), '-', rl_max(right_rl))) {
-		tmp = sval_binop(rl_min(left_rl), '-', rl_max(right_rl));
-		if (sval_cmp(tmp, min) > 0)
-			min = tmp;
-	} else if (type_positive_bits(type) < 63 &&
-		   !sval_binop_overflows(min_ll, '-', max_ll) &&
-		   (min.value != 0 && sval_cmp(res_ll, min) >= 0)) {
-		struct range_list *left_casted, *right_casted, *result;
-
-		left_casted = cast_rl(&llong_ctype, left_orig);
-		right_casted = cast_rl(&llong_ctype, right_orig);
-		result = handle_sub_rl(left_casted, right_casted);
-		return cast_rl(type, result);
-	}
-
-	if (!sval_is_max(rl_max(left_rl))) {
-		tmp = sval_binop(rl_max(left_rl), '-', rl_min(right_rl));
-		if (sval_cmp(tmp, max) < 0)
-			max = tmp;
-	}
-
-	if (sval_is_min(min) && sval_is_max(max))
-		return NULL;
+	min = sval_binop(low_left, '-', low_right);
+	max = sval_binop(high_left, '-', high_right);
 
 	return alloc_rl(min, max);
+}
+
+static struct range_list *handle_sub_rl(struct range_list *left, struct range_list *right)
+{
+	struct range_list *left_neg, *left_pos, *right_neg, *right_pos;
+	struct range_list *neg_neg, *neg_pos, *pos_neg, *pos_pos;
+	struct range_list *ret;
+	sval_t sval;
+
+	if (rl_to_sval(right, &sval) && sval.value == 0)
+		return left;
+
+	if (is_whole_rl(left) || is_whole_rl(right))
+		return NULL;
+
+	left_neg = get_neg_rl(left);
+	left_pos = get_pos_rl(left);
+	right_neg = get_neg_rl(right);
+	right_pos = get_pos_rl(right);
+
+	pos_pos = sub_rl_helper(POS_POS, left_pos, right_pos);
+	pos_neg = sub_rl_helper(POS_NEG, left_pos, right_neg);
+	neg_pos = sub_rl_helper(NEG_POS, left_neg, right_pos);
+	neg_neg = sub_rl_helper(NEG_NEG, left_neg, right_neg);
+
+	ret = rl_union(neg_neg, neg_pos);
+	ret = rl_union(ret, pos_neg);
+	return rl_union(ret, pos_pos);
 }
 
 static unsigned long long rl_bits_always_set(struct range_list *rl)
