@@ -809,9 +809,19 @@ bool is_whole_ptr_rl(struct range_list *rl)
 	struct data_range *drange;
 	int cnt = 0;
 
-	/* A whole pointer range is either 0-ulong_max or NULL, valid range, and
-	 * error pointers.
+	/*
+	 * With pointers in the kernel, it could be:
+	 * NULL (0)
+	 * non-NULL 1-ulong_max
+	 * valid: 4096-ptr_max
+	 * error pointer: values higher than -4096UL
+	 *
+	 * The point of this function is that we want to say that
+	 * "0-ulong_max" and "0,4096-ptr_max" look different, but really
+	 * they mostly mean the same thing.  It could be valid or NULL.
 	 */
+
+	/* 0-ulong_max */
 	if (is_whole_rl(rl))
 		return true;
 
@@ -822,12 +832,15 @@ bool is_whole_ptr_rl(struct range_list *rl)
 		cnt++;
 
 		if (cnt == 1) {
+			/* check for the zero */
 			if (drange->min.value != 0 ||
 			    drange->max.value != 0)
 				return false;
 		} if (cnt == 2) {
+			/* "4096-ulong_max" and "4096-ptr_max" */
 			if (drange->min.value != valid_ptr_min ||
-			    drange->max.value != ULONG_MAX)
+			    (sval_cmp(drange->max, ulong_ULONG_MAX) != 0 &&
+			     sval_cmp(drange->max, valid_ptr_max_sval) != 0))
 				return false;
 		}
 	} END_FOR_EACH_PTR(drange);
