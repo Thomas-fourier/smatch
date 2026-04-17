@@ -2029,7 +2029,18 @@ static struct range_list *handle_add_rl(struct range_list *left, struct range_li
 	return alloc_rl(min, max);
 }
 
-static struct range_list *sub_rl_helper(enum pos_neg pos_neg, struct range_list *left, struct range_list *right)
+static struct symbol *get_signed_equivalent(struct symbol *type)
+{
+	switch (type_positive_bits(type)) {
+	case 32:
+		return &int_ctype;
+	case 64:
+		return &llong_ctype;
+	}
+	return NULL;
+}
+
+static struct range_list *sub_rl_helper(struct range_list *left, struct range_list *right)
 {
 	sval_t high_left, high_right, low_left, low_right;
 	sval_t min, max;
@@ -2056,6 +2067,7 @@ static struct range_list *handle_sub_rl(struct range_list *left, struct range_li
 {
 	struct range_list *left_neg, *left_pos, *right_neg, *right_pos;
 	struct range_list *neg_neg, *neg_pos, *pos_neg, *pos_pos;
+	struct symbol *orig_type = NULL;
 	struct range_list *ret;
 	sval_t sval;
 
@@ -2065,19 +2077,34 @@ static struct range_list *handle_sub_rl(struct range_list *left, struct range_li
 	if (is_whole_rl(left) || is_whole_rl(right))
 		return NULL;
 
+	if (type_unsigned(rl_type(left)) &&
+	    sval_cmp(rl_min(left), rl_max(right)) < 0) {
+		struct symbol *signed_type;
+
+		orig_type = rl_type(left);
+		signed_type = get_signed_equivalent(orig_type);
+		if (!signed_type)
+			return NULL;
+		left = cast_rl(signed_type, left);
+		right = cast_rl(signed_type, right);
+	}
+
 	left_neg = get_neg_rl(left);
 	left_pos = get_pos_rl(left);
 	right_neg = get_neg_rl(right);
 	right_pos = get_pos_rl(right);
 
-	pos_pos = sub_rl_helper(POS_POS, left_pos, right_pos);
-	pos_neg = sub_rl_helper(POS_NEG, left_pos, right_neg);
-	neg_pos = sub_rl_helper(NEG_POS, left_neg, right_pos);
-	neg_neg = sub_rl_helper(NEG_NEG, left_neg, right_neg);
+	pos_pos = sub_rl_helper(left_pos, right_pos);
+	pos_neg = sub_rl_helper(left_pos, right_neg);
+	neg_pos = sub_rl_helper(left_neg, right_pos);
+	neg_neg = sub_rl_helper(left_neg, right_neg);
 
 	ret = rl_union(neg_neg, neg_pos);
 	ret = rl_union(ret, pos_neg);
-	return rl_union(ret, pos_pos);
+	ret = rl_union(ret, pos_pos);
+	if (orig_type)
+		ret = cast_rl(orig_type, ret);
+	return ret;
 }
 
 static unsigned long long rl_bits_always_set(struct range_list *rl)
