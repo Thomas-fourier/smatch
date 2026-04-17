@@ -659,73 +659,55 @@ int sval_unop_overflows(sval_t sval, int op)
 	return 0;
 }
 
+#define type_overflow(type, a, op, b)				\
+	({ int _res = 1;					\
+	   type _a = (a), _b = (b), dummy;			\
+	   switch(op) {						\
+	   case '*':						\
+		_res = __builtin_mul_overflow(_a, _b, &dummy);	\
+		break;						\
+	   case '+':						\
+		_res = __builtin_add_overflow(_a, _b, &dummy);	\
+		break;						\
+	   case '-':						\
+		_res = __builtin_sub_overflow(_a, _b, &dummy);	\
+		break;						\
+	   }							\
+	   _res;						\
+	 });
+
 int sval_binop_overflows(sval_t left, int op, sval_t right)
 {
 	struct symbol *type;
-	sval_t max, min;
 
-	type = left.type;
-	if (type_positive_bits(right.type) > type_positive_bits(left.type))
+	type = &int_ctype;
+	if (type_positive_bits(left.type) > type_positive_bits(type))
+		type = left.type;
+	if (type_positive_bits(right.type) > type_positive_bits(type))
 		type = right.type;
-	if (type_positive_bits(type) < 31)
-		type = &int_ctype;
 
-	max = sval_type_max(type);
-	min = sval_type_min(type);
-
-	switch (op) {
-	case '+':
-		if (sval_is_negative(left) && sval_is_negative(right)) {
-			if (left.value < min.value + right.value)
-				return 1;
-			return 0;
-		}
-		if (sval_is_negative(left) || sval_is_negative(right))
-			return 0;
-		if (left.uvalue > max.uvalue - right.uvalue)
-				return 1;
-		return 0;
-	case '*':
-		if (type_signed(type)) {
-			if (left.value == 0 || right.value == 0)
-				return 0;
-			if (left.value > max.value / right.value)
-				return 1;
-			if (left.value == -1 || right.value == -1)
-				return 0;
-			return left.value != left.value * right.value / right.value;
-
-		}
-		return right.uvalue != 0 && left.uvalue > max.uvalue / right.uvalue;
-	case '-':
-		if (type_unsigned(type)) {
-			if (sval_cmp(left, right) < 0)
-				return 1;
-			return 0;
-		}
-		if (sval_is_negative(left) && sval_is_negative(right))
-			return 0;
-
-		if (sval_is_negative(left)) {
-			if (left.value < min.value + right.value)
-				return 1;
-			return 0;
-		}
-		if (sval_is_negative(right)) {
-			if (right.value == min.value)
-				return 1;
-			right = sval_preop(right, '-');
-			if (sval_binop_overflows(left, '+', right))
-				return 1;
-			return 0;
-		}
-		return 0;
-	case SPECIAL_LEFTSHIFT:
-		if (sval_cmp(left, sval_binop(max, invert_op(op), right)) > 0)
-			return 1;
-		return 0;
+	if (op == SPECIAL_LEFTSHIFT) {
+		if (sval_cmp(left, sval_binop(sval_type_max(type), invert_op(op), right)) > 0)
+			return true;
+		return false;
 	}
-	return 0;
+
+	if (op != '*' && op != '+' && op != '-')
+		return false;
+
+	// FIXME: handle bit fields
+
+	switch (type_positive_bits(type)) {
+	case 31:
+		return type_overflow(int, left.value, op, right.value);
+	case 32:
+		return type_overflow(unsigned int, left.value, op, right.value);
+	case 63:
+		return type_overflow(long long, left.value, op, right.value);
+	case 64:
+		return type_overflow(unsigned long long, left.value, op, right.value);
+	}
+	return false;
 }
 
 int sval_binop_overflows_no_sign(sval_t left, int op, sval_t right)
