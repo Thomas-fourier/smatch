@@ -418,15 +418,12 @@ static bool handle_add_rl(struct expression *expr,
 			  int implied, int *recurse_cnt, struct range_list **res)
 {
 	struct range_list *valid;
-	struct symbol *type;
-	sval_t min, max;
-
-	type = get_type(expr);
+	struct range_list *ret;
 
 	if (!left_rl)
 		return false;
 
-	if (type_is_ptr(type) && !var_user_rl(expr->right)) {
+	if (type_is_ptr(get_type(expr)) && !var_user_rl(expr->right)) {
 		valid = rl_intersection(left_rl, valid_ptr_rl);
 		if (valid && rl_equiv(valid, left_rl))
 			return valid_ptr_rl;
@@ -435,16 +432,11 @@ static bool handle_add_rl(struct expression *expr,
 	if (!right_rl)
 		return false;
 
-	if (sval_binop_overflows(rl_min(left_rl), expr->op, rl_min(right_rl)) ||
-	    sval_binop_overflows(rl_max(left_rl), expr->op, rl_max(right_rl))) {
-		min = sval_type_min(type);
-		max = sval_type_max(type);
-	} else {
-		min = sval_binop(rl_min(left_rl), expr->op, rl_min(right_rl));
-		max = sval_binop(rl_max(left_rl), expr->op, rl_max(right_rl));
-	}
+	ret = rl_binop(left_rl, '+', right_rl);
+	if (!ret)
+		return false;
 
-	*res = alloc_rl(min, max);
+	*res = ret;
 	return true;
 }
 
