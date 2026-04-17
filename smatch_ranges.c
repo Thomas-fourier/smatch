@@ -1839,16 +1839,16 @@ static struct range_list *divide_rl_helper(enum pos_neg pos_neg, struct range_li
 
 	switch (pos_neg) {
 	case POS_POS:
-		high_left = rl_max(left);
-		high_right = rl_min(right);
 		low_left = rl_min(left);
 		low_right = rl_max(right);
+		high_left = rl_max(left);
+		high_right = rl_min(right);
 		break;
 	case POS_NEG:
-		high_left = rl_min(left);
-		high_right = rl_min(right);
 		low_left = rl_max(left);
 		low_right = rl_max(right);
+		high_left = rl_min(left);
+		high_right = rl_min(right);
 		break;
 	case NEG_POS:
 		low_left = rl_min(left);
@@ -1857,10 +1857,10 @@ static struct range_list *divide_rl_helper(enum pos_neg pos_neg, struct range_li
 		high_right = rl_max(right);
 		break;
 	case NEG_NEG:
-		high_left = rl_min(left);
-		high_right = rl_max(right);
 		low_left = rl_max(left);
 		low_right = rl_min(right);
+		high_left = rl_min(left);
+		high_right = rl_max(right);
 		break;
 	}
 
@@ -1938,28 +1938,28 @@ static struct range_list *mult_rl_helper(enum pos_neg pos_neg, struct range_list
 
 	switch (pos_neg) {
 	case POS_POS:
-		high_left = rl_max(left);
-		high_right = rl_max(right);
 		low_left = rl_min(left);
 		low_right = rl_min(right);
+		high_left = rl_max(left);
+		high_right = rl_max(right);
 		break;
 	case POS_NEG:
-		high_left = rl_min(left);
-		high_right = rl_max(right);
 		low_left = rl_max(left);
 		low_right = rl_min(right);
+		high_left = rl_min(left);
+		high_right = rl_max(right);
 		break;
 	case NEG_POS:
-		high_left = rl_max(left);
-		high_right = rl_min(right);
 		low_left = rl_min(left);
 		low_right = rl_max(right);
+		high_left = rl_max(left);
+		high_right = rl_min(right);
 		break;
 	case NEG_NEG:
-		high_left = rl_min(left);
-		high_right = rl_min(right);
 		low_left = rl_max(left);
 		low_right = rl_max(right);
+		high_left = rl_min(left);
+		high_right = rl_min(right);
 		break;
 	}
 
