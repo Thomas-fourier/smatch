@@ -2007,11 +2007,10 @@ static struct range_list *handle_add_rl(struct range_list *left, struct range_li
 {
 	sval_t sval, min, max;
 
-	// FIXME: Are the clones necessary in these helpers?
 	if (rl_to_sval(left, &sval) && sval.value == 0)
-		return clone_rl(right);
+		return right;
 	if (rl_to_sval(right, &sval) && sval.value == 0)
-		return clone_rl(left);
+		return left;
 
 	if (type_is_ptr(rl_type(left)) || type_is_ptr(rl_type(right)))
 		return ptr_add_mult(left, '+', right);
@@ -2146,9 +2145,9 @@ static struct range_list *handle_XOR_rl(struct range_list *left, struct range_li
 	sval_t sval, zero, max;
 
 	if (rl_to_sval(left, &sval) && sval.value == 0)
-		return clone_rl(right);
+		return right;
 	if (rl_to_sval(right, &sval) && sval.value == 0)
-		return clone_rl(left);
+		return left;
 
 	left_set = rl_bits_always_set(left);
 	left_maybe = rl_bits_maybe_set(left);
