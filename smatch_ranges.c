@@ -1928,25 +1928,79 @@ static struct range_list *ptr_add_mult(struct range_list *left, int op, struct r
 	return alloc_whole_rl(rl_type(left));
 }
 
+static struct range_list *mult_rl_helper(enum pos_neg pos_neg, struct range_list *left, struct range_list *right)
+{
+	sval_t high_left, high_right, low_left, low_right;
+	sval_t min, max;
+
+	if (!left || !right)
+		return NULL;
+
+	switch (pos_neg) {
+	case POS_POS:
+		high_left = rl_max(left);
+		high_right = rl_max(right);
+		low_left = rl_min(left);
+		low_right = rl_min(right);
+		break;
+	case POS_NEG:
+		high_left = rl_min(left);
+		high_right = rl_max(right);
+		low_left = rl_max(left);
+		low_right = rl_min(right);
+		break;
+	case NEG_POS:
+		high_left = rl_max(left);
+		high_right = rl_min(right);
+		low_left = rl_min(left);
+		low_right = rl_max(right);
+		break;
+	case NEG_NEG:
+		high_left = rl_min(left);
+		high_right = rl_min(right);
+		low_left = rl_max(left);
+		low_right = rl_max(right);
+		break;
+	}
+
+	if (sval_binop_overflows(low_left, '*', low_right) ||
+	    sval_binop_overflows(high_left, '*', high_right))
+		return alloc_whole_rl(rl_type(left));
+
+	min = sval_binop(low_left, '*', low_right);
+	max = sval_binop(high_left, '*', high_right);
+
+	return alloc_rl(min, max);
+}
+
 static struct range_list *handle_mult_rl(struct range_list *left, struct range_list *right)
 {
-	sval_t sval, min, max;
+	struct range_list *left_neg, *left_pos, *right_neg, *right_pos;
+	struct range_list *neg_neg, *neg_pos, *pos_neg, *pos_pos;
+	struct range_list *ret;
+	sval_t sval;
 
 	if (rl_to_sval(left, &sval) && sval.value == 0)
 		return alloc_rl(sval, sval);
 	if (rl_to_sval(right, &sval) && sval.value == 0)
 		return alloc_rl(sval, sval);
 
-
-	if (sval_binop_overflows(rl_min(left), '*', rl_min(right)))
+	if (is_whole_rl(left) || is_whole_rl(right))
 		return NULL;
-	min = sval_binop(rl_min(left), '*', rl_min(right));
 
-	if (sval_binop_overflows(rl_max(left), '*', rl_max(right)))
-		return NULL;
-	max = sval_binop(rl_max(left), '*', rl_max(right));
+	left_neg = get_neg_rl(left);
+	left_pos = get_pos_rl(left);
+	right_neg = get_neg_rl(right);
+	right_pos = get_pos_rl(right);
 
-	return alloc_rl(min, max);
+	pos_pos = mult_rl_helper(POS_POS, left_pos, right_pos);
+	pos_neg = mult_rl_helper(POS_NEG, left_pos, right_neg);
+	neg_pos = mult_rl_helper(NEG_POS, left_neg, right_pos);
+	neg_neg = mult_rl_helper(NEG_NEG, left_neg, right_neg);
+
+	ret = rl_union(neg_neg, neg_pos);
+	ret = rl_union(ret, pos_neg);
+	return rl_union(ret, pos_pos);
 }
 
 static struct range_list *handle_add_rl(struct range_list *left, struct range_list *right)
