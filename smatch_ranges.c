@@ -2302,8 +2302,10 @@ struct range_list *rl_binop_helper(struct range_list *left, int op, struct range
 
 struct range_list *rl_binop(struct range_list *left, int op, struct range_list *right)
 {
+	struct data_range *drange_left, *drange_right;
 	sval_t left_sval, right_sval;
-	struct range_list *ret = NULL;
+	struct range_list *part, *ret = NULL;
+	int l_count, r_count;
 
 	if (!left || !right)
 		return NULL;
@@ -2324,7 +2326,21 @@ struct range_list *rl_binop(struct range_list *left, int op, struct range_list *
 		right = cast_rl(cast_type, right);
 	}
 
-	return rl_binop_helper(left, op, right);
+	l_count = ptr_list_size((struct ptr_list *)left);
+	r_count = ptr_list_size((struct ptr_list *)right);
+	if (l_count * r_count > 6)
+		return rl_binop_helper(left, op, right);
+
+	FOR_EACH_PTR(left, drange_left) {
+		FOR_EACH_PTR(right, drange_right) {
+			part = rl_binop_helper(alloc_rl(drange_left->min, drange_left->max),
+					       op,
+					       alloc_rl(drange_right->min, drange_right->max));
+			ret = rl_union(ret, part);
+		} END_FOR_EACH_PTR(drange_right);
+	} END_FOR_EACH_PTR(drange_left);
+
+	return ret;
 }
 
 void free_data_info_allocs(void)
