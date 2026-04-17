@@ -569,8 +569,9 @@ static bool handle_mod_rl(struct expression *expr, int implied, int *recurse_cnt
 
 	if (!get_rl_internal(expr->left, implied, recurse_cnt, &left_rl))
 		return false;
-	if (!get_rl_internal(expr->right, implied, recurse_cnt, &right_rl) ||
-	     is_whole_rl(right_rl)) {
+	if (!get_rl_internal(expr->right, implied, recurse_cnt, &right_rl))
+		return false;
+	if (is_whole_rl(right_rl)) {
 		if (implied != RL_ABSOLUTE &&
 		    implied != RL_REAL_ABSOLUTE)
 			return false;
