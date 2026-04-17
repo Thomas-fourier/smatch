@@ -2273,14 +2273,40 @@ static struct range_list *handle_rshift(struct range_list *left_orig, struct ran
 	return ret;
 }
 
+struct range_list *rl_binop_helper(struct range_list *left, int op, struct range_list *right)
+{
+	switch (op) {
+	case '%':
+		return handle_mod_rl(left, right);
+	case '/':
+		return handle_divide_rl(left, right);
+	case '*':
+		return handle_mult_rl(left, right);
+	case '+':
+		return handle_add_rl(left, right);
+	case '-':
+		return handle_sub_rl(left, right);
+	case SPECIAL_RIGHTSHIFT:
+		return handle_rshift(left, right);
+	case SPECIAL_LEFTSHIFT:
+		return handle_lshift(left, right);
+	case '&':
+		return handle_AND_rl(left, right);
+	case '^':
+		return handle_XOR_rl(left, right);
+	case '|':
+		return handle_OR_rl(left, right);
+	}
+	return NULL;
+}
+
 struct range_list *rl_binop(struct range_list *left, int op, struct range_list *right)
 {
 	sval_t left_sval, right_sval;
 	struct range_list *ret = NULL;
 
-	if (!left || !right) {
+	if (!left || !right)
 		return NULL;
-	}
 
 	if (rl_to_sval(left, &left_sval) && rl_to_sval(right, &right_sval)) {
 		sval_t val = sval_binop(left_sval, op, right_sval);
@@ -2298,38 +2324,7 @@ struct range_list *rl_binop(struct range_list *left, int op, struct range_list *
 		right = cast_rl(cast_type, right);
 	}
 
-	switch (op) {
-	case '%':
-		ret = handle_mod_rl(left, right);
-		break;
-	case '/':
-		ret = handle_divide_rl(left, right);
-		break;
-	case '*':
-		ret = handle_mult_rl(left, right);
-		break;
-	case '+':
-		ret = handle_add_rl(left, right);
-		break;
-	case '-':
-		ret = handle_sub_rl(left, right);
-		break;
-	case SPECIAL_RIGHTSHIFT:
-		return handle_rshift(left, right);
-	case SPECIAL_LEFTSHIFT:
-		return handle_lshift(left, right);
-	case '&':
-		ret = handle_AND_rl(left, right);
-		break;
-	case '^':
-		ret = handle_XOR_rl(left, right);
-		break;
-	case '|':
-		ret = handle_OR_rl(left, right);
-		break;
-	}
-
-	return ret;
+	return rl_binop_helper(left, op, right);
 }
 
 void free_data_info_allocs(void)
