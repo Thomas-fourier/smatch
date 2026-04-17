@@ -442,14 +442,12 @@ static bool handle_add_rl(struct expression *expr,
 
 static bool handle_subtract_rl(struct expression *expr, int implied, int *recurse_cnt, struct range_list **res)
 {
-	struct symbol *type;
+	struct symbol *type = get_type(expr);
 	struct range_list *left_orig, *right_orig;
 	struct range_list *left_rl, *right_rl;
 	sval_t min, max, tmp;
 	int comparison;
 	int offset;
-
-	type = get_type(expr);
 
 	offset = handle_offset_subtraction(expr);
 	if (offset >= 0) {
@@ -465,21 +463,18 @@ static bool handle_subtract_rl(struct expression *expr, int implied, int *recurs
 
 	comparison = get_comparison(expr->left, expr->right);
 
-	left_orig = NULL;
-	get_rl_internal(expr->left, implied, recurse_cnt, &left_orig);
+	if (!get_rl_internal(expr->left, implied, recurse_cnt, &left_orig))
+		return false;
 	left_rl = cast_rl(type, left_orig);
-	right_orig = NULL;
-	get_rl_internal(expr->right, implied, recurse_cnt, &right_orig);
+	if (!get_rl_internal(expr->right, implied, recurse_cnt, &right_orig))
+		return false;
 	right_rl = cast_rl(type, right_orig);
 
-	if ((!left_rl || !right_rl) &&
-	    (implied == RL_EXACT || implied == RL_HARD || implied == RL_FUZZY))
-		return false;
-
-	if (!left_rl)
-		left_rl = alloc_whole_rl(type);
-	if (!right_rl)
-		right_rl = alloc_whole_rl(type);
+	if (is_whole_rl(left_rl) || is_whole_rl(right_rl)) {
+		if (implied != RL_ABSOLUTE &&
+		    implied != RL_REAL_ABSOLUTE)
+			return false;
+	}
 
 	/* negative values complicate everything fix this later */
 	if (sval_is_negative(rl_min(right_rl)))
