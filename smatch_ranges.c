@@ -2016,6 +2016,8 @@ static struct range_list *handle_add_rl(struct range_list *left, struct range_li
 	if (type_is_ptr(rl_type(left)) || type_is_ptr(rl_type(right)))
 		return ptr_add_mult(left, '+', right);
 
+	// FIXME: when it's a 0-2,4-5 + 2, that should be 2-4,6-7
+
 	if (sval_binop_overflows(rl_min(left), '+', rl_min(right)))
 		return NULL;
 	min = sval_binop(rl_min(left), '+', rl_min(right));
