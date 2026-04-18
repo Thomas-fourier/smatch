@@ -39,7 +39,7 @@ int frob(int a, int b, int c, int d, int e, int f)
 	__smatch_implied(f + d);
 	__smatch_note("test: 2-5 + (-5)-(-2) = (-3)-3");
 	__smatch_implied(e + f);
-	__smatch_note("test: (-2)-(-1),1-2 + 2 = 0-2,3-4");
+	__smatch_note("test: (-2)-(-1),1-2 + 2 = 0-1,3-4");
 	__smatch_implied(d + 2);
 
 	return 0;
@@ -76,7 +76,7 @@ sm_addition.c:38 frob() test: (-5)-(-2) + (-2)-(-1),1-2 = (-7)-0
 sm_addition.c:39 frob() implied: f + d = '(-7)-0'
 sm_addition.c:40 frob() test: 2-5 + (-5)-(-2) = (-3)-3
 sm_addition.c:41 frob() implied: e + f = '(-3)-3'
-sm_addition.c:42 frob() test: (-2)-(-1),1-2 + 2 = 0-2,3-4
-sm_addition.c:43 frob() implied: d + 2 = '0-4'
+sm_addition.c:42 frob() test: (-2)-(-1),1-2 + 2 = 0-1,3-4
+sm_addition.c:43 frob() implied: d + 2 = '0-1,3-4'
  * check-output-end
  */
