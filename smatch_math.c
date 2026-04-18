@@ -461,6 +461,7 @@ static bool has_negative_information(struct range_list *rl)
 static bool handle_subtract_rl(struct expression *expr, int implied, int *recurse_cnt, struct range_list **res)
 {
 	struct symbol *type = get_type(expr);
+	sval_t zero = { .type = type, .value = 0 };
 	struct range_list *left_rl, *right_rl;
 	struct range_list *filter = NULL;
 	struct range_list *ret;
@@ -480,9 +481,7 @@ static bool handle_subtract_rl(struct expression *expr, int implied, int *recurs
 
 	comparison = get_comparison(expr->left, expr->right);
 	if (comparison == SPECIAL_EQUAL) {
-		sval_t tmp = { .type = type, .value = 0 };
-
-		*res = alloc_rl(tmp, tmp);
+		*res = alloc_rl(zero, zero);
 		return true;
 	}
 
@@ -508,15 +507,8 @@ static bool handle_subtract_rl(struct expression *expr, int implied, int *recurs
 	    !has_negative_information(left_rl) &&
 	    !has_negative_information(right_rl)) {
 		sval_t minus_one = { .type = type, .value = -1 };
-		sval_t zero = { .type = type, .value = 0 };
-		sval_t limit;
 
-		if (show_special(comparison)[1] == '=')
-			limit = minus_one;
-		else
-			limit = zero;
-
-		filter = alloc_rl(sval_type_min(type), limit);
+		filter = alloc_rl(sval_type_min(type), minus_one);
 		left_rl = rl_filter(left_rl, filter);
 		right_rl = rl_filter(right_rl, filter);
 	}
@@ -526,6 +518,10 @@ static bool handle_subtract_rl(struct expression *expr, int implied, int *recurs
 		return false;
 	if (filter)
 		ret = rl_filter(ret, filter);
+
+	/* if it's not equal the result can't be zero */
+	if (comparison && show_special(comparison)[0] != '=')
+		ret = rl_filter(ret, alloc_rl(zero, zero));
 
 	*res = ret;
 	return true;
