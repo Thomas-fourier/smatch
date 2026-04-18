@@ -2075,7 +2075,7 @@ static struct range_list *sub_rl_helper(struct range_list *left, struct range_li
 	return alloc_rl(min, max);
 }
 
-static struct range_list *rl_handle_sub(struct range_list *left, struct range_list *right)
+struct range_list *rl_handle_sub(struct range_list *left, struct range_list *right, int comparison)
 {
 	struct range_list *left_neg, *left_pos, *right_neg, *right_pos;
 	struct range_list *neg_neg, *neg_pos, *pos_neg, *pos_pos;
@@ -2297,7 +2297,7 @@ struct range_list *rl_binop_helper(struct range_list *left, int op, struct range
 	case '+':
 		return rl_handle_add(left, right);
 	case '-':
-		return rl_handle_sub(left, right);
+		return rl_handle_sub(left, right, 0);
 	case SPECIAL_RIGHTSHIFT:
 		return rl_handle_rshift(left, right);
 	case SPECIAL_LEFTSHIFT:
