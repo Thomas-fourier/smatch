@@ -918,11 +918,24 @@ static bool is_ptr_subtract(struct expression *expr)
 	return false;
 }
 
+static void set_user_safe(struct expression *expr)
+{
+	expr->user_safe |= (1 << final_pass);
+}
+
+static bool is_user_safe(struct expression *expr)
+{
+	return (expr->user_safe & (1 << final_pass));
+}
+
 int get_user_rl(struct expression *expr, struct range_list **rl)
 {
 	int user_data, no_user_data;
 
 	if (!expr)
+		return 0;
+
+	if (is_user_safe(expr))
 		return 0;
 
 	if (__in_fake_struct_assign &&
@@ -940,8 +953,10 @@ int get_user_rl(struct expression *expr, struct range_list **rl)
 	user_data = pop_int(&user_data_flags);
 	no_user_data = pop_int(&no_user_data_flags);
 
-	if (!user_data || no_user_data)
+	if (!user_data || no_user_data) {
+		set_user_safe(expr);
 		*rl = NULL;
+	}
 
 	return !!*rl;
 }
