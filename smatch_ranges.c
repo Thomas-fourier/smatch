@@ -1736,7 +1736,7 @@ struct range_list *rl_intersection(struct range_list *one, struct range_list *tw
 	return cast_rl(ret_type, ret);
 }
 
-static struct range_list *handle_mod_rl(struct range_list *left, struct range_list *right)
+static struct range_list *rl_handle_mod(struct range_list *left, struct range_list *right)
 {
 	sval_t left_sval;
 	sval_t zero = { .type = rl_type(left), .value = 0 };
@@ -1883,7 +1883,7 @@ static struct range_list *divide_rl_helper(enum pos_neg pos_neg, struct range_li
 	return alloc_rl(min, max);
 }
 
-static struct range_list *handle_divide_rl(struct range_list *left, struct range_list *right)
+static struct range_list *rl_handle_divide(struct range_list *left, struct range_list *right)
 {
 	struct range_list *left_neg, *left_pos, *right_neg, *right_pos;
 	struct range_list *neg_neg, *neg_pos, *pos_neg, *pos_pos;
@@ -1986,7 +1986,7 @@ static struct range_list *mult_rl_helper(enum pos_neg pos_neg, struct range_list
 	return alloc_rl(min, max);
 }
 
-static struct range_list *handle_mult_rl(struct range_list *left, struct range_list *right)
+static struct range_list *rl_handle_mult(struct range_list *left, struct range_list *right)
 {
 	struct range_list *left_neg, *left_pos, *right_neg, *right_pos;
 	struct range_list *neg_neg, *neg_pos, *pos_neg, *pos_pos;
@@ -2016,7 +2016,7 @@ static struct range_list *handle_mult_rl(struct range_list *left, struct range_l
 	return rl_union(ret, pos_pos);
 }
 
-static struct range_list *handle_add_rl(struct range_list *left, struct range_list *right)
+static struct range_list *rl_handle_add(struct range_list *left, struct range_list *right)
 {
 	sval_t sval, min, max;
 
@@ -2075,7 +2075,7 @@ static struct range_list *sub_rl_helper(struct range_list *left, struct range_li
 	return alloc_rl(min, max);
 }
 
-static struct range_list *handle_sub_rl(struct range_list *left, struct range_list *right)
+static struct range_list *rl_handle_sub(struct range_list *left, struct range_list *right)
 {
 	struct range_list *left_neg, *left_pos, *right_neg, *right_pos;
 	struct range_list *neg_neg, *neg_pos, *pos_neg, *pos_pos;
@@ -2129,7 +2129,7 @@ static unsigned long long rl_bits_maybe_set(struct range_list *rl)
 	return sval_fls_mask(rl_max(rl));
 }
 
-static struct range_list *handle_OR_rl(struct range_list *left, struct range_list *right)
+static struct range_list *rl_handle_OR(struct range_list *left, struct range_list *right)
 {
 	unsigned long long left_min, left_max, right_min, right_max;
 	sval_t min, max;
@@ -2151,7 +2151,7 @@ static struct range_list *handle_OR_rl(struct range_list *left, struct range_lis
 	return cast_rl(rl_type(left), alloc_rl(min, max));
 }
 
-static struct range_list *handle_XOR_rl(struct range_list *left, struct range_list *right)
+static struct range_list *rl_handle_XOR(struct range_list *left, struct range_list *right)
 {
 	unsigned long long left_set, left_maybe;
 	unsigned long long right_set, right_maybe;
@@ -2189,7 +2189,7 @@ static sval_t sval_lowest_set_bit(sval_t sval)
 	return ret;
 }
 
-static struct range_list *handle_AND_rl(struct range_list *left, struct range_list *right)
+static struct range_list *rl_handle_AND(struct range_list *left, struct range_list *right)
 {
 	struct bit_info *one, *two;
 	struct range_list *rl;
@@ -2219,7 +2219,7 @@ static struct range_list *handle_AND_rl(struct range_list *left, struct range_li
 	return rl;
 }
 
-static struct range_list *handle_lshift(struct range_list *left_orig, struct range_list *right_orig)
+static struct range_list *rl_handle_lshift(struct range_list *left_orig, struct range_list *right_orig)
 {
 	struct range_list *left;
 	struct data_range *tmp;
@@ -2265,7 +2265,7 @@ static struct range_list *handle_lshift(struct range_list *left_orig, struct ran
 	return ret;
 }
 
-static struct range_list *handle_rshift(struct range_list *left_orig, struct range_list *right_orig)
+static struct range_list *rl_handle_rshift(struct range_list *left_orig, struct range_list *right_orig)
 {
 	struct data_range *tmp;
 	struct range_list *ret = NULL;
@@ -2289,25 +2289,25 @@ struct range_list *rl_binop_helper(struct range_list *left, int op, struct range
 {
 	switch (op) {
 	case '%':
-		return handle_mod_rl(left, right);
+		return rl_handle_mod(left, right);
 	case '/':
-		return handle_divide_rl(left, right);
+		return rl_handle_divide(left, right);
 	case '*':
-		return handle_mult_rl(left, right);
+		return rl_handle_mult(left, right);
 	case '+':
-		return handle_add_rl(left, right);
+		return rl_handle_add(left, right);
 	case '-':
-		return handle_sub_rl(left, right);
+		return rl_handle_sub(left, right);
 	case SPECIAL_RIGHTSHIFT:
-		return handle_rshift(left, right);
+		return rl_handle_rshift(left, right);
 	case SPECIAL_LEFTSHIFT:
-		return handle_lshift(left, right);
+		return rl_handle_lshift(left, right);
 	case '&':
-		return handle_AND_rl(left, right);
+		return rl_handle_AND(left, right);
 	case '^':
-		return handle_XOR_rl(left, right);
+		return rl_handle_XOR(left, right);
 	case '|':
-		return handle_OR_rl(left, right);
+		return rl_handle_OR(left, right);
 	}
 	return NULL;
 }
