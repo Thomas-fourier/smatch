@@ -1276,7 +1276,9 @@ static struct range_list *get_special_assign_rl(struct expression *expr)
 	struct expression *binop_expr;
 	struct symbol *left_type;
 	struct range_list *rl;
+	int comparison;
 
+	comparison = get_comparison_no_extra(expr->left, expr->right);
 	left_type = get_type(expr->left);
 	binop_expr = binop_expression(expr->left,
 				      op_remove_assign(expr->op),
@@ -1287,7 +1289,8 @@ static struct range_list *get_special_assign_rl(struct expression *expr)
 		if (expr->op == SPECIAL_ADD_ASSIGN)
 			add_range(&rl, rl_max(rl), sval_type_max(rl_type(rl)));
 		if (expr->op == SPECIAL_SUB_ASSIGN &&
-		    !sval_is_negative(rl_min(rl))) {
+		    !sval_is_negative(rl_min(rl)) &&
+		    !(comparison && show_special(comparison)[0] == '>')) {
 			sval_t zero = { .type = rl_type(rl) };
 
 			add_range(&rl, rl_min(rl), zero);
