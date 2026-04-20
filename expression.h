@@ -176,7 +176,7 @@ typedef struct {
 struct expression {
 	enum expression_type type:8;
 	unsigned flags:8;
-	unsigned smatch_flags:3;
+	unsigned smatch_flags:16;
 	unsigned user_safe:2;
 	unsigned zero_init:1;
 	int op;
