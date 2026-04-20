@@ -1271,12 +1271,36 @@ free:
 	free_string(right_name);
 }
 
+static struct range_list *get_special_assign_rl(struct expression *expr)
+{
+	struct expression *binop_expr;
+	struct symbol *left_type;
+	struct range_list *rl;
+
+	left_type = get_type(expr->left);
+	binop_expr = binop_expression(expr->left,
+				      op_remove_assign(expr->op),
+				      expr->right);
+	get_absolute_rl(binop_expr, &rl);
+	rl = cast_rl(left_type, rl);
+	if (inside_loop()) {
+		if (expr->op == SPECIAL_ADD_ASSIGN)
+			add_range(&rl, rl_max(rl), sval_type_max(rl_type(rl)));
+		if (expr->op == SPECIAL_SUB_ASSIGN &&
+		    !sval_is_negative(rl_min(rl))) {
+			sval_t zero = { .type = rl_type(rl) };
+
+			add_range(&rl, rl_min(rl), zero);
+		}
+	}
+	return rl;
+}
+
 static void match_assign(struct expression *expr)
 {
 	struct range_list *rl = NULL;
 	struct expression *left;
 	struct expression *right;
-	struct expression *binop_expr;
 	struct symbol *left_type;
 	struct symbol *sym;
 	char *name;
@@ -1316,22 +1340,7 @@ static void match_assign(struct expression *expr)
 	case SPECIAL_XOR_ASSIGN:
 	case SPECIAL_MUL_ASSIGN:
 	case SPECIAL_DIV_ASSIGN:
-		binop_expr = binop_expression(expr->left,
-					      op_remove_assign(expr->op),
-					      expr->right);
-		get_absolute_rl(binop_expr, &rl);
-		rl = cast_rl(left_type, rl);
-		if (inside_loop()) {
-			if (expr->op == SPECIAL_ADD_ASSIGN)
-				add_range(&rl, rl_max(rl), sval_type_max(rl_type(rl)));
-
-			if (expr->op == SPECIAL_SUB_ASSIGN &&
-			    !sval_is_negative(rl_min(rl))) {
-				sval_t zero = { .type = rl_type(rl) };
-
-				add_range(&rl, rl_min(rl), zero);
-			}
-		}
+		rl = get_special_assign_rl(expr);
 		set_extra_mod(name, sym, left, alloc_estate_rl(rl));
 		goto free;
 	}
