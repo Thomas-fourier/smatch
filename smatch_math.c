@@ -392,27 +392,6 @@ static bool handle_container_of(struct expression *expr, int implied, int *recur
 	return true;
 }
 
-static bool max_is_unknown_max(struct range_list *rl)
-{
-	/*
-	 * The issue with this code is that we had:
-	 * if (foo > 1) return 1 - foo;
-	 * Ideally we would say that returns s32min-(-1) but what Smatch
-	 * was saying was that the lowest possible value was "1 - INT_MAX"
-	 *
-	 * My solution is to ignore max values for int or larger.  I keep
-	 * the max for shorts etc, because those might be worthwhile.
-	 *
-	 * The problem with just returning 1 - INT_MAX is that that is
-	 * treated as useful information but s32min is treated as basically
-	 * unknown.
-	 */
-
-	if (type_bits(rl_type(rl)) < 31)
-		return false;
-	return sval_is_max(rl_max(rl));
-}
-
 static bool handle_add_rl(struct expression *expr,
 			  struct range_list *left_rl, struct range_list *right_rl,
 			  int implied, int *recurse_cnt, struct range_list **res)
@@ -440,30 +419,11 @@ static bool handle_add_rl(struct expression *expr,
 	return true;
 }
 
-static bool has_negative_information(struct range_list *rl)
-{
-	struct data_range *drange;
-
-	if (!rl)
-		return false;
-	drange = first_ptr_list((struct ptr_list *)rl);
-	if (!sval_is_negative(drange->min))
-		return false;
-	if (!sval_is_min(drange->min))
-		return true;
-	if (!sval_is_negative(drange->max))
-		return false;
-	if (drange->max.value == -1)
-		return false;
-	return true;
-}
-
 static bool handle_subtract_rl(struct expression *expr, int implied, int *recurse_cnt, struct range_list **res)
 {
 	struct symbol *type = get_type(expr);
 	sval_t zero = { .type = type, .value = 0 };
 	struct range_list *left_rl, *right_rl;
-	struct range_list *filter = NULL;
 	struct range_list *ret;
 	int comparison;
 	int offset;
@@ -498,30 +458,13 @@ static bool handle_subtract_rl(struct expression *expr, int implied, int *recurs
 			return false;
 	}
 
-	// Note: this makes some assumptions that if we have a comparison then
-	// both numbers are positive.  That's probably a fair assumption most
-	// of the time.  It also ignores <.  Really negatives are not common
-	// in the kernel.
-	if (type_signed(type) &&
-	    comparison && show_special(comparison)[0] == '>' &&
-	    !has_negative_information(left_rl) &&
-	    !has_negative_information(right_rl)) {
-		sval_t minus_one = { .type = type, .value = -1 };
 
-		filter = alloc_rl(sval_type_min(type), minus_one);
-		left_rl = rl_filter(left_rl, filter);
-		right_rl = rl_filter(right_rl, filter);
-	}
-
-	ret = rl_binop(left_rl, '-', right_rl);
+	if (comparison && show_special(comparison)[0] == '>')
+		ret = rl_handle_sub(left_rl, right_rl, comparison);
+	else
+		ret = rl_binop(left_rl, '-', right_rl);
 	if (!ret)
 		return false;
-	if (filter)
-		ret = rl_filter(ret, filter);
-
-	/* if it's not equal the result can't be zero */
-	if (comparison && show_special(comparison)[0] != '=')
-		ret = rl_filter(ret, alloc_rl(zero, zero));
 
 	*res = ret;
 	return true;

@@ -2075,11 +2075,31 @@ static struct range_list *sub_rl_helper(struct range_list *left, struct range_li
 	return alloc_rl(min, max);
 }
 
+static bool has_negative_information(struct range_list *rl)
+{
+	struct data_range *drange;
+
+	if (!rl)
+		return false;
+	drange = first_ptr_list((struct ptr_list *)rl);
+	if (!sval_is_negative(drange->min))
+		return false;
+	if (!sval_is_min(drange->min))
+		return true;
+	if (!sval_is_negative(drange->max))
+		return false;
+	if (drange->max.value == -1)
+		return false;
+	return true;
+}
+
 struct range_list *rl_handle_sub(struct range_list *left, struct range_list *right, int comparison)
 {
 	struct range_list *left_neg, *left_pos, *right_neg, *right_pos;
 	struct range_list *neg_neg, *neg_pos, *pos_neg, *pos_pos;
-	struct symbol *orig_type = NULL;
+	struct symbol *type = rl_type(left);
+	sval_t minus_one = { .type = type, .value = -1 };
+	sval_t zero = { .type = type, .value = 0 };
 	struct range_list *ret;
 	sval_t sval;
 
@@ -2093,8 +2113,7 @@ struct range_list *rl_handle_sub(struct range_list *left, struct range_list *rig
 	    sval_cmp(rl_min(left), rl_max(right)) < 0) {
 		struct symbol *signed_type;
 
-		orig_type = rl_type(left);
-		signed_type = get_signed_equivalent(orig_type);
+		signed_type = get_signed_equivalent(type);
 		if (!signed_type)
 			return NULL;
 		left = cast_rl(signed_type, left);
@@ -2106,6 +2125,23 @@ struct range_list *rl_handle_sub(struct range_list *left, struct range_list *rig
 	right_neg = get_neg_rl(right);
 	right_pos = get_pos_rl(right);
 
+	/* these tests for uselessness could be improved */
+	if (sval_is_max(rl_max(left_pos)))
+		return NULL;
+	if (sval_is_max(rl_max(right_pos)) && !comparison)
+		return NULL;
+
+	/* FIXME:
+	 * this is an unsafe assumption.  It should test for user_data
+	 * first.
+	 */
+	if(comparison && show_special(comparison)[0] == '>' &&
+	    !has_negative_information(left) &&
+	    !has_negative_information(right)) {
+		left_neg = NULL;
+		right_neg = NULL;
+	}
+
 	pos_pos = sub_rl_helper(left_pos, right_pos);
 	pos_neg = sub_rl_helper(left_pos, right_neg);
 	neg_pos = sub_rl_helper(left_neg, right_pos);
@@ -2114,8 +2150,27 @@ struct range_list *rl_handle_sub(struct range_list *left, struct range_list *rig
 	ret = rl_union(neg_neg, neg_pos);
 	ret = rl_union(ret, pos_neg);
 	ret = rl_union(ret, pos_pos);
-	if (orig_type)
-		ret = cast_rl(orig_type, ret);
+
+	/* If we have "ret = a - b" where we know that "a > b" then "ret"
+	 * isn't going to be negative.  Generally, we aren't going to
+	 * subtract by negative numbers as well so you would think that
+	 * "ret" is going to be "< a".  It could be malicious user data,
+	 * but assuming everything is malicious is going to lead to a lot
+	 * of false positives.
+	 */
+	if (type_signed(rl_type(left)) &&
+	    comparison && show_special(comparison)[0] == '>' &&
+	    !has_negative_information(left) &&
+	    !has_negative_information(right))
+		ret = rl_filter(ret, alloc_rl(sval_type_min(type), minus_one));
+
+	/* cast it back to the original type */
+	ret = cast_rl(type, ret);
+
+	/* if it's not equal then the result is non-zero */
+	if (comparison && show_special(comparison)[1] != '=')
+		ret = rl_filter(ret, alloc_rl(zero, zero));
+
 	return ret;
 }
 
