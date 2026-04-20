@@ -2052,7 +2052,7 @@ static struct symbol *get_signed_equivalent(struct symbol *type)
 	return NULL;
 }
 
-static struct range_list *sub_rl_helper(struct range_list *left, struct range_list *right)
+static struct range_list *sub_rl_helper(struct range_list *left, struct range_list *right, int comparison)
 {
 	sval_t high_left, high_right, low_left, low_right;
 	sval_t min, max;
@@ -2064,6 +2064,12 @@ static struct range_list *sub_rl_helper(struct range_list *left, struct range_li
 	low_right = rl_max(right);
 	high_left = rl_max(left);
 	high_right = rl_min(right);
+
+	if (comparison && show_special(comparison)[0] == '>' &&
+	    sval_cmp(low_left, low_right) < 0) {
+		/* the caller will strip out the zero if necessary */
+		low_right = low_left;
+	}
 
 	if (sval_binop_overflows(low_left, '-', low_right) ||
 	    sval_binop_overflows(high_left, '-', high_right))
@@ -2135,17 +2141,17 @@ struct range_list *rl_handle_sub(struct range_list *left, struct range_list *rig
 	 * this is an unsafe assumption.  It should test for user_data
 	 * first.
 	 */
-	if(comparison && show_special(comparison)[0] == '>' &&
+	if (comparison && show_special(comparison)[0] == '>' &&
 	    !has_negative_information(left) &&
 	    !has_negative_information(right)) {
 		left_neg = NULL;
 		right_neg = NULL;
 	}
 
-	pos_pos = sub_rl_helper(left_pos, right_pos);
-	pos_neg = sub_rl_helper(left_pos, right_neg);
-	neg_pos = sub_rl_helper(left_neg, right_pos);
-	neg_neg = sub_rl_helper(left_neg, right_neg);
+	pos_pos = sub_rl_helper(left_pos, right_pos, comparison);
+	pos_neg = sub_rl_helper(left_pos, right_neg, comparison);
+	neg_pos = sub_rl_helper(left_neg, right_pos, comparison);
+	neg_neg = sub_rl_helper(left_neg, right_neg, comparison);
 
 	ret = rl_union(neg_neg, neg_pos);
 	ret = rl_union(ret, pos_neg);
