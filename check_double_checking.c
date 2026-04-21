@@ -84,16 +84,6 @@ static bool last_in_chain_of_else_if_statements(struct expression *expr)
 	return true;
 }
 
-static bool is_global(struct expression *expr)
-{
-	struct symbol *sym;
-
-	sym = expr_to_sym(expr);
-	if (!sym)
-		return false;
-	return !!(sym->ctype.modifiers & MOD_TOPLEVEL);
-}
-
 static bool is_dereference(struct expression *expr)
 {
 	expr = strip_expr(expr);

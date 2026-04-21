@@ -570,6 +570,7 @@ struct expression *strip_no_cast(struct expression *expr);
 struct expression *strip_expr_cast(struct expression *expr, struct expression **cast);
 struct expression *strip_expr_set_parent(struct expression *expr);
 int is_error_return(struct expression *expr);
+bool is_global(struct expression *expr);
 int getting_address(struct expression *expr);
 int get_struct_and_member(struct expression *expr, const char **type, const char **member);
 char *get_member_name(struct expression *expr);

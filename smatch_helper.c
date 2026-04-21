@@ -1063,6 +1063,16 @@ int is_error_return(struct expression *expr)
 	return 0;
 }
 
+bool is_global(struct expression *expr)
+{
+	struct symbol *sym;
+
+	sym = expr_to_sym(expr);
+	if (!sym)
+		return false;
+	return !!(sym->ctype.modifiers & MOD_TOPLEVEL);
+}
+
 int getting_address(struct expression *expr)
 {
 	int deref_count = 0;
