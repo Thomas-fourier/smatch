@@ -2115,6 +2115,19 @@ struct range_list *rl_handle_sub(struct range_list *left, struct range_list *rig
 	if (is_whole_rl(left) || is_whole_rl(right))
 		return NULL;
 
+	if (type_is_ptr(rl_type(left)) && rl_to_sval(right, &sval)) {
+		/*
+		 * This is container_of().  There are times where
+		 * container_of() is just a cast and there are places which
+		 * rely on this because they test the result for NULL
+		 * or error pointers.  That's handled by zero subtractions
+		 * at the start of the function.  Otherwise if we're
+		 * calling container_of() then the result is basically
+		 * always valid.  Or it gets caught in testing right away.
+		 */
+		return valid_ptr_rl;
+	}
+
 	if (type_unsigned(rl_type(left)) &&
 	    sval_cmp(rl_min(left), rl_max(right)) < 0) {
 		struct symbol *signed_type;
