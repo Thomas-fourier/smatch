@@ -1,0 +1,8 @@
+/kernel_build_cfg
+
+modules.order
+Module.symvers
+
+*.cmd
+*.mod
+
