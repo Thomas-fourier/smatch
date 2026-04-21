@@ -1126,6 +1126,7 @@ static int idx;
 
 char *get_member_name(struct expression *expr)
 {
+	struct expression *deref;
 	char *member = NULL;
 	struct symbol *sym;
 	char buf[256];
@@ -1151,6 +1152,16 @@ char *get_member_name(struct expression *expr)
 		snprintf(buf, sizeof(buf), "(union %s)->%s",
 			 sym->ident ? sym->ident->name : "anonymous",
 			 expr->member->name);
+		member = buf;
+		goto done;
+	}
+	deref = strip_parens(expr->deref);
+	if (!sym->ident && is_array(deref)) {
+		struct expression *base = get_array_base(deref);
+
+		if (!base || !is_global(base))
+			goto done;
+		snprintf(buf, sizeof(buf), "(array %s[])->%s", expr_to_str(base), expr->member->name);
 		member = buf;
 		goto done;
 	}
