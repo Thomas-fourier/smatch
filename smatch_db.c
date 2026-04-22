@@ -288,6 +288,8 @@ void sql_insert_return_states(int return_id, const char *return_ranges,
 {
 	unsigned long long id;
 
+	if (in_ignored_macro())
+		return;
 
 	if (key && strlen(key) >= 80)
 		return;
@@ -377,6 +379,9 @@ void sql_insert_function_ptr(const char *fn, const char *struct_name)
 void sql_insert_return_implies(int type, int param, const char *key, const char *value)
 {
 	unsigned long long id;
+
+	if (in_ignored_macro())
+		return;
 
 	if (__inline_fn)
 		id = (unsigned long)__inline_fn;
