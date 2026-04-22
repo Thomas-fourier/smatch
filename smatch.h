@@ -574,6 +574,7 @@ bool is_global(struct expression *expr);
 int getting_address(struct expression *expr);
 int get_struct_and_member(struct expression *expr, const char **type, const char **member);
 char *get_member_name(struct expression *expr);
+char *get_member_name_no_prefix(struct expression *expr);
 char *get_fnptr_name(struct expression *expr);
 int cmp_pos(struct position pos1, struct position pos2);
 int positions_eq(struct position pos1, struct position pos2);

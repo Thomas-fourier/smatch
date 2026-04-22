@@ -1224,6 +1224,17 @@ done:
 	return member;
 }
 
+char *get_member_name_no_prefix(struct expression *expr)
+{
+	expr = strip_expr(expr);
+	if (!expr || expr->type != EXPR_DEREF)
+		return NULL;
+	if (!expr->member)
+		return NULL;
+
+	return alloc_sname(expr->member->name);
+}
+
 void clear_strip_cache(void)
 {
 	memset(strip_cache, 0, sizeof(strip_cache));
