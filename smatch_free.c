@@ -41,43 +41,43 @@ struct func_info {
 static struct func_info *free_table;
 
 static struct func_info default_func_table[] = {
-	{ "free", PARAM_FREED, 0, "$" },
+	{ "free", FREED, 0, "$" },
 	{ /* sentinel */ }
 };
 
 static struct func_info illumos_func_table[] = {
-	{ "kmem_free", PARAM_FREED, 0, "$" },
+	{ "kmem_free", FREED, 0, "$" },
 	{ /* sentinel */ }
 };
 
 static struct func_info func_table[] = {
-	{ "consume_skb", PARAM_FREED, 0, "$" },
-	{ "brelse", PARAM_FREED, 0, "$" },
-	{ "dma_fence_put", PARAM_FREED, 0, "$" },
-	{ "dma_free_coherent", PARAM_FREED, 2, "$" },
-	{ "dma_pool_free", PARAM_FREED, 1, "$" },
-	{ "enqueue_to_backlog", PARAM_FREED, 0, "$" },
-	{ "free_netdev", PARAM_FREED, 0, "$" },
-	{ "free", PARAM_FREED, 0, "$" },
-	{ "kfree", PARAM_FREED, 0, "$" },
-	{ "kfree_skbmem", PARAM_FREED, 0, "$" },
-	{ "kfree_skb", PARAM_FREED, 0, "$" },
-	{ "kmem_cache_free", PARAM_FREED, 1, "$" },
-	{ "kobject_put", PARAM_FREED, 0, "$", NULL, NULL, &match_kobject_put },
-	{ "kvfree_call_rcu", PARAM_FREED, 1, "$" },
-	{ "kvfree", PARAM_FREED, 0, "$" },
-	{ "kzfree", PARAM_FREED, 0, "$" },
-	{ "mempool_free", PARAM_FREED, 0, "$" },
-	{ "memstick_free_host", PARAM_FREED, 0, "$" },
-	{ "netif_rx_internal", PARAM_FREED, 0, "$" },
-	{ "netif_rx", PARAM_FREED, 0, "$" },
-	{ "put_device", PARAM_FREED, 0, "$", NULL, NULL, &match_kobject_put },
-	{ "qdisc_enqueue", PARAM_FREED, 0, "$" },
-	{ "__skb_pad", PARAM_FREED, 0, "$", &err_min, &err_max, &match___skb_pad },
+	{ "consume_skb", FREED, 0, "$" },
+	{ "brelse", FREED, 0, "$" },
+	{ "dma_fence_put", FREED, 0, "$" },
+	{ "dma_free_coherent", FREED, 2, "$" },
+	{ "dma_pool_free", FREED, 1, "$" },
+	{ "enqueue_to_backlog", FREED, 0, "$" },
+	{ "free_netdev", FREED, 0, "$" },
+	{ "free", FREED, 0, "$" },
+	{ "kfree", FREED, 0, "$" },
+	{ "kfree_skbmem", FREED, 0, "$" },
+	{ "kfree_skb", FREED, 0, "$" },
+	{ "kmem_cache_free", FREED, 1, "$" },
+	{ "kobject_put", FREED, 0, "$", NULL, NULL, &match_kobject_put },
+	{ "kvfree_call_rcu", FREED, 1, "$" },
+	{ "kvfree", FREED, 0, "$" },
+	{ "kzfree", FREED, 0, "$" },
+	{ "mempool_free", FREED, 0, "$" },
+	{ "memstick_free_host", FREED, 0, "$" },
+	{ "netif_rx_internal", FREED, 0, "$" },
+	{ "netif_rx", FREED, 0, "$" },
+	{ "put_device", FREED, 0, "$", NULL, NULL, &match_kobject_put },
+	{ "qdisc_enqueue", FREED, 0, "$" },
+	{ "__skb_pad", FREED, 0, "$", &err_min, &err_max, &match___skb_pad },
 	{ "skb_unshare", IGNORE, 0, "$" },
-	{ "sock_release", PARAM_FREED, 0, "$" },
-//	{ "spi_unregister_controller", PARAM_FREED, 0, "$" },
-	{ "vfree", PARAM_FREED, 0, "$" },
+	{ "sock_release", FREED, 0, "$" },
+//	{ "spi_unregister_controller", FREED, 0, "$" },
+	{ "vfree", FREED, 0, "$" },
 	{ /* sentinel */ }
 };
 
@@ -95,7 +95,7 @@ void add_maybe_free_hook(name_sym_hook *hook)
 
 static void call_free_call_backs_name_sym(int type, struct expression *expr, const char *name, struct symbol *sym)
 {
-	if (type == PARAM_FREED)
+	if (type == FREED)
 		call_name_sym_fns(free_hooks, expr, name, sym);
 	else
 		call_name_sym_fns(maybe_free_hooks, expr, name, sym);
@@ -161,7 +161,7 @@ static void set_param_freed_helper(struct expression *expr, const char *name, st
 
 static void set_param_freed(struct expression *expr, const char *name, struct symbol *sym, void *data)
 {
-	set_param_freed_helper(expr, name, sym, data, PARAM_FREED);
+	set_param_freed_helper(expr, name, sym, data, FREED);
 }
 
 static void set_param_maybe_freed(struct expression *expr, const char *name, struct symbol *sym, void *data)
@@ -207,7 +207,7 @@ static void match___skb_pad(struct expression *expr, const char *name, struct sy
 
 	type = MAYBE_FREED;
 	if (get_implied_value(arg, &sval) && sval.value != 0)
-		type = PARAM_FREED;
+		type = FREED;
 
 	skb = get_argument_from_call_expr(expr->args, 0);
 	call_free_call_backs_expr(type, skb);
@@ -248,6 +248,6 @@ void register_free(int id)
 		}
 	}
 
-	select_return_param_key(PARAM_FREED, &set_param_freed);
+	select_return_param_key(FREED, &set_param_freed);
 	select_return_param_key(MAYBE_FREED, &set_param_maybe_freed);
 }

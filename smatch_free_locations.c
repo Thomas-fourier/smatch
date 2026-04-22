@@ -68,7 +68,7 @@ static void match_free_member(struct expression *expr, const char *name, struct 
 	if (maybe)
 		sql_insert_function_type_info(MAYBE_FREED, type_str, member, fn_name);
 	else
-		sql_insert_function_type_info(PARAM_FREED, type_str, member, fn_name);
+		sql_insert_function_type_info(FREED, type_str, member, fn_name);
 }
 
 static void match_free(struct expression *expr, const char *name, struct symbol *sym)

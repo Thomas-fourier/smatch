@@ -87,7 +87,7 @@ static struct smatch_state *unmatched_state(struct sm_state *sm)
 static int get_freed_type(struct sm_state *sm)
 {
 	if (sm->state == &freed)
-		return PARAM_FREED;
+		return FREED;
 
 	if (slist_has_state(sm->possible, &freed) ||
 	    slist_has_state(sm->possible, &maybe_freed))

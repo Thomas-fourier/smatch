@@ -70,7 +70,7 @@ db_types = {
     1006: "DEREFERENCE",
     1007: "RANGE_CAP",
     1010: "ABSOLUTE_LIMITS",
-    1013: "PARAM_FREED",
+    1013: "FREED",
     2014: "MAYBE_FREED",
     1014: "DATA_SOURCE",
     1015: "FUZZY_MAX",
