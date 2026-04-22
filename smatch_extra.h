@@ -37,8 +37,6 @@ struct data_info {
 };
 DECLARE_ALLOCATOR(data_info);
 
-extern struct string_list *__ignored_macros;
-
 /* these are implemented in smatch_ranges.c */
 struct range_list *rl_zero(void);
 struct range_list *rl_one(void);

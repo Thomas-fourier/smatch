@@ -39,27 +39,6 @@ static int link_id;
 
 static void match_link_modify(struct sm_state *sm, struct expression *mod_expr);
 
-struct string_list *__ignored_macros = NULL;
-int in_warn_on_macro(void)
-{
-	struct statement *stmt;
-	char *tmp;
-	char *macro;
-
-	stmt = get_current_statement();
-	if (!stmt)
-		return 0;
-	macro = get_macro_name(stmt->pos);
-	if (!macro)
-		return 0;
-
-	FOR_EACH_PTR(__ignored_macros, tmp) {
-		if (!strcmp(tmp, macro))
-			return 1;
-	} END_FOR_EACH_PTR(tmp);
-	return 0;
-}
-
 typedef void (mod_hook)(const char *name, struct symbol *sym, struct expression *expr, struct smatch_state *state);
 DECLARE_PTR_LIST(mod_hook_list, mod_hook *);
 static struct mod_hook_list *extra_mod_hooks;
@@ -582,7 +561,7 @@ static void set_extra_true_false(const char *name, struct symbol *sym,
 	if (!true_state && !false_state)
 		return;
 
-	if (in_warn_on_macro())
+	if (in_ignored_macro())
 		return;
 
 	new_name = get_other_name_sym(name, sym, &new_sym);
@@ -635,7 +614,7 @@ static void set_extra_chunk_true_false(struct expression *expr,
 	char *name;
 	struct symbol *sym;
 
-	if (in_warn_on_macro())
+	if (in_ignored_macro())
 		return;
 
 	type = get_type(expr);

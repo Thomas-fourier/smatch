@@ -21,7 +21,7 @@ static int my_id;
 
 static struct string_list *ignored_macros;
 
-static int in_ignored_macro(struct statement *stmt)
+static int in_ignored_macro_indent(struct statement *stmt)
 {
 	const char *macro;
 	char *tmp;
@@ -186,7 +186,7 @@ static void match_stmt(struct statement *stmt)
 	    cmp_pos(__prev_stmt->pos, ignore_prev_inline) == 0)
 		return;
 
-	if (in_ignored_macro(stmt))
+	if (in_ignored_macro_indent(stmt))
 		return;
 
 	if (stmt->pos.pos == orig_pos) {

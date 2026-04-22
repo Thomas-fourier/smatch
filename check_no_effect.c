@@ -22,7 +22,7 @@ static int my_id;
 
 static struct string_list *ignored_macros;
 
-static bool in_ignored_macro(struct expression *expr)
+static bool in_ignored_no_effect_macro(struct expression *expr)
 {
 	char *macro;
 
@@ -63,7 +63,7 @@ static void match_stmt(struct statement *stmt)
 	}
 	if (in_expression_statement())
 		return;
-	if (in_ignored_macro(expr))
+	if (in_ignored_no_effect_macro(expr))
 		return;
 
 	str = expr_to_str(expr);

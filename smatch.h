@@ -767,6 +767,7 @@ void create_recursive_fake_assignments(struct expression *expr,
 
 /* smatch_project.c */
 int is_no_inline_function(const char *function);
+bool in_ignored_macro(void);
 
 /* smatch_conditions */
 void __set_confidence_implied(void);

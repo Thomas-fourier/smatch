@@ -114,6 +114,28 @@ static void register_no_return_funcs(void)
 	clear_token_alloc();
 }
 
+static struct string_list *__ignored_macros = NULL;
+
+bool in_ignored_macro(void)
+{
+	struct statement *stmt;
+	char *tmp;
+	char *macro;
+
+	stmt = get_current_statement();
+	if (!stmt)
+		return false;
+	macro = get_macro_name(stmt->pos);
+	if (!macro)
+		return false;
+
+	FOR_EACH_PTR(__ignored_macros, tmp) {
+		if (!strcmp(tmp, macro))
+			return true;
+	} END_FOR_EACH_PTR(tmp);
+	return false;
+}
+
 static void register_ignored_macros(void)
 {
 	struct token *token;
