@@ -2349,6 +2349,8 @@ static void split_function(struct symbol *sym)
 	if (!__path_is_null() &&
 	    cur_func_return_type() == &void_ctype &&
 	    !__bail_on_rest_of_function) {
+		__prev_stmt = __cur_stmt;
+		__cur_stmt = NULL;
 		__call_all_scope_hooks();
 		__pass_to_client(NULL, RETURN_HOOK);
 		nullify_path();

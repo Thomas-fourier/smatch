@@ -1268,6 +1268,9 @@ struct statement *get_current_statement(void)
 {
 	struct statement *prev, *tmp;
 
+	if (!__cur_stmt)
+		return NULL;
+
 	prev = last_ptr_list((struct ptr_list *)big_statement_stack);
 
 	if (!prev || !get_macro_name(prev->pos))
