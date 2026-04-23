@@ -47,12 +47,12 @@ static void match_xa_is_err_false(const char *fn, struct expression *call_expr,
 
 	arg = get_argument_from_call_expr(call_expr->args, 0);
 	pre_state = get_state_expr(SMATCH_EXTRA, arg);
-	if (pre_state) {
+	if (pre_state)
 		rl = estate_rl(pre_state);
-		rl = remove_range(rl, ptr_xa_err_min, ptr_xa_err_max);
-	} else {
-		rl = alloc_rl(valid_ptr_min_sval, valid_ptr_max_sval);
-	}
+	else
+		rl = alloc_whole_rl(get_type(arg));
+
+	rl = remove_range(rl, ptr_xa_err_min, ptr_xa_err_max);
 	rl = cast_rl(get_type(arg), rl);
 	set_extra_expr_nomod(arg, alloc_estate_rl(rl));
 }
