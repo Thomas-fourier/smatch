@@ -299,7 +299,7 @@ void register_modification_hooks(int id)
 
 void register_modification_hooks_late(int id)
 {
-	add_hook(&match_call, FUNCTION_CALL_HOOK);
+	add_hook(&match_call, FUNCTION_CALL_HOOK_AFTER_DB);
 
 	select_return_states_hook(PARAM_ADD, &db_param_add);
 	select_return_states_hook(PARAM_SET, &db_param_add);
