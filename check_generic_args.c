@@ -512,6 +512,11 @@ static void match_assign(struct expression *expr)
     __match_assign(left_str, right_str);
 }
 
+/**
+ *returns 0 if half less than half the arguments are the same at best,
+ *returns 1 if more that half are the same at best,
+ *returns 2 if all the arguments are the same with one other.
+ */
 static int exists_similar_call(int index, struct calls_rep *calls)
 {
     if (!calls->arg_name_function)
@@ -519,7 +524,7 @@ static int exists_similar_call(int index, struct calls_rep *calls)
     if (!calls->arg_name)
         return true;
     int ret = false;
-    int cur_res = false;
+    int cur_res = 0;
     for (int j = 0; j < calls->nb_arg_name; j++) {
         if (j == index)
             continue;
@@ -528,7 +533,7 @@ static int exists_similar_call(int index, struct calls_rep *calls)
             cur_res = args_are_same(calls->arg_name[index], calls->arg_name[j], calls);
 
             if (cur_res == 2) {
-                ret = 2;
+                return 2;
             } else {
                 ret = cur_res > ret ? cur_res : ret;
             }
@@ -586,13 +591,21 @@ static void add_to_file(char *filename, char *possible_wrappers)
 
 }
 
+static bool add_to_wrappers_if_wrapper(struct calls_rep *calls, int i) {
+    for (int j = 0; j < nb_possible_wrappers; j++) {
+        if (strcmp(calls->arg_name_function[i], possible_wrapper_names[j]) == 0) {
+            add_to_file(calls->dsl.filename, possible_wrappers[j]);
+            return true;
+        }
+    }
+    return false;
+}
+
 static void possible_not_match(struct calls_rep *calls, int i, char ***warnings,
                                int *nb_warnings)
 {
-    for (int j = 0; j < nb_possible_wrappers; j++) {
-        if (strcmp(calls->arg_name_function[i], possible_wrapper_names[j]) == 0)
-            add_to_file(calls->dsl.filename, possible_wrappers[j]);
-    }
+    if (add_to_wrappers_if_wrapper(calls, i))
+        return;
 
     (*nb_warnings)++;
     *warnings = realloc(*warnings, (*nb_warnings) * sizeof(**warnings));
@@ -607,7 +620,7 @@ static void possible_not_match(struct calls_rep *calls, int i, char ***warnings,
 static void match_file_end_calls(struct calls_rep *calls, char ***warns,
                                  int *nb_warns)
 {
-    if (false) print_arg_name(stderr, calls);
+    if (true) print_arg_name(stderr, calls);
 
     if (all_funcs_are_same(calls)) {
         if (option_spammy)
