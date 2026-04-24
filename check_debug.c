@@ -47,18 +47,26 @@ static void match_cur_stree(const char *fn, struct expression *expr, void *info)
 	__print_cur_stree();
 }
 
+static struct expression *get_check_arg(struct expression *expr, int arg_nr)
+{
+	struct expression *arg;
+
+	arg = get_argument_from_call_expr(expr->args, arg_nr);
+	return strip_Generic(arg);
+}
+
 static void match_state(const char *fn, struct expression *expr, void *info)
 {
 	struct expression *check_arg, *state_arg;
 	struct sm_state *sm;
 	int found = 0;
 
-	check_arg = get_argument_from_call_expr(expr->args, 0);
+	check_arg = get_check_arg(expr, 0);
 	if (check_arg->type != EXPR_STRING) {
 		sm_error("the check_name argument to %s is supposed to be a string literal", fn);
 		return;
 	}
-	state_arg = get_argument_from_call_expr(expr->args, 1);
+	state_arg = get_check_arg(expr, 1);
 	if (!state_arg || state_arg->type != EXPR_STRING) {
 		sm_error("the state_name argument to %s is supposed to be a string literal", fn);
 		return;
@@ -81,7 +89,7 @@ static void match_states(const char *fn, struct expression *expr, void *info)
 {
 	struct expression *check_arg;
 
-	check_arg = get_argument_from_call_expr(expr->args, 0);
+	check_arg = get_check_arg(expr, 0);
 	if (check_arg->type != EXPR_STRING) {
 		sm_error("the check_name argument to %s is supposed to be a string literal", fn);
 		return;
@@ -102,7 +110,7 @@ static void match_print_value(const char *fn, struct expression *expr, void *inf
 	struct sm_state *tmp;
 	struct expression *arg_expr;
 
-	arg_expr = get_argument_from_call_expr(expr->args, 0);
+	arg_expr = get_check_arg(expr, 0);
 	if (arg_expr->type != EXPR_STRING) {
 		sm_error("the argument to %s is supposed to be a string literal", fn);
 		return;
@@ -123,7 +131,7 @@ static void match_print_known(const char *fn, struct expression *expr, void *inf
 	int known = 0;
 	sval_t sval;
 
-	arg = get_argument_from_call_expr(expr->args, 0);
+	arg = get_check_arg(expr, 0);
 	if (get_value(arg, &sval))
 		known = 1;
 
@@ -150,7 +158,7 @@ static void match_print_implied(const char *fn, struct expression *expr, void *i
 {
 	struct expression *arg;
 
-	arg = get_argument_from_call_expr(expr->args, 0);
+	arg = get_check_arg(expr, 0);
 	debug_print_implied(arg);
 }
 
@@ -170,7 +178,7 @@ static void match_real_absolute(const char *fn, struct expression *expr, void *i
 {
 	struct expression *arg;
 
-	arg = get_argument_from_call_expr(expr->args, 0);
+	arg = get_check_arg(expr, 0);
 	debug_print_real_absolute(arg);
 }
 
@@ -180,7 +188,7 @@ static void match_print_implied_min(const char *fn, struct expression *expr, voi
 	sval_t sval;
 	char *name;
 
-	arg = get_argument_from_call_expr(expr->args, 0);
+	arg = get_check_arg(expr, 0);
 	name = expr_to_str(arg);
 
 	if (get_implied_min(arg, &sval))
@@ -197,7 +205,7 @@ static void match_print_implied_max(const char *fn, struct expression *expr, voi
 	sval_t sval;
 	char *name;
 
-	arg = get_argument_from_call_expr(expr->args, 0);
+	arg = get_check_arg(expr, 0);
 	name = expr_to_str(arg);
 
 	if (get_implied_max(arg, &sval))
@@ -218,7 +226,7 @@ static void match_user_rl(const char *fn, struct expression *expr, void *info)
 	if (option_project != PROJ_KERNEL)
 		sm_msg("no user data for project = '%s'", option_project_str);
 
-	arg = get_argument_from_call_expr(expr->args, 0);
+	arg = get_check_arg(expr, 0);
 	name = expr_to_str(arg);
 
 	get_user_rl(arg, &rl);
@@ -245,7 +253,7 @@ static void match_host_rl(const char *fn, struct expression *expr, void *info)
                return;
        }
 
-       arg = get_argument_from_call_expr(expr->args, 0);
+       arg = get_check_arg(expr, 0);
        name = expr_to_str(arg);
 
        get_host_rl(arg, &rl);
@@ -268,7 +276,7 @@ static void match_capped(const char *fn, struct expression *expr, void *info)
 	struct expression *arg;
 	char *name;
 
-	arg = get_argument_from_call_expr(expr->args, 0);
+	arg = get_check_arg(expr, 0);
 	name = expr_to_str(arg);
 	sm_msg("'%s' = '%s'", name, is_capped(arg) ? "capped" : "not capped");
 	free_string(name);
@@ -280,7 +288,7 @@ static void match_print_hard_max(const char *fn, struct expression *expr, void *
 	sval_t sval;
 	char *name;
 
-	arg = get_argument_from_call_expr(expr->args, 0);
+	arg = get_check_arg(expr, 0);
 	name = expr_to_str(arg);
 
 	if (get_hard_max(arg, &sval))
@@ -297,7 +305,7 @@ static void match_print_fuzzy_max(const char *fn, struct expression *expr, void 
 	sval_t sval;
 	char *name;
 
-	arg = get_argument_from_call_expr(expr->args, 0);
+	arg = get_check_arg(expr, 0);
 	name = expr_to_str(arg);
 
 	if (get_fuzzy_max(arg, &sval))
@@ -314,7 +322,7 @@ static void match_print_absolute(const char *fn, struct expression *expr, void *
 	struct range_list *rl;
 	char *name;
 
-	arg = get_argument_from_call_expr(expr->args, 0);
+	arg = get_check_arg(expr, 0);
 	name = expr_to_str(arg);
 
 	get_absolute_rl(arg, &rl);
@@ -329,7 +337,7 @@ static void match_print_absolute_min(const char *fn, struct expression *expr, vo
 	sval_t sval;
 	char *name;
 
-	arg = get_argument_from_call_expr(expr->args, 0);
+	arg = get_check_arg(expr, 0);
 	name = expr_to_str(arg);
 
 	if (get_absolute_min(arg, &sval))
@@ -346,7 +354,7 @@ static void match_print_absolute_max(const char *fn, struct expression *expr, vo
 	sval_t sval;
 	char *name;
 
-	arg = get_argument_from_call_expr(expr->args, 0);
+	arg = get_check_arg(expr, 0);
 	get_absolute_max(arg, &sval);
 
 	name = expr_to_str(arg);
@@ -360,7 +368,7 @@ static void match_sval_info(const char *fn, struct expression *expr, void *info)
 	sval_t sval;
 	char *name;
 
-	arg = get_argument_from_call_expr(expr->args, 0);
+	arg = get_check_arg(expr, 0);
 	name = expr_to_str(arg);
 
 	if (!get_implied_value(arg, &sval)) {
@@ -378,7 +386,7 @@ static void match_member_name(const char *fn, struct expression *expr, void *inf
 	struct expression *arg;
 	char *name, *member_name;
 
-	arg = get_argument_from_call_expr(expr->args, 0);
+	arg = get_check_arg(expr, 0);
 	name = expr_to_str(arg);
 	member_name = get_member_name(arg);
 	sm_msg("member name: '%s => %s'", name, member_name);
@@ -402,7 +410,7 @@ static void match_possible(const char *fn, struct expression *expr, void *info)
 	struct sm_state *tmp;
 	struct expression *arg_expr;
 
-	arg_expr = get_argument_from_call_expr(expr->args, 0);
+	arg_expr = get_check_arg(expr, 0);
 	if (arg_expr->type != EXPR_STRING) {
 		sm_error("the argument to %s is supposed to be a string literal", fn);
 		return;
@@ -431,7 +439,7 @@ static void match_strlen(const char *fn, struct expression *expr, void *info)
 {
 	struct expression *arg;
 
-	arg = get_argument_from_call_expr(expr->args, 0);
+	arg = get_check_arg(expr, 0);
 	debug_print_strlen(arg);
 }
 
@@ -470,7 +478,7 @@ static void match_buf_size(const char *fn, struct expression *expr, void *info)
 {
 	struct expression *arg;
 
-	arg = get_argument_from_call_expr(expr->args, 0);
+	arg = get_check_arg(expr, 0);
 	debug_print_buf_size(arg);
 }
 
@@ -478,7 +486,7 @@ static void match_note(const char *fn, struct expression *expr, void *info)
 {
 	struct expression *arg_expr;
 
-	arg_expr = get_argument_from_call_expr(expr->args, 0);
+	arg_expr = get_check_arg(expr, 0);
 	if (arg_expr->type != EXPR_STRING) {
 		sm_error("the argument to %s is supposed to be a string literal", fn);
 		return;
@@ -521,8 +529,8 @@ static void match_compare(const char *fn, struct expression *expr, void *info)
 	int comparison;
 	char buf[16];
 
-	one = get_argument_from_call_expr(expr->args, 0);
-	two = get_argument_from_call_expr(expr->args, 1);
+	one = get_check_arg(expr, 0);
+	two = get_check_arg(expr, 1);
 
 	comparison = get_comparison(one, two);
 	if (!comparison)
@@ -548,7 +556,7 @@ static void match_debug_check(const char *fn, struct expression *expr, void *inf
 {
 	struct expression *arg;
 
-	arg = get_argument_from_call_expr(expr->args, 0);
+	arg = get_check_arg(expr, 0);
 	if (!arg || arg->type != EXPR_STRING)
 		return;
 	option_debug_check = arg->string->data;
@@ -559,7 +567,7 @@ static void match_debug_var(const char *fn, struct expression *expr, void *info)
 {
 	struct expression *arg;
 
-	arg = get_argument_from_call_expr(expr->args, 0);
+	arg = get_check_arg(expr, 0);
 	if (!arg || arg->type != EXPR_STRING)
 		return;
 	option_debug_var = arg->string->data;
@@ -669,7 +677,7 @@ static void match_about(const char *fn, struct expression *expr, void *info)
 {
 	struct expression *arg;
 
-	arg = get_argument_from_call_expr(expr->args, 0);
+	arg = get_check_arg(expr, 0);
 	debug_print_about(arg);
 }
 
@@ -679,8 +687,8 @@ static void match_intersection(const char *fn, struct expression *expr, void *in
 	struct range_list *one_rl, *two_rl;
 	struct range_list *res;
 
-	one = get_argument_from_call_expr(expr->args, 0);
-	two = get_argument_from_call_expr(expr->args, 1);
+	one = get_check_arg(expr, 0);
+	two = get_check_arg(expr, 1);
 
 	get_absolute_rl(one, &one_rl);
 	get_absolute_rl(two, &two_rl);
@@ -695,7 +703,7 @@ static void match_type(const char *fn, struct expression *expr, void *info)
 	struct symbol *type;
 	char *name;
 
-	one = get_argument_from_call_expr(expr->args, 0);
+	one = get_check_arg(expr, 0);
 	type = get_type(one);
 	name = expr_to_str(one);
 	sm_msg("type of '%s' is: '%s'", name, type_to_str(type));
@@ -749,7 +757,7 @@ static void match_print_merge_tree(const char *fn, struct expression *expr, void
 	struct expression *arg;
 	char *name;
 
-	arg = get_argument_from_call_expr(expr->args, 0);
+	arg = get_check_arg(expr, 0);
 	name = expr_to_str(arg);
 
 	sm = get_sm_state_expr(SMATCH_EXTRA, arg);
@@ -783,7 +791,7 @@ static void match_bits(const char *fn, struct expression *expr, void *_unused)
 	if (!bits_id)
 		bits_id = id_from_name("register_bits");
 
-	arg = get_argument_from_call_expr(expr->args, 0);
+	arg = get_check_arg(expr, 0);
 	name = expr_to_str(arg);
 	info = get_bit_info(arg);
 	sm = get_sm_state_expr(bits_id, arg);
@@ -802,7 +810,7 @@ static void match_units(const char *fn, struct expression *expr, void *info)
 	if (!units_id)
 		units_id = id_from_name("register_units");
 
-	arg = get_argument_from_call_expr(expr->args, 0);
+	arg = get_check_arg(expr, 0);
 	sm = get_sm_state_expr(units_id, arg);
 	name = expr_to_str(arg);
 
@@ -818,7 +826,7 @@ static void match_mtag(const char *fn, struct expression *expr, void *info)
 	mtag_t tag = 0;
 	int offset = 0;
 
-	arg = get_argument_from_call_expr(expr->args, 0);
+	arg = get_check_arg(expr, 0);
 	name = expr_to_str(arg);
 	expr_to_mtag_offset(arg, &tag, &offset);
 	sm_msg("mtag: '%s' => tag: %llu %d", name, tag, offset);
@@ -832,7 +840,7 @@ static void match_mtag_data_offset(const char *fn, struct expression *expr, void
 	mtag_t tag = 0;
 	int offset = -1;
 
-	arg = get_argument_from_call_expr(expr->args, 0);
+	arg = get_check_arg(expr, 0);
 	name = expr_to_str(arg);
 	expr_to_mtag_offset(arg, &tag, &offset);
 	sm_msg("mtag: '%s' => tag: %lld, offset: %d", name, tag, offset);
@@ -844,8 +852,8 @@ static void match_container(const char *fn, struct expression *expr, void *info)
 	struct expression *container, *x;
 	char *cont, *name, *str;
 
-	container = get_argument_from_call_expr(expr->args, 0);
-	x = get_argument_from_call_expr(expr->args, 1);
+	container = get_check_arg(expr, 0);
+	x = get_check_arg(expr, 1);
 
 	str = get_container_name(container, x);
 	cont = expr_to_str(container);
@@ -862,7 +870,7 @@ static void match_param_key(const char *fn, struct expression *expr, void *info)
 	char *name;
 	int param;
 
-	arg = get_argument_from_call_expr(expr->args, 0);
+	arg = get_check_arg(expr, 0);
 
 	param = get_param_key_from_expr(arg, NULL, &key);
 
@@ -923,8 +931,8 @@ static void match_expr(const char *fn, struct expression *expr, void *info)
 	struct expression *arg, *str, *new;
 	char *name, *new_name;
 
-	str = get_argument_from_call_expr(expr->args, 0);
-	arg = get_argument_from_call_expr(expr->args, 1);
+	str = get_check_arg(expr, 0);
+	arg = get_check_arg(expr, 1);
 	if (!arg || !str)
 		return;
 
