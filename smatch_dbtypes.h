@@ -20,7 +20,7 @@ enum info_type {
 	DEREFERENCE	= 1006,
 	RANGE_CAP	= 1007,
 	ABSOLUTE_LIMITS	= 1010,
-	FREED	= 1013,
+	FREED		= 1013,
 	MAYBE_FREED	= 2014,
 	DATA_SOURCE	= 1014,
 	FUZZY_MAX	= 1015,
@@ -111,7 +111,7 @@ enum info_type {
 	BUF_ADD		= 2502,
 	PARAM_SET	= 2525,
 
-	PARAM_ADD	= 2535,  /* after PARAM_FREE */
+	PARAM_ADD	= 2535,  /* after FREED */
 	PARAM_INC	= 2536,
 	PARAM_DEC	= 2537,
 
