@@ -92,6 +92,42 @@ static bool handle_expression_statement_rl(struct expression *expr, int implied,
 	return last_stmt_rl(get_expression_statement(expr), implied, recurse_cnt, res, res_sval);
 }
 
+static bool handle_mtag_address(struct expression *expr, sval_t *sval)
+{
+	struct symbol *type;
+	mtag_t tag;
+
+	/* If we have an & to something which is not an lvalue then we
+	 * can just remove the &.
+	 */
+	expr = strip_parens(expr);
+	if (expr->type == EXPR_PREOP && expr->op == '&')
+		expr = strip_parens(expr->unop);
+
+	type = get_type(expr);
+	if (!type)
+		return false;
+
+	if (expr->type == EXPR_STRING && expr->string) {
+		if (!get_string_mtag(expr, &tag))
+			return false;
+		goto done;
+	}
+
+	if (expr->type == EXPR_SYMBOL &&
+	    (type->type == SYM_ARRAY || type->type == SYM_FN)) {
+		if (!get_symbol_mtag(expr->symbol, &tag))
+			return false;
+		goto done;
+	}
+
+	return false;
+done:
+	sval->type = type;
+	sval->value = tag;
+	return true;
+}
+
 static bool handle_address(struct expression *expr, int implied, int *recurse_cnt, struct range_list **res, sval_t *res_sval)
 {
 	struct range_list *rl;
@@ -100,6 +136,9 @@ static bool handle_address(struct expression *expr, int implied, int *recurse_cn
 
 	if (recursed > 10)
 		return false;
+
+	if (handle_mtag_address(expr, res_sval))
+		return true;
 	if (implied == RL_EXACT)
 		return false;
 
