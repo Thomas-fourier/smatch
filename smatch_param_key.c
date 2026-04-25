@@ -674,7 +674,7 @@ int get_param_key_from_var_sym(const char *name, struct symbol *sym,
 	int param;
 
 	if (key)
-		*key = name;
+		*key = alloc_sname(name);
 
 	/* straight forward param match */
 	param = get_param_num_from_sym(sym);
