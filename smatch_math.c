@@ -92,7 +92,7 @@ static bool handle_expression_statement_rl(struct expression *expr, int implied,
 	return last_stmt_rl(get_expression_statement(expr), implied, recurse_cnt, res, res_sval);
 }
 
-static bool handle_mtag_address(struct expression *expr, sval_t *sval)
+static bool handle_mtag_address(struct expression *expr, int implied, int *recurse_cnt, struct range_list **res, sval_t *res_sval)
 {
 	struct symbol *type;
 	mtag_t tag;
@@ -123,21 +123,30 @@ static bool handle_mtag_address(struct expression *expr, sval_t *sval)
 
 	return false;
 done:
-	sval->type = type;
-	sval->value = tag;
+	res_sval->type = type;
+	res_sval->value = tag;
 	return true;
 }
 
 static bool handle_address(struct expression *expr, int implied, int *recurse_cnt, struct range_list **res, sval_t *res_sval)
+static bool handle_ampersand_address(struct expression *expr, int implied, int *recurse_cnt, struct range_list **res, sval_t *res_sval)
 {
 	struct range_list *rl;
 	static int recursed;
 	sval_t sval;
 
+	/*
+	 * This function is designed to handle several things:
+	 * **: &"foo"
+	 * **: &array[4 + x];
+	 * **: &ptr->member
+	 * **: &my_struct.member;
+	 */
+
 	if (recursed > 10)
 		return false;
 
-	if (handle_mtag_address(expr, res_sval))
+	if (handle_mtag_address(expr, implied, recurse_cnt, res, res_sval))
 		return true;
 	if (implied == RL_EXACT)
 		return false;
@@ -287,7 +296,7 @@ static bool handle_preop_rl(struct expression *expr, int implied, int *recurse_c
 {
 	switch (expr->op) {
 	case '&':
-		return handle_address(expr, implied, recurse_cnt, res, res_sval);
+		return handle_ampersand_address(expr, implied, recurse_cnt, res, res_sval);
 	case '!':
 		return handle_negate_rl(expr, implied, recurse_cnt, res, res_sval);
 	case '~':
@@ -1091,7 +1100,7 @@ static bool handle_variable(struct expression *expr, int implied, int *recurse_c
 
 	type = get_type(expr);
 	if (type && type_is_ptr(type) &&
-	    handle_address(expr, implied, recurse_cnt, res, res_sval))
+	    handle_mtag_address(expr, implied, recurse_cnt, res, res_sval))
 		return true;
 
 	/* FIXME: call rl_to_sval() on the results */
@@ -1570,7 +1579,7 @@ static bool get_rl_sval(struct expression *expr, int implied, int *recurse_cnt, 
 		handle_call_rl(expr, implied, recurse_cnt, &rl, &sval);
 		break;
 	case EXPR_STRING:
-		if (handle_mtag_address(expr, &sval))
+		if (handle_mtag_address(expr, implied, recurse_cnt, &rl, &sval))
 			break;
 		if (implied == RL_EXACT)
 			break;
