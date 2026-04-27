@@ -1068,15 +1068,6 @@ struct range_list *var_to_absolute_rl(struct expression *expr)
 	return clone_rl(estate_rl(state));
 }
 
-static bool is_param_sym(struct expression *expr)
-{
-	if (expr->type != EXPR_SYMBOL)
-		return false;
-	if (get_param_num(expr) < 0)
-		return false;
-	return true;
-}
-
 static bool handle_variable(struct expression *expr, int implied, int *recurse_cnt, struct range_list **res, sval_t *res_sval)
 {
 	struct smatch_state *state;
@@ -1103,16 +1094,10 @@ static bool handle_variable(struct expression *expr, int implied, int *recurse_c
 		return true;
 	}
 
-	if (get_mtag_sval(expr, &sval)) {
-		*res_sval = sval;
-		return true;
-	}
-
 	type = get_type(expr);
-	if (type &&
-	    ((type->type == SYM_ARRAY && !is_param_sym(expr)) ||
-	     type->type == SYM_FN))
-		return handle_address(expr, implied, recurse_cnt, res, res_sval);
+	if (type && type_is_ptr(type) &&
+	    handle_address(expr, implied, recurse_cnt, res, res_sval))
+		return true;
 
 	/* FIXME: call rl_to_sval() on the results */
 
@@ -1590,7 +1575,7 @@ static bool get_rl_sval(struct expression *expr, int implied, int *recurse_cnt, 
 		handle_call_rl(expr, implied, recurse_cnt, &rl, &sval);
 		break;
 	case EXPR_STRING:
-		if (get_mtag_sval(expr, &sval))
+		if (handle_mtag_address(expr, &sval))
 			break;
 		if (implied == RL_EXACT)
 			break;
