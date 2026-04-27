@@ -165,11 +165,6 @@ static bool handle_address(struct expression *expr, int implied, int *recurse_cn
 	return 0;
 }
 
-static bool handle_ampersand_rl(struct expression *expr, int implied, int *recurse_cnt, struct range_list **res, sval_t *res_sval)
-{
-	return handle_address(expr, implied, recurse_cnt, res, res_sval);
-}
-
 static bool handle_negate_rl(struct expression *expr, int implied, int *recurse_cnt, struct range_list **res, sval_t *res_sval)
 {
 	if (known_condition_true(expr->unop)) {
@@ -292,7 +287,7 @@ static bool handle_preop_rl(struct expression *expr, int implied, int *recurse_c
 {
 	switch (expr->op) {
 	case '&':
-		return handle_ampersand_rl(expr, implied, recurse_cnt, res, res_sval);
+		return handle_address(expr, implied, recurse_cnt, res, res_sval);
 	case '!':
 		return handle_negate_rl(expr, implied, recurse_cnt, res, res_sval);
 	case '~':
