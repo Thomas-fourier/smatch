@@ -187,6 +187,10 @@ struct expression *map_container_of_to_simpler_expr_key(struct expression *expr,
 			if (expr->type != EXPR_DEREF)
 				return NULL;
 			expr = strip_expr(expr->deref);
+			if (expr->type == EXPR_DEREF && expr->op == '.') {
+				container = expr;
+				goto found;
+			}
 			if (expr->type != EXPR_PREOP || expr->op != '*')
 				return NULL;
 			container = expr->unop;
@@ -205,6 +209,7 @@ struct expression *map_container_of_to_simpler_expr_key(struct expression *expr,
 		return container;
 	}
 
+found:
 	ret = snprintf(buf, sizeof(buf), "%.*s$%s%s", remove, orig_key, arrow ? "->" : ".", p);
 	if (ret >= sizeof(buf))
 		return NULL;
