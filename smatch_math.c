@@ -97,13 +97,7 @@ static bool handle_mtag_address(struct expression *expr, int implied, int *recur
 	struct symbol *type;
 	mtag_t tag;
 
-	/* If we have an & to something which is not an lvalue then we
-	 * can just remove the &.
-	 */
 	expr = strip_parens(expr);
-	if (expr->type == EXPR_PREOP && expr->op == '&')
-		expr = strip_parens(expr->unop);
-
 	type = get_type(expr);
 	if (!type)
 		return false;
@@ -128,50 +122,161 @@ done:
 	return true;
 }
 
-static bool handle_address(struct expression *expr, int implied, int *recurse_cnt, struct range_list **res, sval_t *res_sval)
+static bool handle_initializer_address(struct expression *expr, int implied, int *recurse_cnt, struct range_list **res, sval_t *res_sval)
+{
+	/*
+	 * I thought about handling this in handle_mtag_address().  That
+	 * might be the right place.  But I don't generate an mtag for it
+	 * and my instinct says to just record it as a valid pointer.
+	 */
+	if (implied == RL_EXACT)
+		return false;
+	*res = alloc_rl(valid_ptr_min_sval, valid_ptr_max_sval);
+	return true;
+}
+
+static bool handle_symbol_address(struct symbol *sym, struct symbol *type, int implied, struct range_list **res, sval_t *res_sval)
+{
+	mtag_t tag;
+
+	/* This is for "&p" where p is a variable, not an mtag */
+	if (!sym || !sym->ident)
+		return false;
+
+	if (!get_symbol_mtag(sym, &tag))
+		return false;
+	res_sval->type = type;
+	res_sval->value = tag;
+	return true;
+}
+
+static bool handle_array_address(struct expression *expr, int implied, int *recurse_cnt, struct range_list **res, sval_t *res_sval)
+{
+	struct expression *array;
+	struct expression *offset;
+	struct range_list *array_rl, *offset_rl;
+
+	(*recurse_cnt)++;
+
+	array = get_array_base(expr);
+	offset = get_array_offset(expr);
+
+	if (!get_rl_internal(array, implied, recurse_cnt, &array_rl))
+		return false;
+	if (!get_rl_internal(offset, implied, recurse_cnt, &offset_rl))
+		return false;
+
+	*res = rl_binop(array_rl, '+', offset_rl);
+	return true;
+}
+
+static bool handle_address_member_offset(struct expression *expr, struct symbol *type, int implied, int *recurse_cnt, struct range_list **res, sval_t *res_sval)
+{
+	struct expression *orig = expr;
+	struct range_list *outer_rl;
+	sval_t offset = { .type = &ulong_ctype, .value = 0};
+	mtag_t tag;
+	int tmp;
+
+	if (!expr->member)
+		return false;
+
+	while (expr->type == EXPR_DEREF) {
+		tmp = get_member_offset_from_deref(expr);
+		if (tmp < 0)
+			return false;
+		offset.value += tmp;
+		expr = strip_expr(expr->deref);
+	}
+	if (expr->type == EXPR_PREOP && expr->op == '*') {
+		expr = strip_expr(expr->unop);
+
+		if (!get_rl_internal(expr, implied, recurse_cnt, &outer_rl)) {
+			if (implied == RL_EXACT || offset.value == 0)
+				return false;
+
+			/*
+			 * &p->foo where foo is a not the first member
+			 * can be assumed to be valid.
+			 */
+			*res = alloc_rl(valid_ptr_min_sval, valid_ptr_max_sval);
+			*res = cast_rl(type, *res);
+			return true;
+		}
+		outer_rl = cast_rl(&ulong_ctype, outer_rl);
+		*res = rl_binop(outer_rl, '+', alloc_rl(offset, offset));
+		*res = cast_rl(type, *res);
+		return true;
+	}
+	if (expr->type == EXPR_SYMBOL) {
+		if (!get_symbol_mtag(expr->symbol, &tag))
+			return false;
+		res_sval->type = type;
+		res_sval->value = tag | offset.value;
+		return true;
+	}
+
+	if (expr->type == EXPR_INITIALIZER) {
+		struct range_list *rl;
+
+		if (!get_rl_internal(expr, implied, recurse_cnt, &rl))
+			return false;
+		*res = rl_binop(rl, '+', alloc_rl(offset, offset));
+		return true;
+	}
+
+	return false;
+}
+
 static bool handle_ampersand_address(struct expression *expr, int implied, int *recurse_cnt, struct range_list **res, sval_t *res_sval)
 {
-	struct range_list *rl;
-	static int recursed;
-	sval_t sval;
+	struct expression *orig = expr;
+	struct symbol *type;
 
 	/*
 	 * This function is designed to handle several things:
-	 * **: &"foo"
+	 * **: &*foo
+	 * **: &"string"
 	 * **: &array[4 + x];
 	 * **: &ptr->member
 	 * **: &my_struct.member;
+	 * **: &(struct foo){ .a = 1, b = 2}
 	 */
 
-	if (recursed > 10)
+	type = get_type(expr);
+	expr = strip_parens(expr->unop);
+	if (!expr)
 		return false;
 
 	if (handle_mtag_address(expr, implied, recurse_cnt, res, res_sval))
 		return true;
-	if (implied == RL_EXACT)
-		return false;
 
-	if (custom_handle_variable) {
-		rl = custom_handle_variable(expr);
-		if (rl) {
-			*res = rl;
-			return true;
-		}
-	}
+	if (expr->type == EXPR_SYMBOL)
+		return handle_symbol_address(expr->symbol, type, implied, res, res_sval);
 
-	recursed++;
-	if (get_mtag_sval(expr, &sval)) {
-		recursed--;
-		*res_sval = sval;
+	if (is_array(expr))
+		return handle_array_address(expr, implied, recurse_cnt, res, res_sval);
+	/*
+	 * &* could be an array.  I want to handle those as a special case
+	 * so that's why they're handled above.  But generally, &* cancels
+	 * out.  Same for *&.
+	 */
+	if (expr->type == EXPR_PREOP && expr->op == '*')
+		return get_rl_sval(expr->unop, implied, recurse_cnt, res, res_sval);
+
+	if (expr->type == EXPR_DEREF)
+		return  handle_address_member_offset(expr, type, implied, recurse_cnt, res, res_sval);
+
+	if (expr->type == EXPR_CAST) {
+		struct range_list *rl;
+
+		if (!get_rl_internal(expr->cast_expression, implied, recurse_cnt, &rl))
+			return false;
+		*res = cast_rl(type, rl);
 		return true;
 	}
 
-	if (get_address_rl(expr, res)) {
-		recursed--;
-		return true;
-	}
-	recursed--;
-	return 0;
+	return false;
 }
 
 static bool handle_negate_rl(struct expression *expr, int implied, int *recurse_cnt, struct range_list **res, sval_t *res_sval)
@@ -1595,6 +1700,9 @@ static bool get_rl_sval(struct expression *expr, int implied, int *recurse_cnt, 
 		break;
 	case EXPR_COMMA:
 		get_rl_sval(expr->right, implied, recurse_cnt, &rl, &sval);
+		break;
+	case EXPR_INITIALIZER:
+		handle_initializer_address(expr, implied, recurse_cnt, &rl, &sval);
 		break;
 	default:
 		handle_variable(expr, implied, recurse_cnt, &rl, &sval);
