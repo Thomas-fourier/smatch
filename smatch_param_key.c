@@ -161,61 +161,99 @@ static bool parse_container_string(const char *str, int *remove, int *offset, in
 	return true;
 }
 
-struct expression *map_container_of_to_simpler_expr_key(struct expression *expr, const char *orig_key, char **new_key)
+static struct expression *map_amp_container_to_simpler(struct expression *expr, const char *orig_key, char **new_key)
 {
-	struct expression *container;
-	int member_offset;
+	int member_offset = 0;
+	bool star = false;
 	const char *p;
 	char buf[64];
 	int offset;
 	int param;
 	int ret;
-	bool arrow = false;
 	int remove;
 
-	expr = strip_expr(expr);
-	if (expr->type != EXPR_DEREF &&
-	    (expr->type != EXPR_PREOP && expr->op == '&'))
-		return NULL;
+	/* remove the & */
+	expr = strip_expr(expr->unop);
 
 	if (!parse_container_string(orig_key, &remove, &offset, &param, &p))
 		return NULL;
 
-	if (offset == get_member_offset_from_deref(expr)) {
-		if (expr->type == EXPR_PREOP && expr->op == '&') {
-			expr = strip_expr(expr->unop);
-			if (expr->type != EXPR_DEREF)
-				return NULL;
-			expr = strip_expr(expr->deref);
-			if (expr->type == EXPR_DEREF && expr->op == '.') {
-				container = expr;
-				goto found;
-			}
-			if (expr->type != EXPR_PREOP || expr->op != '*')
-				return NULL;
-			container = expr->unop;
-			arrow = true;
-		}
-		container = expr->deref;
-	} else {
-		container = get_stored_container(expr, offset);
-		if (!container)
+	while (offset > member_offset && expr->type == EXPR_DEREF) {
+		ret = get_member_offset_from_deref(expr);
+		if (ret < 0)
 			return NULL;
-		arrow = true;
+		member_offset += ret;
+		expr = strip_expr(expr->deref);
+		if (!expr)
+			return NULL;
 	}
+
+	if (offset != member_offset)
+		return NULL;
+
+	if (expr->type == EXPR_PREOP && expr->op == '*') {
+		star = true;
+		expr = strip_parens(expr->unop);
+	}
+
+	if (*p == '\0') {
+		*new_key = alloc_sname("$");
+		return expr;
+	}
+
+	ret = snprintf(buf, sizeof(buf), "%.*s$%s%s", remove, orig_key, star ? "->" : ".", p);
+	if (ret >= sizeof(buf))
+		return NULL;
+
+	*new_key = alloc_sname(buf);
+	return expr;
+}
+
+static struct expression *map_var_container_to_simpler(struct expression *expr, const char *orig_key, char **new_key)
+{
+	struct expression *container;
+	struct expression *tmp;
+	const char *p;
+	char buf[64];
+	int offset;
+	int param;
+	int ret;
+	int remove;
+
+	tmp = get_assigned_expr(expr);
+	if (tmp) {
+		if (tmp->type == EXPR_PREOP && tmp->op == '&')
+			return map_amp_container_to_simpler(tmp, orig_key, new_key);
+		expr = tmp;
+	}
+
+	if (!parse_container_string(orig_key, &remove, &offset, &param, &p))
+		return NULL;
+
+	container = get_stored_container(expr, offset);
+	if (!container)
+		return NULL;
 
 	if (*p == '\0') {
 		*new_key = alloc_sname("$");
 		return container;
 	}
 
-found:
-	ret = snprintf(buf, sizeof(buf), "%.*s$%s%s", remove, orig_key, arrow ? "->" : ".", p);
-	if (ret >= sizeof(buf))
-		return NULL;
-	*new_key = alloc_sname(buf);
+        ret = snprintf(buf, sizeof(buf), "%.*s$%s%s", remove, orig_key, "->", p);
+        if (ret >= sizeof(buf))
+                return NULL;
+        *new_key = alloc_sname(buf);
 
-	return container;
+        return container;
+}
+
+struct expression *map_container_of_to_simpler_expr_key(struct expression *expr, const char *orig_key, char **new_key)
+{
+	expr = strip_parens(expr);
+
+	if (expr->type == EXPR_PREOP && expr->op == '&')
+		return map_amp_container_to_simpler(expr, orig_key, new_key);
+	return map_var_container_to_simpler(expr, orig_key, new_key);
 }
 
 struct expression *map_netdev_priv_to_simpler_expr_key(struct expression *expr, const char *orig_key, char **new_key)
