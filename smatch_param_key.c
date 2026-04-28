@@ -115,51 +115,70 @@ static char *swap_with_param(const char *name, struct symbol *sym, struct symbol
 	return ret;
 }
 
-struct expression *map_container_of_to_simpler_expr_key(struct expression *expr, const char *orig_key, char **new_key)
+static bool parse_container_string(const char *str, int *remove, int *offset, int *param, const char **member)
 {
-	struct expression *container;
-	int offset = -1;
-	char *p = (char *)orig_key;
-	char buf[64];
-	char *start;
-	int param;
-	int ret;
-	bool arrow = false;
+	char *p = (char *)str;
 	bool no_member = false;
-
-	expr = strip_expr(expr);
-	if (expr->type != EXPR_DEREF &&
-	    (expr->type != EXPR_PREOP && expr->op == '&'))
-		return NULL;
+	int tmp_param;
+	int tmp_off;
+	char *start;
 
 	while (*p != '\0') {
 		if (*p == '(' && isdigit(*(p + 1))) {
 			start = p;
-			offset = strtoul(p + 1, &p, 10);
+			tmp_off = strtoul(p + 1, &p, 10);
 			if (!p || strncmp(p, "<~$", 3) != 0)
-				return NULL;
+				return false;
 			p += 3;
 			if (!isdigit(p[0]))
-				return NULL;
-			param = strtoul(p + 1, &p, 10);
+				return false;
+			tmp_param = strtoul(p + 1, &p, 10);
 			/* fixme */
-			if (param != 0)
-				return NULL;
+			if (tmp_param != 0)
+				return false;
 			if (!p)
-				return NULL;
+				return false;
 			if (strcmp(p, ")") == 0) {
 				no_member = true;
 				p++;
 				break;
 			}
 			if (strncmp(p, ")->", 3) != 0)
-				return NULL;
+				return false;
 			p += 3;
 			break;
 		}
 		p++;
 	}
 	if (!no_member && *p == '\0')
+		return false;
+
+	*remove = (int)(start - str);
+	*offset = tmp_off;
+	*param = tmp_param;
+	*member = p;
+
+	return true;
+}
+
+struct expression *map_container_of_to_simpler_expr_key(struct expression *expr, const char *orig_key, char **new_key)
+{
+	struct expression *container;
+	int member_offset;
+	const char *p;
+	char buf[64];
+	int offset;
+	int param;
+	int ret;
+	bool arrow = false;
+	int remove;
+
+	expr = strip_expr(expr);
+	if (expr->type != EXPR_DEREF &&
+	    (expr->type != EXPR_PREOP && expr->op == '&'))
+		return NULL;
+
+	if (!parse_container_string(orig_key, &remove, &offset, &param, &p))
 		return NULL;
 
 	if (offset == get_member_offset_from_deref(expr)) {
@@ -181,12 +200,12 @@ struct expression *map_container_of_to_simpler_expr_key(struct expression *expr,
 		arrow = true;
 	}
 
-	if (no_member) {
+	if (*p == '\0') {
 		*new_key = alloc_sname("$");
 		return container;
 	}
 
-	ret = snprintf(buf, sizeof(buf), "%.*s$%s%s", (int)(start - orig_key), orig_key, arrow ? "->" : ".", p);
+	ret = snprintf(buf, sizeof(buf), "%.*s$%s%s", remove, orig_key, arrow ? "->" : ".", p);
 	if (ret >= sizeof(buf))
 		return NULL;
 	*new_key = alloc_sname(buf);
