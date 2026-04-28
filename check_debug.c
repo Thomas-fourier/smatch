@@ -874,7 +874,7 @@ static void match_param_key(const char *fn, struct expression *expr, void *info)
 
 	param = get_param_key_from_expr(arg, NULL, &key);
 
-	name = expr_to_str(expr);
+	name = expr_to_str(arg);
 	sm_msg("expr='%s' param=%d key='%s'", name, param, key);
 	free_string(name);
 }
