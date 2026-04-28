@@ -41,7 +41,7 @@ static int my_id;
 
 char *swap_names(const char *orig, const char *remove, const char *add)
 {
-	char buf[64];
+	char buf[128];
 	int offset, len, ret;
 	bool is_addr = false;
 	bool is_star = false;  /* fixme: this should be star_cnt */
