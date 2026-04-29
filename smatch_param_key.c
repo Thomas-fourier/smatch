@@ -115,13 +115,15 @@ static char *swap_with_param(const char *name, struct symbol *sym, struct symbol
 	return ret;
 }
 
-static bool parse_container_string(const char *str, int *remove, int *offset, int *param, const char **member)
+static bool parse_container_string(const char *str, int *remove, int *offset, int *param, int *cnt, const char **member)
 {
 	char *p = (char *)str;
 	bool no_member = false;
 	int tmp_param;
 	int tmp_off;
 	char *start;
+
+	*cnt = 1;
 
 	while (*p != '\0') {
 		if (*p == '(' && isdigit(*(p + 1))) {
@@ -138,6 +140,12 @@ static bool parse_container_string(const char *str, int *remove, int *offset, in
 				return false;
 			if (!p)
 				return false;
+			if (*p == '[') {
+				*cnt = strtoul(p + 1, &p, 10);
+				if (*p != ']')
+					return false;
+				p++;
+			}
 			if (strcmp(p, ")") == 0) {
 				no_member = true;
 				p++;
@@ -171,14 +179,17 @@ static struct expression *map_amp_container_to_simpler(struct expression *expr, 
 	int param;
 	int ret;
 	int remove;
+	int cnt;
 
 	/* remove the & */
 	expr = strip_expr(expr->unop);
 
-	if (!parse_container_string(orig_key, &remove, &offset, &param, &p))
+	if (!parse_container_string(orig_key, &remove, &offset, &param, &cnt, &p))
 		return NULL;
 
-	while (offset > member_offset && expr->type == EXPR_DEREF) {
+	while ((offset > member_offset || (offset == member_offset && cnt)) &&
+	       expr->type == EXPR_DEREF) {
+		cnt--;
 		ret = get_member_offset_from_deref(expr);
 		if (ret < 0)
 			return NULL;
@@ -219,6 +230,7 @@ static struct expression *map_var_container_to_simpler(struct expression *expr, 
 	int param;
 	int ret;
 	int remove;
+	int cnt;
 
 	tmp = get_assigned_expr(expr);
 	if (tmp) {
@@ -227,7 +239,7 @@ static struct expression *map_var_container_to_simpler(struct expression *expr, 
 		expr = tmp;
 	}
 
-	if (!parse_container_string(orig_key, &remove, &offset, &param, &p))
+	if (!parse_container_string(orig_key, &remove, &offset, &param, &cnt, &p))
 		return NULL;
 
 	container = get_stored_container(expr, offset);
@@ -933,6 +945,32 @@ free:
 	return NULL;
 }
 
+static char *handle_container_of_container_assign(struct expression *expr, int offset, struct symbol **sym)
+{
+	struct smatch_state *state;
+	int orig_offset;
+	int remove;
+	int param;
+	int cnt;
+	const char *end;
+	char buf[64];
+	struct var_sym *data;
+
+
+	state = get_state_expr(my_id, expr);
+	if (!state || !state->data)
+		return NULL;
+	data = state->data;
+
+	if (!parse_container_string(state->name, &remove, &orig_offset, &param, &cnt, &end))
+		return NULL;
+
+	snprintf(buf, sizeof(buf), "(%d<~$%d[%d])", orig_offset + offset, param, cnt + 1);
+	*sym = data->sym;
+
+	return alloc_string(buf);
+}
+
 static char *handle_container_of_assign(struct expression *expr, struct symbol **sym)
 {
 	struct expression *right, *orig;
@@ -950,7 +988,7 @@ static char *handle_container_of_assign(struct expression *expr, struct symbol *
 		return NULL;
 
 	if (!get_value(right->right, &sval) ||
-	   sval.value < 0 || sval.value > MTAG_OFFSET_MASK)
+	    sval.value < 0 || sval.value > MTAG_OFFSET_MASK)
 		return NULL;
 
 	orig = get_assigned_expr(right->left);
@@ -959,8 +997,11 @@ static char *handle_container_of_assign(struct expression *expr, struct symbol *
 	if (orig->type != EXPR_SYMBOL)
 		return NULL;
 	param = get_param_num_from_sym(orig->symbol);
-	if (param < 0)
+	if (param < 0) {
+		if (get_state_expr(my_id, orig))
+			return handle_container_of_container_assign(orig, sval.value, sym);
 		return NULL;
+	}
 
 	snprintf(buf, sizeof(buf), "(%lld<~$%d)", sval.value, param);
 	*sym = orig->symbol;
