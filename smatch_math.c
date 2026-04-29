@@ -678,11 +678,13 @@ static bool handle_bitwise_AND(struct expression *expr, int implied, int *recurs
 
 	if (rl_to_sval(left_rl, &sval) && sval.value == 0) {
 		sval.type = type;
-		return alloc_rl(sval, sval);
+		*res = alloc_rl(sval, sval);
+		return true;
 	}
 	if (rl_to_sval(right_rl, &sval) && sval.value == 0) {
 		sval.type = type;
-		return alloc_rl(sval, sval);
+		*res = alloc_rl(sval, sval);
+		return true;
 	}
 
 	if (implied != RL_IMPLIED && implied != RL_ABSOLUTE && implied != RL_REAL_ABSOLUTE)
