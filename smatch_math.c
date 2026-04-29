@@ -658,6 +658,7 @@ static bool handle_bitwise_AND(struct expression *expr, int implied, int *recurs
 {
 	struct symbol *type;
 	struct range_list *left_rl, *right_rl;
+	struct bit_info *binfo;
 	int new_recurse;
 	sval_t sval;
 
@@ -688,6 +689,11 @@ static bool handle_bitwise_AND(struct expression *expr, int implied, int *recurs
 		return false;
 
 	*res = rl_binop(left_rl, '&', right_rl);
+	if (get_implied_bit_info(expr->left, &binfo))
+		*res = rl_AND_mask(*res, binfo->possible);
+	if (get_implied_bit_info(expr->right, &binfo))
+		*res = rl_AND_mask(*res, binfo->possible);
+
 	return true;
 }
 
