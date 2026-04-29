@@ -785,7 +785,6 @@ static void match_bits(const char *fn, struct expression *expr, void *_unused)
 	static int bits_id;
 	struct expression *arg;
 	struct bit_info *info;
-	struct sm_state *sm;
 	char *name;
 
 	if (!bits_id)
@@ -794,10 +793,9 @@ static void match_bits(const char *fn, struct expression *expr, void *_unused)
 	arg = get_check_arg(expr, 0);
 	name = expr_to_str(arg);
 	info = get_bit_info(arg);
-	sm = get_sm_state_expr(bits_id, arg);
 
-	sm_msg("bit info '%s': definitely set 0x%llx.  possibly set 0x%llx. sm='%s'",
-	       name, info->set, info->possible, show_sm(sm));
+	sm_msg("bit info '%s': definitely set 0x%llx.  possibly set 0x%llx.",
+	       name, info->set, info->possible);
 }
 
 static void match_units(const char *fn, struct expression *expr, void *info)
