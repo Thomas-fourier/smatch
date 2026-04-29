@@ -1,5 +1,11 @@
 #!/bin/bash
 
+INFO=""
+if [ "$1" == "--info" ] ; then
+    INFO="--info"
+    shift
+fi
+
 FILE=$1
 FILE=$(echo ${FILE/.c/})
 
@@ -19,4 +25,10 @@ fi
 
 MOD_DIR=$(pwd)/kernel
 
-make V=1 C=2 CHECK="../../smatch -p=kernel" -C $KERNEL_DIR M=$MOD_DIR ${FILE}.o | grep ^${FILE}.c
+rm -f $MOD_DIR/${FILE}.o
+
+if [ "$INFO" != "" ] ; then
+    make V=1 C=2 CHECK="../../smatch -p=kernel $INFO " -C $KERNEL_DIR M=$MOD_DIR ${FILE}.o
+else
+    make V=1 C=2 CHECK="../../smatch -p=kernel " -C $KERNEL_DIR M=$MOD_DIR ${FILE}.o | grep ^${FILE}.c
+fi
