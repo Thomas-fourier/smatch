@@ -659,9 +659,7 @@ static bool handle_bitwise_AND(struct expression *expr, int implied, int *recurs
 	struct symbol *type;
 	struct range_list *left_rl, *right_rl;
 	int new_recurse;
-
-	if (implied != RL_IMPLIED && implied != RL_ABSOLUTE && implied != RL_REAL_ABSOLUTE)
-		return false;
+	sval_t sval;
 
 	type = get_type(expr);
 
@@ -676,6 +674,18 @@ static bool handle_bitwise_AND(struct expression *expr, int implied, int *recurs
 		right_rl = alloc_whole_rl(type);
 	right_rl = cast_rl(type, right_rl);
 	*recurse_cnt = new_recurse;
+
+	if (rl_to_sval(left_rl, &sval) && sval.value == 0) {
+		sval.type = type;
+		return alloc_rl(sval, sval);
+	}
+	if (rl_to_sval(right_rl, &sval) && sval.value == 0) {
+		sval.type = type;
+		return alloc_rl(sval, sval);
+	}
+
+	if (implied != RL_IMPLIED && implied != RL_ABSOLUTE && implied != RL_REAL_ABSOLUTE)
+		return false;
 
 	*res = rl_binop(left_rl, '&', right_rl);
 	return true;
