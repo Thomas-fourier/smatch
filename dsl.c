@@ -57,8 +57,10 @@ static bool parse_decl(const char *line, struct dsl_representation *dsl)
     
         sscanf(line - 1, label, buffer);
 
-        if (is_expr_in_list(buffer, dsl->arg_cat, dsl->nb_arg_cat, &i))
+        if (is_expr_in_list(buffer, dsl->arg_cat, dsl->nb_arg_cat, &i)) {
             parse_error("Double declaration of %s", buffer);
+            return false;
+        }
 
         push_array((void ***)&dsl->arg_cat, &dsl->nb_arg_cat, alloc_string(buffer));
 
@@ -81,12 +83,12 @@ static bool add_to_arg_pos(char *expr, char *line, int pos,
         return true;
 
     if (!is_expr_in_list(expr, dsl->arg_cat, dsl->nb_arg_cat, &index)) {
-        sm_warning("File %s: Argument %s not declared.", filename, expr);
+        parse_error("File %s: Argument %s not declared.", filename, expr);
         goto err_out;
     }
 
     if (dsl->arg_pos[dsl->nb_func_name - 1][index] != -2) {
-        sm_warning("File %s: Argument %s used multiple times in %s", filename, expr, line);
+        parse_error("File %s: Argument %s used multiple times in %s", filename, expr, line);
         goto err_out;
     }
 
@@ -107,15 +109,21 @@ static bool parse_call(char *line, struct dsl_representation *dsl)
     char *current;
     char *last;
     int i;
-    if (1 != sscanf(line, label, buffer))
+    if (1 != sscanf(line, label, buffer)) {
         parse_error("Impossible to parse line %s", line);
+        return false;
+    }
 
-    if (is_expr_in_list(buffer, dsl->func_name, dsl->nb_func_name, &i))
+    if (is_expr_in_list(buffer, dsl->func_name, dsl->nb_func_name, &i)) {
         parse_error("Function %s defined multiple times line: %s", buffer, line);
+        return false;
+    }
 
     current = strchr(line, '(');
-    if (!current)
+    if (!current) {
         parse_error("Line %s could not be parsed", line);
+        return false;
+    }
 
     push_array((void ***)&dsl->func_name, &dsl->nb_func_name,
                alloc_string(buffer));
@@ -137,8 +145,10 @@ static bool parse_call(char *line, struct dsl_representation *dsl)
     i = 0;
     do {
         current++;
-        if (1 != sscanf(current, label, buffer))
+        if (1 != sscanf(current, label, buffer)) {
             parse_error("Could not read variable in %s", current);
+            return false;
+        }
 
         if (!add_to_arg_pos(buffer, line, i, dsl))
             return false;
@@ -146,8 +156,10 @@ static bool parse_call(char *line, struct dsl_representation *dsl)
         last = current;
     } while ((current = strchr(last, ',')));
 
-    if (!strchr(last, ')'))
+    if (!strchr(last, ')')) {
         parse_error("Parenthesis not closed %s", line);
+        return false;
+    }
 
     return true;
 }
@@ -159,11 +171,15 @@ static bool parse_equal(char *line, struct dsl_representation *dsl)
     if (!(sep = strchr(line, '=')))
         return false;
 
-    if (!parse_call(sep + 1, dsl))
+    if (!parse_call(sep + 1, dsl)) {
         parse_error("Weird line '%s'", line);
+        return false;
+    }
 
-    else if (1 != sscanf(line, label, ret_val))
+    else if (1 != sscanf(line, label, ret_val)) {
         parse_error("Could not parse affectation statement %s", line);
+        return false;
+    }
 
     if (!add_to_arg_pos(ret_val, line, -1, dsl))
         return false;
@@ -195,9 +211,10 @@ void parse_file(const char *_filename, struct dsl_representation *res)
     filename = _filename;
     res->filename = alloc_string(filename);
     FILE *file = fopen(filename, "r");
-    if (!file)
-        fprintf(sm_outfd, "Parsing error: File %s could not be opened %s.",
-                filename, strerror(errno));
+    if (!file) {
+        parse_error("file could not be opened %s.", strerror(errno));
+        return;
+    }
 
     char *line = NULL;
     size_t line_size;
@@ -212,7 +229,7 @@ void parse_file(const char *_filename, struct dsl_representation *res)
         if (parse_decl(line, res)) continue;
         if (parse_equal(line, res)) continue;
         if (parse_call(line, res)) continue;
-        sm_warning("File %s: line %s could not be parsed", filename, line);
+        parse_error("File %s: line %s could not be parsed", filename, line);
     }
 
     free(line);
