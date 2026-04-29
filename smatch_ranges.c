@@ -2263,34 +2263,81 @@ static sval_t sval_lowest_set_bit(sval_t sval)
 	return ret;
 }
 
+struct range_list *rl_AND_mask(struct range_list *rl, unsigned long long mask)
+{
+	sval_t zero = { .type = rl_type(rl), .value = 0 };
+	sval_t bits = { .type = rl_type(rl) };
+	struct bit_info *binfo;
+	sval_t min = rl_min(rl);
+	sval_t max = rl_max(rl);
+	struct range_list *ret;
+	bool add_zero = false;
+
+	if (!rl)
+		return NULL;
+	if (mask == 0)
+		return alloc_rl(zero, zero);
+
+	binfo = rl_to_binfo(rl);
+	bits.uvalue = binfo->possible & mask;
+
+	if ((min.uvalue & bits.uvalue) != bits.uvalue) {
+		if ((min.uvalue & bits.uvalue) == 0) {
+			min = sval_lowest_set_bit(bits);
+			add_zero = true;
+		} else {
+			min.uvalue &= bits.uvalue;
+		}
+	}
+	if (!sval_is_max(max) || (sm_fls64(max.uvalue) > sm_fls64(bits.uvalue)))
+		max.value &= bits.uvalue;
+
+	ret = alloc_rl(min, max);
+	if (add_zero)
+		add_range(&ret, zero, zero);
+
+	return ret;
+}
+
 static struct range_list *rl_handle_AND(struct range_list *left, struct range_list *right)
 {
+	sval_t zero = { .type = rl_type(left), .value = 0 };
+	sval_t bits = { .type = rl_type(left) };
 	struct bit_info *one, *two;
-	struct range_list *rl;
-	sval_t min, max, zero, bits_sval, sval;
-	unsigned long long bits;
+	struct range_list *ret;
+	sval_t sval, min, max, left_sval, right_sval;
+	bool left_known = false;
+	bool right_known = false;
 
-	if (rl_to_sval(left, &sval) && sval.value == 0)
+	if (rl_to_sval(left, &left_sval))
+		left_known = true;
+	if (rl_to_sval(right, &right_sval))
+		right_known = true;
+
+	if (left_known && right_known) {
+		sval = sval_binop(left_sval, '&', right_sval);
 		return alloc_rl(sval, sval);
-	if (rl_to_sval(right, &sval) && sval.value == 0)
-		return alloc_rl(sval, sval);
+	}
+
+	if (left_known)
+		return rl_AND_mask(right, left_sval.uvalue);
+	if (right_known)
+		return rl_AND_mask(left, right_sval.uvalue);
 
 	one = rl_to_binfo(left);
 	two = rl_to_binfo(right);
-	bits = one->possible & two->possible;
-	bits_sval = rl_max(left);
-	bits_sval.uvalue = bits;
+	bits.uvalue = one->possible & two->possible;
 
+	min = sval_lowest_set_bit(bits);
 	max = sval_min_nonneg(rl_max(left), rl_max(right));
-	min = sval_lowest_set_bit(bits_sval);
 
-	rl = alloc_rl(min, max);
+	if (!sval_is_max(max) || (sm_fls64(max.uvalue) > sm_fls64(bits.uvalue)))
+		max.value &= bits.uvalue;
 
-	zero = rl_min(rl);
-	zero.value = 0;
-	add_range(&rl, zero, zero);
+	ret = alloc_rl(min, max);
+	add_range(&ret, zero, zero);
 
-	return rl;
+	return ret;
 }
 
 static struct range_list *rl_handle_lshift(struct range_list *left_orig, struct range_list *right_orig)
