@@ -36,7 +36,7 @@ void frob(struct inner *in)
  * check-output-start
 sm_mtag10.c:23 frob() implied: (&(0)->mid.member) = '12'
 sm_mtag10.c:25 frob() implied: p1 = '8'
-sm_mtag10.c:26 frob() implied: &p1 = '4096-18446744073709547520'
+sm_mtag10.c:26 frob() implied: &p1 = '5095278607788875776'
 sm_mtag10.c:27 frob() implied: &*p1 = '8'
 sm_mtag10.c:28 frob() implied: p1 = '8'
 sm_mtag10.c:29 frob() implied: &p1->bar = '12'
