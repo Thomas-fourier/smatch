@@ -1438,7 +1438,6 @@ struct expression *fake_string_from_mtag(mtag_t tag);
 int estate_get_single_value(struct smatch_state *state, sval_t *sval);
 
 /* smatch_address.c */
-int get_address_rl(struct expression *expr, struct range_list **rl);
 int get_member_offset(struct symbol *type, const char *member_name);
 int get_member_offset_from_deref(struct expression *expr);
 
