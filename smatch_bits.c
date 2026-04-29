@@ -354,6 +354,34 @@ struct bit_info *get_bit_info(struct expression *expr)
 	return combine_bit_info(extra_info, bit_info);
 }
 
+bool get_implied_bit_info(struct expression *expr, struct bit_info **binfo)
+{
+	struct smatch_state *bstate;
+	struct bit_info *bit_info;
+	sval_t known;
+
+	expr = strip_parens(expr);
+
+	if (get_implied_value(expr, &known)) {
+		*binfo = alloc_bit_info(known.value, known.value);
+		return true;
+	}
+
+	bit_info = handle_binop(expr);
+	if (bit_info) {
+		if (is_unknown_binfo(get_type(expr), bit_info))
+			return false;
+		*binfo = bit_info;
+		return true;
+	}
+
+	bstate = get_state_expr(my_id, expr);
+	if (!bstate || is_unknown_binfo(get_type(expr), bstate->data))
+		return false;
+	*binfo = bstate->data;
+	return true;
+}
+
 static void match_compare(struct expression *expr)
 {
 	sval_t val;
