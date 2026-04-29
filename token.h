@@ -101,13 +101,13 @@ enum token_type {
 	TOKEN_SPECIAL,
 	TOKEN_STREAMBEGIN,
 	TOKEN_STREAMEND,
+	TOKEN_UNTAINT,
+	TOKEN_LAST_NORMAL = TOKEN_UNTAINT,
 	TOKEN_MACRO_ARGUMENT,
-	TOKEN_STR_ARGUMENT,
-	TOKEN_QUOTED_ARGUMENT,
 	TOKEN_CONCAT,
 	TOKEN_GNU_KLUDGE,
-	TOKEN_UNTAINT,
-	TOKEN_ARG_COUNT,
+	TOKEN_VA_OPT,
+	TOKEN_VA_OPT_STR,
 	TOKEN_IF,
 	TOKEN_SKIP_GROUPS,
 	TOKEN_ELSE,
@@ -172,13 +172,23 @@ struct string {
 	char data[];
 };
 
-/* will fit into 32 bits */
-struct argcount {
-	unsigned normal:10;
-	unsigned quoted:10;
-	unsigned str:10;
-	unsigned vararg:1;
+enum arg_kind {
+	ARG_QUOTED = 0,
+	ARG_NORMAL = 1,
+	ARG_STR = 2,
 };
+
+enum {
+	ARGNUM_CONSUME = 2,
+	ARGNUM_CONSUME_EXPAND,
+	ARGNUM_BITS_STOLEN
+};
+
+enum {
+	ARGNUM_KIND_MASK = (1 << ARGNUM_CONSUME) - 1
+};
+
+// _Static_assert(ARGNUM_KIND_MASK >= ARG_STR)
 
 /*
  * This is a very common data structure, it should be kept
@@ -194,7 +204,7 @@ struct token {
 		unsigned int special;
 		struct string *string;
 		int argnum;
-		struct argcount count;
+		struct token *va_opt_linkage;
 		char embedded[4];
 	};
 };

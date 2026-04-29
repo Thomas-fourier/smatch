@@ -168,6 +168,7 @@ struct symbol {
 			struct scope *used_in;
 			void (*expand_simple)(struct token *);
 			bool (*expand)(struct token *, struct arg *args);
+			int fixed_args, vararg;
 		};
 		struct /* NS_PREPROCESSOR */ {
 			int (*handler)(struct stream *, struct token **, struct token *);

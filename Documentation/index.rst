@@ -19,8 +19,13 @@ function acquires or releases.
 Linus Torvalds started writing Sparse in 2003, initially targeting issues such
 as mixing pointers to user address space and pointers to kernel address space.
 
-Josh Triplett was Sparse's first maintainer in 2006. This role was taken over
-by Christopher Li in 2009 and by Luc Van Oostenryck in late 2018.
+Maintainer
+----------
+
+1. 2006 - 2009, Josh Triplett
+2. 2009 - 2018, Chris Li
+3. 2018 - 2025, Luc Van Oostenryck
+4. 2025 - present, Chris Li
 
 Getting Sparse
 --------------
@@ -56,8 +61,8 @@ You do not have to be subscribed to the list to send a message there.
 Previous discussions and bug reports are available on the list
 archives at https://marc.info/?l=linux-sparse.
 
-To subscribe to the list, send an email with
-``subscribe linux-sparse`` in the body to ``majordomo@vger.kernel.org``.
+To subscribe to the list, send an email to ``linux-sparse+subscribe@vger.kernel.org``,
+check `Subspace <https://subspace.kernel.org/subscribing.html>`_ for details.
 
 Bugs can also be reported and tracked via the `Linux kernel's bugzilla for sparse
 <https://bugzilla.kernel.org/enter_bug.cgi?component=Sparse&product=Tools>`_.

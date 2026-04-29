@@ -246,10 +246,6 @@ const char *show_token(const struct token *token)
 		sprintf(buffer, "<untaint>");
 		return buffer;
 
-	case TOKEN_ARG_COUNT:
-		sprintf(buffer, "<argcnt>");
-		return buffer;
-
 	default:
 		sprintf(buffer, "unhandled token type '%d' ", token_type(token));
 		return buffer;
@@ -799,7 +795,7 @@ static int get_one_special(int c, stream_t *stream)
 	return next;
 }
 
-#define IDENT_HASH_BITS (13)
+#define IDENT_HASH_BITS (16)
 #define IDENT_HASH_SIZE (1<<IDENT_HASH_BITS)
 #define IDENT_HASH_MASK (IDENT_HASH_SIZE-1)
 
@@ -866,7 +862,7 @@ static struct ident *create_hashed_ident(const char *name, int len, unsigned lon
 	p = &hash_table[hash];
 	while ((ident = *p) != NULL) {
 		if (ident->len == (unsigned char) len) {
-			if (strncmp(name, ident->name, len) != 0)
+			if (memcmp(name, ident->name, len) != 0)
 				goto next;
 
 			ident_hit++;

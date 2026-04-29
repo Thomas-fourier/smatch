@@ -34,6 +34,7 @@ static LLVMTypeRef func_return_type(struct symbol *sym)
 	return symbol_type(sym->ctype.base_type);
 }
 
+#if LLVM_VERSION_MAJOR > 14
 // A call can be done either with a SYM_FN or a SYM_PTR (pointing to a SYM_FN).
 // Return the type corresponding to the SYM_FN.
 static LLVMTypeRef func_full_type(struct symbol *type)
@@ -45,6 +46,7 @@ static LLVMTypeRef func_full_type(struct symbol *type)
 	}
 	return symbol_type(type);
 }
+#endif
 
 static LLVMTypeRef sym_func_type(struct symbol *sym)
 {
@@ -192,7 +194,7 @@ static LLVMTypeRef symbol_type(struct symbol *sym)
 
 	/* don't cache the result for SYM_NODE */
 	if (sym->type == SYM_NODE)
-		return symbol_type(sym->ctype.base_type);
+		sym = sym->ctype.base_type;
 
 	if (sym->aux)
 		return sym->aux;

@@ -1558,7 +1558,7 @@ static struct token *handle_qualifiers(struct token *t, struct decl_state *ctx)
 {
 	while (token_type(t) == TOKEN_IDENT) {
 		struct symbol *s = lookup_keyword(t->ident, NS_TYPEDEF);
-		if (!s)
+		if (!s || !s->op)
 			break;
 		if (!(s->op->type & (KW_ATTRIBUTE | KW_QUALIFIER)))
 			break;

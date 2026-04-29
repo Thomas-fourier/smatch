@@ -29,6 +29,7 @@
 #include "expand.h"
 #include "symbol.h"
 #include "compat/bswap.h"
+#include "string.h"
 #include <stdarg.h>
 
 #define dyntype incomplete_ctype
@@ -596,6 +597,17 @@ static struct symbol_op object_size_op = {
 	.expand = expand_object_size,
 };
 
+static int evaluate_strlen(struct expression *expr)
+{
+	struct expression *arg = first_expression(expr->args);
+
+	if (arg && arg->type == EXPR_SYMBOL)
+		arg = arg->symbol->initializer;
+	if (arg && arg->type == EXPR_STRING && arg->string->length)
+		expr->flags |= CEF_ICE;
+	return 1;
+}
+
 static int expand_strlen(struct expression *expr, int cost)
 {
 	struct expression *arg = first_expression(expr->args);
@@ -609,12 +621,13 @@ static int expand_strlen(struct expression *expr, int cost)
 
 	expr->flags |= CEF_SET_ICE;
 	expr->type = EXPR_VALUE;
-	expr->value = arg->string->length - 1;
+	expr->value = strlen(arg->string->data);
 	expr->taint = 0;
 	return 0;
 }
 
 static struct symbol_op strlen_op = {
+	.evaluate = evaluate_strlen,
 	.expand = expand_strlen,
 };
 

@@ -1167,6 +1167,43 @@ static int simplify_seteq_setne(struct instruction *insn, long long value)
 	return 0;
 }
 
+static struct instruction *used_to_be_signed(struct instruction *insn)
+{
+	pseudo_t pseudo = insn->src1;
+	struct instruction *def;
+	struct symbol *sym;
+
+	if (pseudo->type != PSEUDO_REG)
+		return NULL;
+	def = pseudo->def;
+	if (!def)
+		return NULL;
+
+	// Did the value come from a sign-extension?
+	// If so, the source was clearly signed
+	if (def->opcode == OP_SEXT)
+		return def;
+
+	// Or was the op that generated the value signed?
+	sym = def->type;
+	if (sym && !(sym->ctype.modifiers & MOD_UNSIGNED))
+		return def;
+
+	return NULL;
+}
+
+static int simplify_unsigned_zero_compare(struct instruction *insn, int result)
+{
+	struct instruction *def = used_to_be_signed(insn);
+
+	if (def) {
+		warning(insn->pos, "unsigned value that used to be signed checked against zero?");
+		info(def->pos, "signed value source");
+	}
+
+	return replace_with_pseudo(insn, value_pseudo(result));
+}
+
 static int simplify_compare_constant(struct instruction *insn, long long value)
 {
 	unsigned size = insn->itype->bit_size;
@@ -1228,7 +1265,7 @@ static int simplify_compare_constant(struct instruction *insn, long long value)
 
 	case OP_SET_B:
 		if (!value)			// (x < 0) --> 0
-			return replace_with_pseudo(insn, value_pseudo(0));
+			return simplify_unsigned_zero_compare(insn, 0);
 		if (value == 1)			// (x < 1) --> (x == 0)
 			return replace_binop_value(insn, OP_SET_EQ, 0);
 		else if (value == bits)		// (x < ~0) --> (x != ~0)
@@ -1238,7 +1275,7 @@ static int simplify_compare_constant(struct instruction *insn, long long value)
 		break;
 	case OP_SET_AE:
 		if (!value)			// (x >= 0) --> 1
-			return replace_with_pseudo(insn, value_pseudo(1));
+			return simplify_unsigned_zero_compare(insn, 1);
 		if (value == 1)			// (x >= 1) --> (x != 0)
 			return replace_binop_value(insn, OP_SET_NE, 0);
 		else if (value == bits)		// (x >= ~0) --> (x == ~0)
