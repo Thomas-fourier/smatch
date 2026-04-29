@@ -19,6 +19,7 @@ int main(unsigned int x, unsigned int y)
  * check-command: smatch -I.. sm_impossible2.c
  *
  * check-output-start
+sm_impossible2.c:12 main() no states found for 'register_impossible_return'
 sm_impossible2.c:12 main() register_impossible_return: no states
 sm_impossible2.c:14 main() [register_impossible_return] impossible (nil) = 'impossible'
  * check-output-end
