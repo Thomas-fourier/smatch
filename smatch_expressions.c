@@ -380,6 +380,13 @@ struct expression *gen_expression_from_key(struct expression *arg, const char *k
 		return deref_expression(arg);
 	}
 
+	if (key[0] == '&') {
+		ret = gen_expression_from_key(arg, key + 1);
+		if (!ret)
+			return NULL;
+		return preop_expression(ret, '&');
+	}
+
 	/* The idea is that we can parse either $0->foo or $->foo */
 	if (key[0] != '$')
 		return NULL;
