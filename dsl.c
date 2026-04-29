@@ -2,6 +2,7 @@
 #include "smatch.h"
 #include "smatch_extra.h"
 #include <ctype.h>
+#include <errno.h>
 
 static const char *filename;
 
@@ -195,7 +196,8 @@ void parse_file(const char *_filename, struct dsl_representation *res)
     res->filename = alloc_string(filename);
     FILE *file = fopen(filename, "r");
     if (!file)
-        parse_error("File %s could not be opened.", filename);
+        fprintf(sm_outfd, "Parsing error: File %s could not be opened %s.",
+                filename, strerror(errno));
 
     char *line = NULL;
     size_t line_size;
@@ -214,6 +216,7 @@ void parse_file(const char *_filename, struct dsl_representation *res)
     }
 
     free(line);
+    fclose(file);
     return;
 }
 
