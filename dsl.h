@@ -15,8 +15,7 @@ struct dsl_representation {
 
 
 #define parse_error(format, ...) do { \
-    sm_warning("Parsing error in %s: " format, filename, __VA_ARGS__);\
-    exit(1);\
+    fprintf(sm_outfd ,"Parsing error in %s: " format, filename, __VA_ARGS__);\
 } while (0)
 #define stringify_macro(x) #x
 #define varname_size 63
