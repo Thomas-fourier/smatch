@@ -203,7 +203,7 @@ static bool handle_address_member_offset(struct expression *expr, struct symbol 
 			*res = cast_rl(type, *res);
 			return true;
 		}
-		outer_rl = cast_rl(&ulong_ctype, outer_rl);
+		outer_rl = cast_rl(&schar_ptr_ctype, outer_rl);
 		*res = rl_binop(outer_rl, '+', alloc_rl(offset, offset));
 		*res = cast_rl(type, *res);
 		return true;
