@@ -1629,6 +1629,86 @@ static bool in_macro(struct expression *left, struct expression *right)
 	return 0;
 }
 
+static int is_simple_math(struct expression *expr)
+{
+	if (!expr)
+		return 0;
+	if (expr->type != EXPR_BINOP)
+		return 0;
+	switch (expr->op) {
+	case '+':
+	case '-':
+	case '*':
+		return 1;
+	}
+	return 0;
+}
+
+static void move_known_values(struct expression **left_p, struct expression **right_p)
+{
+	struct expression *left = *left_p;
+	struct expression *right = *right_p;
+	sval_t sval, dummy;
+
+	if (get_implied_value(left, &sval)) {
+		if (!is_simple_math(right))
+			return;
+		if (get_implied_value(right, &dummy))
+			return;
+		if (right->op == '*') {
+			sval_t divisor;
+
+			if (!get_value(right->right, &divisor))
+				return;
+			if (divisor.value == 0)
+				return;
+			*left_p = binop_expression(left, invert_op(right->op), right->right);
+			*right_p = right->left;
+			return;
+		}
+		if (right->op == '+' && get_value(right->left, &sval)) {
+			*left_p = binop_expression(left, invert_op(right->op), right->left);
+			*right_p = right->right;
+			return;
+		}
+		if (get_value(right->right, &sval)) {
+			*left_p = binop_expression(left, invert_op(right->op), right->right);
+			*right_p = right->left;
+			return;
+		}
+		return;
+	}
+	if (get_implied_value(right, &sval)) {
+		if (!is_simple_math(left))
+			return;
+		if (get_implied_value(left, &dummy))
+			return;
+		if (left->op == '*') {
+			sval_t divisor;
+
+			if (!get_value(left->right, &divisor))
+				return;
+			if (divisor.value == 0)
+				return;
+			*right_p = binop_expression(right, invert_op(left->op), left->right);
+			*left_p = left->left;
+			return;
+		}
+		if (left->op == '+' && get_value(left->left, &sval)) {
+			*right_p = binop_expression(right, invert_op(left->op), left->left);
+			*left_p = left->right;
+			return;
+		}
+
+		if (get_value(left->right, &sval)) {
+			*right_p = binop_expression(right, invert_op(left->op), left->right);
+			*left_p = left->left;
+			return;
+		}
+		return;
+	}
+}
+
 static void handle_comparison(struct symbol *type, struct expression *left, int op, struct expression *right)
 {
 	struct smatch_state *left_state_orig, *right_state_orig;
@@ -1844,21 +1924,6 @@ static void handle_comparison(struct symbol *type, struct expression *left, int 
 	set_extra_expr_true_false(right, right_true_state, right_false_state);
 }
 
-static int is_simple_math(struct expression *expr)
-{
-	if (!expr)
-		return 0;
-	if (expr->type != EXPR_BINOP)
-		return 0;
-	switch (expr->op) {
-	case '+':
-	case '-':
-	case '*':
-		return 1;
-	}
-	return 0;
-}
-
 static int flip_op(int op)
 {
 	/* We only care about simple math */
@@ -1894,71 +1959,6 @@ static void move_known_to_rl(struct expression **expr_p, struct range_list **rl_
 		*expr_p = expr->right;
 		*rl_p = rl_binop(rl, flip_op(expr->op), alloc_rl(sval, sval));
 		move_known_to_rl(expr_p, rl_p);
-		return;
-	}
-}
-
-static void move_known_values(struct expression **left_p, struct expression **right_p)
-{
-	struct expression *left = *left_p;
-	struct expression *right = *right_p;
-	sval_t sval, dummy;
-
-	if (get_implied_value(left, &sval)) {
-		if (!is_simple_math(right))
-			return;
-		if (get_implied_value(right, &dummy))
-			return;
-		if (right->op == '*') {
-			sval_t divisor;
-
-			if (!get_value(right->right, &divisor))
-				return;
-			if (divisor.value == 0)
-				return;
-			*left_p = binop_expression(left, invert_op(right->op), right->right);
-			*right_p = right->left;
-			return;
-		}
-		if (right->op == '+' && get_value(right->left, &sval)) {
-			*left_p = binop_expression(left, invert_op(right->op), right->left);
-			*right_p = right->right;
-			return;
-		}
-		if (get_value(right->right, &sval)) {
-			*left_p = binop_expression(left, invert_op(right->op), right->right);
-			*right_p = right->left;
-			return;
-		}
-		return;
-	}
-	if (get_implied_value(right, &sval)) {
-		if (!is_simple_math(left))
-			return;
-		if (get_implied_value(left, &dummy))
-			return;
-		if (left->op == '*') {
-			sval_t divisor;
-
-			if (!get_value(left->right, &divisor))
-				return;
-			if (divisor.value == 0)
-				return;
-			*right_p = binop_expression(right, invert_op(left->op), left->right);
-			*left_p = left->left;
-			return;
-		}
-		if (left->op == '+' && get_value(left->left, &sval)) {
-			*right_p = binop_expression(right, invert_op(left->op), left->left);
-			*left_p = left->right;
-			return;
-		}
-
-		if (get_value(left->right, &sval)) {
-			*right_p = binop_expression(right, invert_op(left->op), left->right);
-			*left_p = left->left;
-			return;
-		}
 		return;
 	}
 }
