@@ -2145,9 +2145,9 @@ struct range_list *rl_handle_sub(struct range_list *left, struct range_list *rig
 	right_pos = get_pos_rl(right);
 
 	/* these tests for uselessness could be improved */
-	if (sval_is_max(rl_max(left_pos)) && !comparison)
+	if (left_pos && sval_is_max(rl_max(left_pos)) && !comparison)
 		return NULL;
-	if (sval_is_max(rl_max(right_pos)) && !comparison)
+	if (right_pos && sval_is_max(rl_max(right_pos)) && !comparison)
 		return NULL;
 
 	/* FIXME:
