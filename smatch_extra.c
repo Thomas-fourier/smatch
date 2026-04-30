@@ -1726,6 +1726,8 @@ static void handle_comparison(struct symbol *type, struct expression *left, int 
 	int left_postop = 0;
 	int right_postop = 0;
 
+	move_known_values(&left, &right);
+
 	if (left->op == SPECIAL_INCREMENT || left->op == SPECIAL_DECREMENT) {
 		if (left->type == EXPR_POSTOP) {
 			left->smatch_flags |= Handled;
@@ -2081,7 +2083,6 @@ static void match_comparison(struct expression *expr)
 
 	left = left_orig;
 	right = right_orig;
-	move_known_values(&left, &right);
 	handle_comparison(type, left, expr->op, right);
 
 	left = left_orig;
@@ -2093,7 +2094,6 @@ static void match_comparison(struct expression *expr)
 	if (is_simple_math(prev) && !has_variable(prev, left_orig)) {
 		left = prev;
 		right = right_orig;
-		move_known_values(&left, &right);
 		handle_comparison(type, left, expr->op, right);
 	}
 
@@ -2101,7 +2101,6 @@ static void match_comparison(struct expression *expr)
 	if (is_simple_math(prev) && !has_variable(prev, right_orig)) {
 		left = left_orig;
 		right = prev;
-		move_known_values(&left, &right);
 		handle_comparison(type, left, expr->op, right);
 	}
 
