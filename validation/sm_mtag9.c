@@ -31,7 +31,7 @@ void func(int idx)
  * check-output-start
 sm_mtag9.c:18 func() implied: array = '3848759869566418944'
 sm_mtag9.c:19 func() implied: &array[1] = '3848759869566418948'
-sm_mtag9.c:20 func() implied: &array[idx] = '4096-18446744073709547520'
+sm_mtag9.c:20 func() implied: &array[idx] = '4096-ptr_max'
 sm_mtag9.c:21 func() implied: &array[1] - &array[0] = '4'
 sm_mtag9.c:22 func() implied: &array[idx] - &array[0] = ''
 sm_mtag9.c:23 func() implied: array_p1 = '3848759869566418944'

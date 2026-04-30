@@ -33,7 +33,7 @@ void frob(struct mid *mid)
  * check-command: ./smatch -I.. sm_mtag11.c
  *
  * check-output-start
-sm_mtag11.c:23 frob() implied: &mid->bar = '4096-18446744073709547520'
+sm_mtag11.c:23 frob() implied: &mid->bar = '4096-ptr_max'
 sm_mtag11.c:24 frob() implied: &out2 = '1496362378149650432'
 sm_mtag11.c:25 frob() implied: &out2.x = '1496362378149650456'
 sm_mtag11.c:26 frob() implied: &out2.mid.bar = '1496362378149650436'

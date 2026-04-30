@@ -33,7 +33,7 @@ void frob(struct inner *in)
  * check-command: ./smatch -I.. sm_mtag12.c
  *
  * check-output-start
-sm_mtag12.c:27 frob() implied: p = '4096-18446744073709547520'
-sm_mtag12.c:28 frob() implied: q = '4096-18446744073709547520'
+sm_mtag12.c:27 frob() implied: p = '4096-ptr_max'
+sm_mtag12.c:28 frob() implied: q = '4096-ptr_max'
  * check-output-end
  */

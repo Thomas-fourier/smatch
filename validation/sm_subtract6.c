@@ -51,7 +51,7 @@ int frob(struct inner *in, struct inner *in2)
 sm_subtract6.c:33 frob() implied: &null->member = '12'
 sm_subtract6.c:34 frob() implied: (&(0)->member) = '12'
 sm_subtract6.c:36 frob() implied: in = '1-u64max'
-sm_subtract6.c:37 frob() implied: p = '4096-18446744073709547520'
+sm_subtract6.c:37 frob() implied: p = '4096-ptr_max'
 sm_subtract6.c:40 frob() implied: in2 = '18446744073709551604'
 sm_subtract6.c:41 frob() implied: p2 = '(-12)'
  * check-output-end

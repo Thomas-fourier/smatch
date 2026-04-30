@@ -52,7 +52,12 @@ static struct expression *get_check_arg(struct expression *expr, int arg_nr)
 	struct expression *arg;
 
 	arg = get_argument_from_call_expr(expr->args, arg_nr);
-	return strip_Generic(arg);
+	arg = strip_Generic(arg);
+	if (!arg)
+		return NULL;
+	if (arg->type == EXPR_CALL && sym_name_is("sm_ptr", arg->fn))
+		arg = get_argument_from_call_expr(arg->args, 0);
+	return arg;
 }
 
 static void match_state(const char *fn, struct expression *expr, void *info)
