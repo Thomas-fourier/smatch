@@ -273,6 +273,23 @@ struct modification_data {
 	struct expression *cur;
 };
 
+struct function_return_info {
+	const char *name;
+	int type;
+	int param;
+	const char *key;
+	const sval_t *implies_start, *implies_end;
+	func_hook *call_back; /* func hook more flexible than param_key_hook */
+};
+
+struct type_handler_pair {
+	int type;
+	param_key_hook *hook;
+};
+
+bool in_function_table(struct expression *expr, struct function_return_info *table);
+void load_function_table(struct function_return_info *table, struct type_handler_pair *hooks);
+
 void allocate_modification_hooks(void);
 bool is_sub_member(const char *name, struct symbol *sym, struct sm_state *sm);
 void add_all_modifications_hook(int owner, name_sym_hook *hook);
