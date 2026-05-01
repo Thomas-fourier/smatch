@@ -226,6 +226,8 @@ void check_spectre(int id)
 
 	if (option_no_db)
 		return;
+	if (!option_spammy)
+		return;
 
 	suppress_multiple = getenv("FULL_SPECTRE") == NULL;
 	if (getenv("ANALYZE_HOST_DATA"))
