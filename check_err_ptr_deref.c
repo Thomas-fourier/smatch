@@ -22,12 +22,16 @@ static int my_id;
 
 /* These functions do not necessarily need to be checked */
 static const char *safe_fns[] = {
+	"dsa_port_from_netdev",
 	"exynos_drm_crtc_get_by_type",
+	"idle_thread_get",
 	"mdp5_crtc_get_mixer",
 	"mdp5_crtc_get_pipeline",
+	"media_pad_remote_pad_unique",
 	"mlx5_eswitch_get_vport",
 	"mtk_vdec_h264_get_ctrl_ptr",
 	"nand_get_sdr_timings",
+	"shm_lock",
 	"tc358746_get_format_by_code",
 	"to_caam_req",
 	"uverbs_attr_get",
