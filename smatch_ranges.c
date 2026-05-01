@@ -2205,24 +2205,37 @@ static unsigned long long rl_bits_maybe_set(struct range_list *rl)
 
 static struct range_list *rl_handle_OR(struct range_list *left, struct range_list *right)
 {
-	unsigned long long left_min, left_max, right_min, right_max;
+	sval_t zero = { .type = rl_type(left), .value = 0 };
+	struct bit_info *l_binfo, *r_binfo;
+	struct range_list *ret;
 	sval_t min, max;
 	sval_t sval;
+	int low_bit;
 
 	if ((rl_to_sval(left, &sval) || rl_to_sval(right, &sval)) &&
 	    !sval_binop_overflows(rl_max(left), '+', rl_max(right)))
 		return rl_binop(left, '+', right);
 
-	left_min = rl_bits_always_set(left);
-	left_max = rl_bits_maybe_set(left);
-	right_min = rl_bits_always_set(right);
-	right_max = rl_bits_maybe_set(right);
+	l_binfo = rl_to_binfo(left);
+	r_binfo = rl_to_binfo(right);
 
-	min.type = max.type = &ullong_ctype;
-	min.uvalue = left_min | right_min;
-	max.uvalue = left_max | right_max;
+	min.type = max.type = rl_type(left);
+	/* pick the highest min */
+	low_bit = ffsll(l_binfo->possible);
+	if (ffsll(r_binfo->possible) > low_bit)
+		low_bit = ffsll(r_binfo->possible);
+	/* the lowest bit can't be zero because that's handled at the
+	 * top of the function.  But, whatever, check again.
+	 */
+	if (low_bit == 0)
+		return NULL;
+	min.value = 1 << (low_bit - 1);
+	max.value = fls_mask(l_binfo->possible | r_binfo->possible);
 
-	return cast_rl(rl_type(left), alloc_rl(min, max));
+	ret = alloc_rl(min, max);
+	add_range(&ret, zero, zero);
+
+	return ret;
 }
 
 static struct range_list *rl_handle_XOR(struct range_list *left, struct range_list *right)

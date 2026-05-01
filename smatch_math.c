@@ -720,6 +720,17 @@ static bool use_rl_binop(struct expression *expr, int implied, int *recurse_cnt,
 	return true;
 }
 
+static bool handle_bitwise_OR(struct expression *expr, int implied, int *recurse_cnt, struct range_list **res)
+{
+	/*
+	 * TODO: It would be better get the binfo->set bits value and use that
+	 * as a more accurate minimum.  But you'd have to rewrite
+	 * get_implied_bit_info() to not call get_implied_value() so you
+	 * avoid recursion.
+	 */
+	return use_rl_binop(expr, implied, recurse_cnt, res);
+}
+
 static bool handle_right_shift(struct expression *expr, int implied, int *recurse_cnt, struct range_list **res)
 {
 	struct range_list *left_rl, *right_rl;
@@ -818,8 +829,9 @@ static bool handle_binop_rl_helper(struct expression *expr, int implied, int *re
 	case '&':
 		return handle_bitwise_AND(expr, implied, recurse_cnt, res);
 	case '^':
-	case '|':
 		return use_rl_binop(expr, implied, recurse_cnt, res);
+	case '|':
+		return handle_bitwise_OR(expr, implied, recurse_cnt, res);
 	}
 
 	*res = rl_binop(left_rl, expr->op, right_rl);
