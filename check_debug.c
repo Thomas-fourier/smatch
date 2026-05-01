@@ -55,8 +55,8 @@ static struct expression *get_check_arg(struct expression *expr, int arg_nr)
 	arg = strip_Generic(arg);
 	if (!arg)
 		return NULL;
-	if (arg->type == EXPR_CALL && sym_name_is("sm_ptr", arg->fn))
-		arg = get_argument_from_call_expr(arg->args, 0);
+	if (arg->type == EXPR_CAST && is_pointer(arg->cast_expression))
+		arg = strip_parens(arg->cast_expression);
 	return arg;
 }
 
