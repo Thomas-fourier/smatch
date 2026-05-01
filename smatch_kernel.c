@@ -739,7 +739,7 @@ static bool match_once_through_macros(struct statement *stmt)
 	return false;
 }
 
-void check_kernel(int id)
+void register_kernel(int id)
 {
 	if (option_project != PROJ_KERNEL)
 		return;
