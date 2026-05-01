@@ -145,6 +145,23 @@ static void set_error_code(struct expression *expr, const char *name, struct sym
 	set_state(my_id, name, sym, &error_code);
 }
 
+static void extra_nomod_hook(const char *name, struct symbol *sym, struct expression *expr, struct smatch_state *state)
+{
+	sval_t min = { .type = &int_ctype, .value = -4096 };
+	sval_t max = { .type = &int_ctype, .value = -1 };
+	struct range_list *rl;
+
+	if (!get_state(my_id, name, sym))
+		return;
+
+	rl = estate_rl(state);
+	if (type_unsigned(rl_type(rl)))
+		rl = cast_rl(&int_ctype, rl);
+	rl = rl_intersection(rl, alloc_rl(min, max));
+	if (!rl)
+		set_state(my_id, name, sym, &undefined);
+}
+
 void check_returns_negative_error_code(int id)
 {
 	my_id = id;
@@ -154,6 +171,7 @@ void check_returns_negative_error_code(int id)
 
 	add_hook(&match_assign, ASSIGNMENT_HOOK);
 	add_hook(&match_condition, CONDITION_HOOK);
+	add_extra_nomod_hook(&extra_nomod_hook);
 	add_modification_hook(my_id, &set_undefined);
 	add_pre_merge_hook(my_id, &pre_merge_hook);
 	add_split_return_callback(&match_return);
