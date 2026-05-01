@@ -183,8 +183,8 @@ static bool binop_capped(struct expression *expr)
 	sval_t sval;
 
 	if (expr->op == '-' && get_user_rl(expr->left, &left_rl)) {
-		if (user_rl_capped(expr->left))
-			return true;
+		if (!user_rl_capped(expr->left))
+			return false;
 		comparison = get_comparison(expr->left, expr->right);
 		if (comparison && show_special(comparison)[0] == '>')
 			return true;
