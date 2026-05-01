@@ -8,7 +8,7 @@
 	long: x, unsigned long: x, \
 	long long: x, unsigned long long: x, \
 	float: x, double: x, long double: x, \
-	default: (unsigned long)x)
+	default: (unsigned long)(x))
 
 static inline void __smatch_about(long var){}
 #define __smatch_about(x) __smatch_about(cast_ptr(x))
