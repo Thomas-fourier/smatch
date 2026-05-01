@@ -587,7 +587,7 @@ static bool handle_subtract_rl(struct expression *expr, int implied, int *recurs
 	if (handle_container_of(expr, implied, recurse_cnt, res))
 		return true;
 
-	comparison = get_comparison(expr->left, expr->right);
+	comparison = get_comparison_no_extra(expr->left, expr->right);
 	if (comparison == SPECIAL_EQUAL) {
 		*res = alloc_rl(zero, zero);
 		return true;
