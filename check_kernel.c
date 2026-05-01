@@ -740,7 +740,8 @@ static bool match_once_through_macros(struct statement *stmt)
 	    strcmp(macro, "drm_exec_until_all_locked") == 0 ||
 	    strcmp(macro, "xe_validation_guard") == 0 ||
 	    strcmp(macro, "for_each_gt") == 0 ||
-	    strcmp(macro, "for_each_online_cpu") ==0)
+	    strcmp(macro, "for_each_online_cpu") == 0 ||
+	    strcmp(macro, "damon_for_each_target") == 0)
 		return true;
 	return false;
 }
