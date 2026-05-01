@@ -78,6 +78,19 @@ static struct expression *get_orig_call(struct expression *expr)
 	return orig;
 }
 
+static bool is_bool(struct expression *expr)
+{
+	struct range_list *rl;
+
+	if (!expr || expr->type != EXPR_CALL)
+		return false;
+
+	get_absolute_rl(expr, &rl);
+	if (rl_min(rl).value >= 0 && rl_max(rl).uvalue <= 1)
+		return true;
+	return false;
+}
+
 static void match_return(struct expression *expr)
 {
 	struct expression *call;
@@ -98,6 +111,8 @@ static void match_return(struct expression *expr)
 	if (!stmt)
 		return;
 	if (condition_matches(stmt->if_conditional, expr))
+		return;
+	if (is_bool(stmt->if_conditional))
 		return;
 
 	call = get_orig_call(expr);
