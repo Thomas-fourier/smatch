@@ -36,6 +36,6 @@ void func (void)
  * check-command: smatch --spammy sm_implied2.c
  *
  * check-output-start
-sm_implied2.c:28 func() error: potentially dereferencing uninitialized 'aa'.
+sm_implied2.c:28 func() error: uninitialized symbol 'aa'.
  * check-output-end
  */

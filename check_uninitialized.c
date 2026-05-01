@@ -228,25 +228,6 @@ static void match_enum_switch_after(struct statement *stmt)
 	} END_FOR_EACH_SM(sm);
 }
 
-static void match_dereferences(struct expression *expr)
-{
-	char *name;
-
-	if (uncertain_code_path())
-		return;
-
-	if (expr->type != EXPR_PREOP)
-		return;
-	if (is_initialized(expr->unop))
-		return;
-
-	name = expr_to_str(expr->unop);
-	sm_error("potentially dereferencing uninitialized '%s'.", name);
-	free_string(name);
-
-	set_state_expr(my_id, expr->unop, &initialized);
-}
-
 static void match_condition(struct expression *expr)
 {
 	char *name;
@@ -515,7 +496,6 @@ void check_uninitialized(int id)
 	add_untracked_param_hook(&match_untracked);
 	add_pre_merge_hook(my_id, &pre_merge_hook);
 
-	add_hook(&match_dereferences, DEREF_HOOK);
 	add_hook(&match_condition, CONDITION_HOOK);
 	add_hook(&match_call, FUNCTION_CALL_HOOK);
 	add_hook(&match_function_pointer_call, FUNCTION_CALL_HOOK);

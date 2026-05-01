@@ -25,6 +25,6 @@ x:
  * check-command: smatch --spammy sm_implied.c
  *
  * check-output-start
-sm_implied.c:20 func() error: potentially dereferencing uninitialized 'aa'.
+sm_implied.c:20 func() error: uninitialized symbol 'aa'.
  * check-output-end
  */
