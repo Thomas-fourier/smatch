@@ -1813,8 +1813,47 @@ static bool has_negative_information(struct range_list *rl)
 	return true;
 }
 
+static struct range_list *mod_rl_helper(enum pos_neg pos_neg, struct range_list *left, struct range_list *right)
+{
+	sval_t zero = { .type = rl_type(left), .value = 0 };
+	struct range_list *minus_one = alloc_rl(int_minus_one, int_minus_one);
+	struct range_list *ret;
+	sval_t max;
+
+	/* can't divide by zero */
+	if (pos_neg == POS_POS || pos_neg == NEG_POS)
+		right = rl_filter(right, alloc_rl(int_zero, int_zero));
+
+	if (!left || !right)
+		return NULL;
+
+	switch (pos_neg) {
+	case POS_POS:
+		max = rl_max(right);
+		max.value--;
+		if (sval_cmp(rl_max(left), max) < 0)
+			return left;
+		return alloc_rl(zero, max);
+	case POS_NEG:
+		right = rl_binop(right, '*', minus_one);
+		ret = mod_rl_helper(POS_POS, left, right);
+		return rl_binop(ret, '*', minus_one);
+	case NEG_POS:
+		left = rl_binop(left, '*', minus_one);
+		ret = mod_rl_helper(POS_POS, left, right);
+		return rl_binop(ret, '*', minus_one);
+	case NEG_NEG:
+		left = rl_binop(left, '*', minus_one);
+		right = rl_binop(right, '*', minus_one);
+		return mod_rl_helper(POS_POS, left, right);
+	}
+	return NULL;
+}
+
 static struct range_list *rl_handle_mod(struct range_list *left, struct range_list *right)
 {
+	struct range_list *left_neg, *left_pos, *right_neg, *right_pos;
+	struct range_list *neg_neg, *neg_pos, *pos_neg, *pos_pos, *ret;
 	sval_t left_sval;
 	sval_t zero = { .type = rl_type(left), .value = 0 };
 	sval_t min, max;
@@ -1840,20 +1879,26 @@ static struct range_list *rl_handle_mod(struct range_list *left, struct range_li
 	max = rl_max(right);
 	if (sval_is_max(max))
 		return left;
-	if (max.value == 0)
-		return NULL;
-	max.value--;
-	if (sval_cmp(rl_max(left), max) < 0)
-		max = rl_max(left);
 
-	if (sval_is_negative(rl_min(right))) {
-		min = rl_min(right);
-		min.value++;
-	} else {
-		min = zero;
+	left_neg = get_neg_rl(left);
+	left_pos = get_pos_rl(left);
+	right_neg = get_neg_rl(right);
+	right_pos = get_pos_rl(right);
+
+	if (!has_negative_information(left) &&
+	    !has_negative_information(right)) {
+		left_neg = NULL;
+		right_neg = NULL;
 	}
 
-	return alloc_rl(min, max);
+	pos_pos = mod_rl_helper(POS_POS, left_pos, right_pos);
+	pos_neg = mod_rl_helper(POS_NEG, left_pos, right_neg);
+	neg_pos = mod_rl_helper(NEG_POS, left_neg, right_pos);
+	neg_neg = mod_rl_helper(NEG_NEG, left_neg, right_neg);
+
+	ret = rl_union(neg_neg, neg_pos);
+	ret = rl_union(ret, pos_neg);
+	return rl_union(ret, pos_pos);
 }
 
 static struct range_list *divide_rl_helper(enum pos_neg pos_neg, struct range_list *left, struct range_list *right)
