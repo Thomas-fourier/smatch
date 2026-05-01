@@ -73,6 +73,7 @@ static struct func_info func_table[] = {
 	{ "netif_rx", FREED, 0, "$" },
 	{ "put_device", FREED, 0, "$", NULL, NULL, &match_kobject_put },
 	{ "qdisc_enqueue", FREED, 0, "$" },
+	{ "rtw_free_recvframe", FREED, 0, "$" },
 	{ "__skb_pad", FREED, 0, "$", &err_min, &err_max, &match___skb_pad },
 	{ "skb_unshare", IGNORE, 0, "$" },
 	{ "sock_release", FREED, 0, "$" },
