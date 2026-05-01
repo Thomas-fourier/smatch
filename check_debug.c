@@ -55,7 +55,8 @@ static struct expression *get_check_arg(struct expression *expr, int arg_nr)
 	arg = strip_Generic(arg);
 	if (!arg)
 		return NULL;
-	if (arg->type == EXPR_CAST && is_pointer(arg->cast_expression))
+	if (get_type(arg) == &ulong_ctype &&
+	    arg->type == EXPR_CAST && is_pointer(arg->cast_expression))
 		arg = strip_parens(arg->cast_expression);
 	return arg;
 }
