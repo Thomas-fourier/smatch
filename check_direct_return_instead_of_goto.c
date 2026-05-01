@@ -313,8 +313,6 @@ void check_direct_return_instead_of_goto(int id)
 	add_hook(&match_goto, STMT_HOOK);
 	add_hook(&match_final_return, RETURN_HOOK);
 
-
 	add_hook(&match_label, STMT_HOOK);
 	add_hook(&match_label_after, STMT_HOOK_AFTER);
-
 }
