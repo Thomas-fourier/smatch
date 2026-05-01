@@ -785,7 +785,6 @@ void check_kernel(int id)
 	add_function_hook("__read_once_size_nocheck", &match__read_once_size, NULL);
 
 	add_function_hook("closure_call", &match_closure_call, NULL);
-	add_function_hook("put_device", &match_put_device, NULL);
 
 	add_once_through_hook(&match_once_through_macros);
 
