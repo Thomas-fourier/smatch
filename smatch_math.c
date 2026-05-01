@@ -606,7 +606,6 @@ static bool handle_subtract_rl(struct expression *expr, int implied, int *recurs
 			return false;
 	}
 
-
 	if (comparison && show_special(comparison)[0] == '>')
 		ret = rl_handle_sub(left_rl, right_rl, comparison);
 	else
@@ -799,11 +798,54 @@ static bool handle_known_binop(struct expression *expr, sval_t *res)
 	return true;
 }
 
+static bool has_actual_ranges(struct range_list *rl)
+{
+	struct data_range *tmp;
+
+	FOR_EACH_PTR(rl, tmp) {
+		if (sval_cmp(tmp->min, tmp->max) != 0)
+			return true;
+	} END_FOR_EACH_PTR(tmp);
+	return false;
+}
+
+static struct range_list *handle_implied_binop(struct range_list *left_rl, int op, struct range_list *right_rl)
+{
+	struct range_list *res_rl;
+	struct data_range *left_drange, *right_drange;
+	sval_t res;
+
+	if (!left_rl || !right_rl)
+		return NULL;
+	if (has_actual_ranges(left_rl))
+		return NULL;
+	if (has_actual_ranges(right_rl))
+		return NULL;
+
+	if (ptr_list_size((struct ptr_list *)left_rl) * ptr_list_size((struct ptr_list *)right_rl) > 20)
+		return NULL;
+
+	res_rl = NULL;
+
+	FOR_EACH_PTR(left_rl, left_drange) {
+		FOR_EACH_PTR(right_rl, right_drange) {
+			if ((op == '%' || op == '/') &&
+			    right_drange->min.value == 0)
+				return NULL;
+			res = sval_binop(left_drange->min, op, right_drange->min);
+			add_range(&res_rl, res, res);
+		} END_FOR_EACH_PTR(right_drange);
+	} END_FOR_EACH_PTR(left_drange);
+
+	return res_rl;
+}
+
 static bool handle_binop_rl_helper(struct expression *expr, int implied, int *recurse_cnt, struct range_list **res, sval_t *res_sval)
 {
 	struct symbol *type;
 	struct range_list *left_rl = NULL;
 	struct range_list *right_rl = NULL;
+	struct range_list *rl;
 
 	type = get_promoted_type(get_type(expr->left), get_type(expr->right));
 	if (!get_rl_internal(expr->left, implied, recurse_cnt, &left_rl))
@@ -812,6 +854,12 @@ static bool handle_binop_rl_helper(struct expression *expr, int implied, int *re
 	if (!get_rl_internal(expr->right, implied, recurse_cnt, &right_rl))
 		right_rl = alloc_whole_rl(type);
 	right_rl = cast_rl(type, right_rl);
+
+	rl = handle_implied_binop(left_rl, expr->op, right_rl);
+	if (rl) {
+		*res = rl;
+		return true;
+	}
 
 	switch (expr->op) {
 	case '%':
