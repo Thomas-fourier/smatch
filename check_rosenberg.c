@@ -90,7 +90,7 @@ static int check_struct(struct expression *expr, struct symbol *type)
 			sm_perror("cannot determine the alignment here");
 		} else if (align % tmp->ctype.alignment) {
 
-			print_holey_warning(expr, prev->ident ? prev->ident->name : "<unknown>");
+			print_holey_warning(expr, prev->ident ? prev->ident->name : NULL);
 			return 1;
 		}
 
@@ -115,7 +115,7 @@ next:
 			       align, tmp->ctype.alignment,
 			       type_to_str(get_real_base_type(tmp)));
 
-		print_holey_warning(expr, (prev && prev->ident) ? prev->ident->name : "<unknown>");
+		print_holey_warning(expr, (prev && prev->ident) ? prev->ident->name : NULL);
 		return 1;
 	}
 
