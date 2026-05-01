@@ -300,6 +300,7 @@ SMATCH_OBJS += smatch_imaginary_absolute.o
 SMATCH_OBJS += smatch_implied.o
 SMATCH_OBJS += smatch_impossible.o
 SMATCH_OBJS += smatch_integer_overflow.o
+SMATCH_OBJS += smatch_kernel.o
 SMATCH_OBJS += smatch_kernel_atomic_dec_test_path.o
 SMATCH_OBJS += smatch_kernel_err_ptr.o
 SMATCH_OBJS += smatch_kernel_has_devm_cleanup.o
