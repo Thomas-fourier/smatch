@@ -101,6 +101,8 @@ CK(register_points_to_user_data)
 
 CK(register_kernel_host_data)
 CK(register_points_to_host_data)
+CK(register_kernel_put_device)
+CK(register_kernel_put_device_info)
 CK(register_kernel_netdev_priv)
 CK(register_kernel_err_ptr)
 CK(register_kernel_has_devm_cleanup)

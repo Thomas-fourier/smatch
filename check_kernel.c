@@ -520,43 +520,6 @@ static void match_closure_call(const char *name, struct expression *call,
 	__split_expr(fake_call);
 }
 
-static void match_put_device(const char *name, struct expression *expr,
-			     void *unused)
-{
-	static int refcount_id;
-	struct expression *data, *fn, *fake_call;
-	struct expression_list *args = NULL;
-	struct smatch_state *state;
-	char *ref, *release;
-	struct symbol *sym;
-
-	if (!refcount_id)
-		refcount_id = id_from_name("check_refcount_info");
-
-	if (expr->type != EXPR_CALL)
-		return;
-
-	data = get_argument_from_call_expr(expr->args, 0);
-
-	ref = get_name_sym_from_param_key(expr, 0, "$->kobj.kref.refcount.refs.counter", &sym);
-	if (!ref)
-		return;
-	state = get_state(refcount_id, ref, sym);
-	if (state && strcmp(state->name, "inc") == 0)
-		return;
-
-	release = get_name_sym_from_param_key(expr, 0, "$->release", NULL);
-	fn = get_assigned_expr_name_sym(release, sym);
-	if (!fn)
-		return;
-	if (fn->type == EXPR_PREOP && fn->op == '&')
-		fn = strip_expr(fn->unop);
-
-	add_ptr_list(&args, data);
-	fake_call = call_expression(fn, args);
-	__split_expr(fake_call);
-}
-
 static void fix_msecs_to_jiffies(struct expression *expr)
 {
 	struct expression *arg;
