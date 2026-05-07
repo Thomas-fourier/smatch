@@ -5,6 +5,7 @@ import pickle
 import hashlib
 import os
 from pathlib import Path
+import argparse
 
 
 def parse(filename):
@@ -105,11 +106,7 @@ def generate_one_file(fn1, fn2, args, context):
     return arg_decl
 
 
-def generate_file(functions, context):
-    if len(sys.argv) > 2:
-        folder = sys.argv[2]
-    else:
-        folder = os.path.dirname(sys.argv[0]) / Path("generated_spec")
+def generate_file(folder, functions, context):
     if os.path.exists(folder):
         os.system("rm -rf " + str(folder))
     os.mkdir(folder)
@@ -128,7 +125,7 @@ def generate_file(functions, context):
     return
 
 
-def compute_scores(context):
+def compute_scores(min_occurrences, context):
     res = []
     functions = {}
     for fn1, fn2 in context["pair_args"]:
@@ -140,14 +137,14 @@ def compute_scores(context):
                                     .intersection(context["call"][fn2])))
         occurrence_corelation = ( gathered_occurrences /
                                 max(len(context["call"][fn1]), len(context["call"][fn2])))
-        if gathered_occurrences < 100 or occurrence_corelation < 0.75:
+        if gathered_occurrences < min_occurrences or occurrence_corelation < 0.75:
             continue
 
         for arg1, arg2 in context["pair_args"][fn1, fn2]:
             gathered_occurrences_args = len(context["pair_args"][fn1, fn2][arg1, arg2])
 
             score = np.average(context["pair_args"][fn1, fn2][arg1, arg2]) * occurrence_corelation
-            if gathered_occurrences_args < 100:
+            if gathered_occurrences_args < min_occurrences:
                 continue
 
             if score < 0.75:
@@ -159,16 +156,26 @@ def compute_scores(context):
 
             functions[fn1, fn2].append([arg1, arg2])
 
-    generate_file(functions, context)
     res.sort()
-    return res
+    return res, functions
 
 
 if __name__ == "__main__":
-    filename = sys.argv[1]
-    file = open(filename, 'rb')
-    pkl_file = hashlib.md5(file.read()).hexdigest() + ".pkl"
-    file.close()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--pkl")
+    parser.add_argument("--log")
+    parser.add_argument("--output")
+    parser.add_argument("--nb-occurrences", default=100)
+
+    args = parser.parse_args()
+
+    if (args.pkl):
+        pkl_file = args.pkl
+    else:
+        filename = args.log
+        file = open(filename, 'rb')
+        pkl_file = hashlib.md5(file.read()).hexdigest() + ".pkl"
+        file.close()
 
 
     if os.path.isfile(pkl_file):
@@ -186,7 +193,9 @@ if __name__ == "__main__":
 
     print("Parsing done!")
 
-    res = compute_scores(context)
+    res, functions = compute_scores(args.nb_occurrences, context)
+    if (args.output):
+        generate_file(args.output, functions, context)
 
     for i in res:
         print(i)

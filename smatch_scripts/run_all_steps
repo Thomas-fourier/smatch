@@ -6,7 +6,7 @@ SPEC_DIR=$SMATCH_DIR/generated_spec
 
 # Generate DSL
 SMATCH_ARG="--resemblance" $SMATCH_SCRIPTS/run_all_kernel
-python3 $SMATCH_SCRIPTS/compute_function_pair_scores.py smatch.log $SPEC_DIR
+python3 $SMATCH_SCRIPTS/compute_function_pair_scores.py --log smatch.log --output $SPEC_DIR
 
 
 # Run checker
