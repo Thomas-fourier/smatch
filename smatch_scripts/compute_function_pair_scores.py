@@ -72,8 +72,14 @@ def create_line(fn, args):
     return res
 
 def generate_one_file(fn1, fn2, args, context):
-    args1 = ["_"] * (context["func_def"][fn1][0] + 1)
-    args2 = ["_"] * (context["func_def"][fn2][0] + 1)
+    if fn1 in context["func_def"]:
+        args1 = ["_"] * (context["func_def"][fn1][0] + 1)
+    else:
+        args1 = ["_"] * 10
+    if fn2 in context["func_def"]:
+        args2 = ["_"] * (context["func_def"][fn2][0] + 1)
+    else:
+        args2 = ["_"] * 10
 
     arg_decl = ""
     i = 0
@@ -147,7 +153,7 @@ def compute_scores(context):
             if score < 0.75:
                 continue
 
-            res.append([score, fn1, arg1, fn2, arg2])
+            res.append([score, fn1, arg1, fn2, arg2, gathered_occurrences])
             if (fn1, fn2) not in functions:
                 functions[fn1, fn2] = []
 
