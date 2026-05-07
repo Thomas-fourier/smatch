@@ -26,6 +26,9 @@ fi
 mkdir errors
 
 for i in $SPEC_DIR/* ; do
-     grep "$i\$" smatch.warning  > errors/$(basename $i)
+    grep "$i\$" smatch.warning  > errors/$(basename $i)
+    if ! [ -s errors/$(basename $i) ] ; then
+        rm -f errors/$(basename $i)
+    fi
 done
 
