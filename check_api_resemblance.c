@@ -278,5 +278,5 @@ void check_api_resemblance(int id)
 
     add_hook(match_func_def, FUNC_DEF_HOOK);
     add_hook(match_func, FUNCTION_CALL_HOOK);
-    add_hook(match_file_end, END_FILE_HOOK);
+    add_hook(match_file_end, END_FUNC_HOOK);
 }

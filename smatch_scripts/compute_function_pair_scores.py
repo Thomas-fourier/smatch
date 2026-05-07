@@ -37,7 +37,7 @@ def parse(filename):
             for fn_name, filename, function in res:
                 if fn_name not in context["call"]:
                     context["call"][fn_name] = set()
-                context["call"][fn_name].add(filename)
+                context["call"][fn_name].add(filename + ":" + functions)
 
             res = re.compile(
                     r"^Same argument: ([a-zA-Z0-9_]+).([0-9]+) ([a-zA-Z0-9_]+).([0-9]+) ([0-9\.]+)"
