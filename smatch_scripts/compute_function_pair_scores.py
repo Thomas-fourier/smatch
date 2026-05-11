@@ -165,7 +165,7 @@ if __name__ == "__main__":
     parser.add_argument("--pkl")
     parser.add_argument("--log")
     parser.add_argument("--output")
-    parser.add_argument("--nb-occurrences", default=100)
+    parser.add_argument("--nb-occurrences", default=100, type=int)
 
     args = parser.parse_args()
 
