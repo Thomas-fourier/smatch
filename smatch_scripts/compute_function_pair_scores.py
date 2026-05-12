@@ -125,7 +125,7 @@ def generate_file(folder, functions, context):
     return
 
 
-def compute_scores(min_occurrences, context):
+def compute_scores(min_occurrences, min_scores, context):
     res = []
     functions = {}
     for fn1, fn2 in context["pair_args"]:
@@ -137,7 +137,7 @@ def compute_scores(min_occurrences, context):
                                     .intersection(context["call"][fn2])))
         occurrence_corelation = ( gathered_occurrences /
                                 max(len(context["call"][fn1]), len(context["call"][fn2])))
-        if gathered_occurrences < min_occurrences or occurrence_corelation < 0.75:
+        if gathered_occurrences < min_occurrences and occurrence_corelation < min_scores:
             continue
 
         for arg1, arg2 in context["pair_args"][fn1, fn2]:
@@ -147,7 +147,7 @@ def compute_scores(min_occurrences, context):
             if gathered_occurrences_args < min_occurrences:
                 continue
 
-            if score < 0.75:
+            if score < min_scores:
                 continue
 
             res.append([score, fn1, arg1, fn2, arg2, gathered_occurrences])
@@ -166,6 +166,7 @@ if __name__ == "__main__":
     parser.add_argument("--log")
     parser.add_argument("--output")
     parser.add_argument("--nb-occurrences", default=100, type=int)
+    parser.add_argument("--min-score", default=.75, type=float)
 
     args = parser.parse_args()
 
@@ -193,7 +194,7 @@ if __name__ == "__main__":
 
     print("Parsing done!")
 
-    res, functions = compute_scores(args.nb_occurrences, context)
+    res, functions = compute_scores(args.nb_occurrences, args.min_score, context)
     if (args.output):
         generate_file(args.output, functions, context)
 
