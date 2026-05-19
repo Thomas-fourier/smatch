@@ -64,7 +64,7 @@ static bool parse_decl(const char *line, struct dsl_representation *dsl)
 
         push_array((void ***)&dsl->arg_cat, &dsl->nb_arg_cat, alloc_string(buffer));
 
-        for (i = 0; dsl->func_name[i]; i++) {
+        for (i = 0; i < dsl->nb_func_name; i++) {
             dsl->arg_pos[i] = realloc(dsl->arg_pos[i], dsl->nb_arg_cat * sizeof(*dsl->arg_pos[i]));
             dsl->arg_pos[i][dsl->nb_arg_cat - 1] = -2;
         }
