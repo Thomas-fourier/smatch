@@ -89,8 +89,6 @@ static void match_func_end(void) {
         possible_wrapper_names[nb_possible_wrappers - 1] = alloc_string(wrapper_found);
         possible_wrappers[nb_possible_wrappers - 1] = line;
     }
-    if (ret_func_wrapped != wrapper_found)
-        free(ret_func_wrapped);
     ret_func_wrapped = 0;
     free(wrapper_found);
     wrapper_found = NULL;

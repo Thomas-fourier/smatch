@@ -668,7 +668,7 @@ static void init_call_rep(int i) {
     calls->arg_name_function = calloc(1, sizeof(*calls->arg_name_function));
     calls->arg_name_location = calloc(1, sizeof(*calls->arg_name_location));
 
-    for (i = 0; calls->dsl.func_name[i]; i++)
+    for (i = 0; i < calls->dsl.nb_func_name; i++)
         add_function_hook(calls->dsl.func_name[i], &match_func, (void *)calls);
 }
 
