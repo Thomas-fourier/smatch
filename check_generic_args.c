@@ -562,7 +562,7 @@ static void print_all_warnings(char **warnings, int nb_warnings)
     }
 }
 
-static bool grep_in_file(FILE *file, char *search)
+static bool grep_in_file(FILE *file, const char *search)
 {
     char *line = NULL;
     size_t len;
@@ -575,14 +575,16 @@ static bool grep_in_file(FILE *file, char *search)
     return false;
 }
 
-static void add_to_file(char *filename, char *possible_wrappers)
+static void add_to_file(char *filename, const char *possible_wrappers,
+                        const char *wrapped_function)
 {
     // TODO: put lock on the file
     FILE *file = fopen(filename, "r+");
-    if (grep_in_file(file, possible_wrappers)) {
+    if (grep_in_file(file, possible_wrappers) ||
+        !grep_in_file(file, wrapped_function)) {
         fclose(file);
         return;
-}
+    }
     fprintf(file, "%s\n", possible_wrappers);
     fclose(file);
 
@@ -593,8 +595,9 @@ static void add_to_file(char *filename, char *possible_wrappers)
 
 static bool add_to_wrappers_if_wrapper(struct calls_rep *calls, int i) {
     for (int j = 0; j < nb_possible_wrappers; j++) {
-        if (strcmp(calls->arg_name_function[i], possible_wrapper_names[j]) == 0) {
-            add_to_file(calls->dsl.filename, possible_wrappers[j]);
+        if (strcmp(calls->arg_name_function[i], possible_wrapped_functions[j]) == 0) {
+            add_to_file(calls->dsl.filename, possible_wrappers[j],
+                        possible_wrapped_functions[j]);
             return true;
         }
     }
