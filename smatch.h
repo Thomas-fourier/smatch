@@ -345,7 +345,7 @@ extern int sm_nr_errors;
  */
 extern char **possible_wrappers;
 /** name of the function wrapped */
-extern char **possible_wrapper_names;
+extern char **possible_wrapped_functions;
 extern int nb_possible_wrappers;
 
 /*

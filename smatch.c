@@ -69,7 +69,7 @@ int __cur_check_id;
 bool __silence_warnings_for_stmt;
 
 char **possible_wrappers = NULL;
-char **possible_wrapper_names = NULL;
+char **possible_wrapped_functions = NULL;
 int nb_possible_wrappers = 0;
 
 typedef void (*reg_func) (int id);

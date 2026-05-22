@@ -83,10 +83,10 @@ static void match_func_end(void) {
         sm_warning_line(function_start, "Possible wrapper found %s %s",
                         wrapper_found, line);
         nb_possible_wrappers++;
-        possible_wrapper_names = realloc(possible_wrapper_names,
-                                         nb_possible_wrappers * sizeof(*possible_wrapper_names));
+        possible_wrapped_functions = realloc(possible_wrapped_functions,
+                                         nb_possible_wrappers * sizeof(*possible_wrapped_functions));
         possible_wrappers = realloc(possible_wrappers, nb_possible_wrappers * sizeof(*possible_wrappers));
-        possible_wrapper_names[nb_possible_wrappers - 1] = alloc_string(wrapper_found);
+        possible_wrapped_functions[nb_possible_wrappers - 1] = alloc_string(wrapper_found);
         possible_wrappers[nb_possible_wrappers - 1] = line;
     }
     ret_func_wrapped = 0;
