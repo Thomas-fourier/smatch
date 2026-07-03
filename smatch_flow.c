@@ -1427,6 +1427,8 @@ static void handle_backward_goto_at_end(struct statement *goto_stmt)
 	struct statement *tmp;
 	int found = 0;
 
+	if (!base_type)
+		return;
 	if (!is_last_stmt(goto_stmt))
 		return;
 	if (last_goto_statement_handled)
