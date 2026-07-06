@@ -2636,7 +2636,7 @@ void select_caller_info(const char *name, struct symbol *sym, char *value)
 	struct var_sym_list *right_vsl = NULL;
 	char *right_key, *p, *right_name;
 	struct symbol *right_sym;
-	char comparison_name[128];
+	char comparison_name[259];
 	char right_buf[128];
 	int op, right_param;
 
