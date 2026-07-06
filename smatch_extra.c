@@ -2351,44 +2351,6 @@ void __extra_match_condition(struct expression *expr)
 	}
 }
 
-static void assume_indexes_are_valid(struct expression *expr)
-{
-	struct expression *array_expr;
-	int array_size;
-	struct expression *offset;
-	struct symbol *offset_type;
-	struct range_list *rl_before;
-	struct range_list *rl_after;
-	struct range_list *filter = NULL;
-	sval_t size;
-
-	expr = strip_expr(expr);
-	if (!is_array(expr))
-		return;
-
-	offset = get_array_offset(expr);
-	offset_type = get_type(offset);
-	if (offset_type && type_signed(offset_type)) {
-		filter = alloc_rl(sval_type_min(offset_type),
-				  sval_type_val(offset_type, -1));
-	}
-
-	array_expr = get_array_base(expr);
-	array_size = get_real_array_size(array_expr);
-	if (array_size > 1) {
-		size = sval_type_val(offset_type, array_size);
-		add_range(&filter, size, sval_type_max(offset_type));
-	}
-
-	if (!filter)
-		return;
-	get_absolute_rl(offset, &rl_before);
-	rl_after = rl_filter(rl_before, filter);
-	if (rl_equiv(rl_before, rl_after))
-		return;
-	set_extra_expr_nomod(offset, alloc_estate_rl(rl_after));
-}
-
 /* returns 1 if it is not possible for expr to be value, otherwise returns 0 */
 int implied_not_equal(struct expression *expr, long long val)
 {

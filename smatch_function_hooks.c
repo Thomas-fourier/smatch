@@ -854,7 +854,8 @@ void fake_param_assign_helper(struct expression *call, struct expression *fake_a
 static struct expression *get_arg_from_ret_string(struct expression *call, const char *ret_string)
 {
 	struct expression *arg, *tmp;
-	char *str;
+	const char *str;
+	char *mut_str;
 	char buf[64];
 	int param;
 
@@ -882,19 +883,19 @@ static struct expression *get_arg_from_ret_string(struct expression *call, const
 	}
 
 	snprintf(buf, sizeof(buf), "$%s", str + 2);
-	str = strchr(buf, ']');
-	if (!str)
+	mut_str = (char *)strchr(buf, ']');
+	if (!mut_str)
 		return NULL;
-	*str = '\0';
+	*mut_str = '\0';
 
 	/*
 	 * This is a sanity check to prevent side effects from evaluating stuff
 	 * twice.
 	 */
-	str = expr_to_chunk_sym_vsl(arg, NULL, NULL);
-	if (!str)
+	mut_str = expr_to_chunk_sym_vsl(arg, NULL, NULL);
+	if (!mut_str)
 		return NULL;
-	free_string(str);
+	free_string(mut_str);
 
 	return gen_expression_from_key(arg, buf);
 }
