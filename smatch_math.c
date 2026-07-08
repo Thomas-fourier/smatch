@@ -72,6 +72,8 @@ static bool last_stmt_rl(struct statement *stmt, int implied, int *recurse_cnt, 
 		return false;
 
 	stmt = last_ptr_list((struct ptr_list *)stmt->stmts);
+	if (!stmt)
+		return false;
 	if (stmt->type == STMT_LABEL) {
 		if (stmt->label_statement &&
 		    stmt->label_statement->type == STMT_EXPRESSION)
