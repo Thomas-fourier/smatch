@@ -1,3 +1,5 @@
+#!/bin/python3
+
 import sys
 import re
 import numpy as np
@@ -173,6 +175,9 @@ if __name__ == "__main__":
     if (args.pkl):
         pkl_file = args.pkl
     else:
+        if (not args.log):
+            print("You need to pass a file with --log XXX", file=sys.stderr)
+            exit(1)
         filename = args.log
         file = open(filename, 'rb')
         pkl_file = hashlib.md5(file.read()).hexdigest() + ".pkl"

@@ -2,7 +2,7 @@
 
 SMATCH_DIR=$(dirname $(dirname $0))
 SMATCH_SCRIPTS=$SMATCH_DIR/smatch_scripts
-SPEC_DIR=$SMATCH_DIR/generated_spec
+SPEC_DIR=generated_spec
 
 # Generate DSL
 SMATCH_ARG="--resemblance" $SMATCH_SCRIPTS/run_all_kernel
