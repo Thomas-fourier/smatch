@@ -481,6 +481,14 @@ static void __match_assign(char *left, char *right)
         goto free_right;
     }
 
+    if (strlen(left) <= 2 || strlen(right) <= 2) {
+        goto free_right;
+    }
+
+    if (strchr(left, '$') || strchr(right, '$')) {
+        goto free_right;
+    }
+
     union_(right, left);
 
 free_right:
@@ -627,10 +635,7 @@ static void match_file_end_calls(struct calls_rep *calls, char ***warns,
 
     if (all_funcs_are_same(calls)) {
         if (option_spammy)
-            fprintf(sm_outfd,
-                    "%s warn: Function %s is the only of the interface %s\n",
-                    calls->arg_name_location[0], calls->arg_name_function[0],
-                    calls->dsl.filename);
+            possible_not_match(calls, 0, warns, nb_warns);
         return;
     }
 
