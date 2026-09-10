@@ -570,16 +570,20 @@ static void print_all_warnings(char **warnings, int nb_warnings)
     }
 }
 
-static bool grep_in_file(FILE *file, const char *search)
+static bool grep_in_file(char *filename, const char *search)
 {
     char *line = NULL;
     size_t len;
+    FILE *file = fopen(filename, "r");
+
     while (getline(&line, &len, file) > 0) {
         if (strstr(line, search)) {
+            fclose(file);
             return true;
         }
     }
 
+    fclose(file);
     return false;
 }
 
@@ -587,12 +591,12 @@ static void add_to_file(char *filename, const char *possible_wrappers,
                         const char *wrapped_function)
 {
     // TODO: put lock on the file
-    FILE *file = fopen(filename, "r+");
-    if (grep_in_file(file, possible_wrappers) ||
-        !grep_in_file(file, wrapped_function)) {
-        fclose(file);
+    if (grep_in_file(filename, possible_wrappers) ||
+        !grep_in_file(filename, wrapped_function)) {
         return;
     }
+
+    FILE *file = fopen(filename, "a");
     fprintf(file, "%s\n", possible_wrappers);
     fclose(file);
 
