@@ -165,16 +165,20 @@ static void match_func_call(struct expression *expr)
         for (int j = 0; j < nb_func_args; j++) {
             if (0 == strcmp(func_args[j], arg)) {
                 arguments[j + 1] = get_arg_type_from_call(i, api, api_func);
-                nb_common_arg += 1;
+                if (arguments[j + 1])
+                    nb_common_arg += 1;
                 break;
             }
         }
         free(arg);
     }
-    if (parent && parent->type == STMT_RETURN)
+    if (parent && parent->type == STMT_RETURN) {
         arguments[0] = get_arg_type_from_call(-1, api, api_func);
-    if ((float)nb_common_arg / (float)nb_args > 0.45 ||
-        (parent && parent->type == STMT_RETURN)) {
+        if (arguments[0])
+            nb_common_arg += 1;
+    }
+    if (nb_common_arg >= 2 && ((float)nb_common_arg / (float)nb_args > 0.45 ||
+        (parent && parent->type == STMT_RETURN))) {
         add_possible_wrapper(func_wrapped, arguments, nb_func_args);
     }
 
@@ -210,8 +214,8 @@ static void match_return(struct expression *expr)
             nb_wrapper_parameters = 1;
         }
 
-        if (!wrapper_found)
-            wrapper_found = ret_func_wrapped;
+        if(!wrapper_found)
+            goto exit;
 
         if (interseting_function(wrapper_found, &api, &api_func))
             wrapper_parameters[0] = get_arg_type_from_call(-1, api, api_func);
@@ -219,6 +223,7 @@ static void match_return(struct expression *expr)
         ret_func_wrapped = NULL;
     }
 
+exit:
     free(this_ret);
 }
 
