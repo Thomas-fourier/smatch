@@ -75,7 +75,9 @@ char *stringify(struct expression *expr)
         return NULL;
 
     expr = strip_expr(expr);
-    if (get_value(expr, &constant))
+    // Do not get constant of reference
+    if ( !(expr->type == EXPR_PREOP && expr->op == '&') &&
+        get_value(expr, &constant))
         return alloc_string(sval_to_str(constant));
 
     if (is_cast(expr))
