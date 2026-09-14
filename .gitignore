@@ -74,4 +74,3 @@ smatch_data/db/sm_hash
 compile_commands.json
 
 .vscode
-generated_spec
