@@ -635,7 +635,7 @@ static void possible_not_match(struct calls_rep *calls, int i, char ***warnings,
 static void match_file_end_calls(struct calls_rep *calls, char ***warns,
                                  int *nb_warns)
 {
-    if (true) print_arg_name(stderr, calls);
+    if (option_debug) print_arg_name(stderr, calls);
 
     if (all_funcs_are_same(calls)) {
         if (option_spammy)
