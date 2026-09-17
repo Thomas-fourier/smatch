@@ -22,7 +22,7 @@ docker build -t smatch .
 
 Run the docker container. Replace  `PATH_TO_LINUX` with the relative path of the Linux kernel you cloned above (e.g.: `../linux`).
 ```
-docker run -it --rm -d PATH_TO_LINUX:/data/linux bash
+docker run -it --rm -v PATH_TO_LINUX:/data/linux smatch bash
 ```
 
 You will be dumped in a shell in the container, and in the Linux folder.
