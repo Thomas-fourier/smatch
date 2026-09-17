@@ -1,0 +1,14 @@
+drivers/atm/fore200e.c:178 warn: Possible function not matched dma_map_single_attrs in interface generated_spec/dma_map_single_attrs_0
+drivers/atm/fore200e.c:193 warn: Possible function not matched dma_unmap_single_attrs in interface generated_spec/dma_map_single_attrs_0
+drivers/crypto/caam/jr.c:289 warn: Possible function not matched dma_unmap_single_attrs in interface generated_spec/dma_map_single_attrs_0
+drivers/crypto/caam/qi.c:116 warn: Possible function not matched dma_map_single_attrs in interface generated_spec/dma_map_single_attrs_0
+drivers/crypto/caam/qi.c:166 warn: Possible function not matched dma_unmap_single_attrs in interface generated_spec/dma_map_single_attrs_0
+drivers/crypto/caam/qi.c:612 warn: Possible function not matched dma_unmap_single_attrs in interface generated_spec/dma_map_single_attrs_0
+drivers/crypto/caam/caamalg_qi2.c:1590 warn: Possible function not matched dma_map_single_attrs in interface generated_spec/dma_map_single_attrs_0
+drivers/crypto/caam/caamalg_qi2.c:1656 warn: Possible function not matched dma_unmap_single_attrs in interface generated_spec/dma_map_single_attrs_0
+drivers/crypto/caam/caamalg_qi2.c:4587 warn: Possible function not matched dma_map_single_attrs in interface generated_spec/dma_map_single_attrs_0
+drivers/crypto/caam/caamalg_qi2.c:4623 warn: Possible function not matched dma_unmap_single_attrs in interface generated_spec/dma_map_single_attrs_0
+drivers/dma/timb_dma.c:342 warn: Possible function not matched dma_map_single_attrs in interface generated_spec/dma_map_single_attrs_0
+drivers/dma/timb_dma.c:363 warn: Possible function not matched dma_unmap_single_attrs in interface generated_spec/dma_map_single_attrs_0
+drivers/firmware/tegra/ivc.c:715 warn: Possible function not matched dma_unmap_single_attrs in interface generated_spec/dma_map_single_attrs_0
+drivers/firmware/tegra/ivc.c:717 warn: Possible function not matched dma_unmap_single_attrs in interface generated_spec/dma_map_single_attrs_0

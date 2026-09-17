@@ -1,0 +1,4 @@
+var var0, var1
+
+var1 = pci_iomap(var0, _, _)
+pci_iounmap(var0, var1)

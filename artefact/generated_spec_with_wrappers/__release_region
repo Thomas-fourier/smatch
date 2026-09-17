@@ -1,0 +1,11 @@
+var var0, var1, var2
+
+__release_region(var0, var1, var2)
+__request_region(var0, var1, var2, _, _)
+of_iounmap(_, var1, var2)
+pci_request_config_region_exclusive(_, var1, var2, _)
+vmbus_free_mmio(var1, var2)
+check_mirror(var1, var2)
+resource_test_request_region(_, var0, var1, var2, _, _)
+__devm_request_region(_, var0, var1, var2, _)
+catpt_request_region(var0, var2)

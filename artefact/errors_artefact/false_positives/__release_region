@@ -1,0 +1,8 @@
+arch/x86/pci/fixup.c:554 warn: Possible function not matched __request_region in interface generated_spec/__release_region
+drivers/accessibility/speakup/serialio.c:77 warn: Possible function not matched __release_region in interface generated_spec/__release_region
+drivers/acpi/osl.c:104 warn: Possible function not matched __request_region in interface generated_spec/__release_region
+drivers/clk/sunxi/clk-sun8i-apb0.c:82 warn: Possible function not matched __release_region in interface generated_spec/__release_region
+drivers/clk/sunxi/clk-simple-gates.c:83 warn: Possible function not matched __release_region in interface generated_spec/__release_region
+drivers/clk/sunxi/clk-sun4i-display.c:219 warn: Possible function not matched __release_region in interface generated_spec/__release_region
+drivers/clk/sunxi/clk-sun4i-pll3.c:86 warn: Possible function not matched __release_region in interface generated_spec/__release_region
+drivers/clk/sunxi/clk-sun4i-tcon-ch1.c:284 warn: Possible function not matched __release_region in interface generated_spec/__release_region

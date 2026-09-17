@@ -1,0 +1,2 @@
+drivers/ntb/hw/mscc/ntb_hw_switchtec.c:1181 warn: Possible function not matched pci_iounmap in interface generated_spec/pci_iomap
+drivers/pci/quirks.c:6048 warn: Possible function not matched pci_iomap in interface generated_spec/pci_iomap

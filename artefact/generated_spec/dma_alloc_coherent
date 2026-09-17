@@ -1,0 +1,4 @@
+var var0, var1, var2, var3
+
+var2 = dma_alloc_coherent(var0, var1, var3, _)
+dma_free_coherent(var0, var1, var2, var3)

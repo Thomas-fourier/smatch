@@ -1,0 +1,8 @@
+drivers/gpu/drm/bridge/analogix/anx7625.c:1288 warn: Possible function not matched regulator_bulk_disable in interface generated_spec/regulator_bulk_disable
+drivers/gpu/drm/bridge/lontium-lt9611.c:1167 warn: Possible function not matched regulator_bulk_disable in interface generated_spec/regulator_bulk_disable
+drivers/gpu/drm/bridge/lontium-lt9611uxc.c:891 warn: Possible function not matched regulator_bulk_disable in interface generated_spec/regulator_bulk_disable
+drivers/gpu/drm/panel/panel-boe-bf060y8m-aj0.c:189 warn: Possible function not matched regulator_bulk_disable in interface generated_spec/regulator_bulk_disable
+drivers/gpu/drm/panel/panel-novatek-nt35950.c:387 warn: Possible function not matched regulator_bulk_disable in interface generated_spec/regulator_bulk_disable
+drivers/gpu/drm/panel/panel-startek-kd070fhfid015.c:111 warn: Possible function not matched regulator_bulk_disable in interface generated_spec/regulator_bulk_disable
+sound/soc/codecs/rt5668.c:2490 warn: Possible function not matched regulator_bulk_enable in interface generated_spec/regulator_bulk_disable
+sound/soc/codecs/wcd9335.c:5011 warn: Possible function not matched regulator_bulk_enable in interface generated_spec/regulator_bulk_disable

@@ -1,0 +1,5 @@
+var var0, var1
+
+devm_regulator_bulk_get(_, var0, var1)
+regulator_bulk_disable(var0, var1)
+devm_regulator_bulk_get_const(_, var0, _, var1)

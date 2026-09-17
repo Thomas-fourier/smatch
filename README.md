@@ -56,7 +56,7 @@ false positives.
 We have sorted the reports in the `artefact/errors_artefact` folder in this repository. This folder contains:
   * `true_positives` with the reports and the corresponding hash of bug fixes or email archive for the bug patches that were not mainlined,
   * `false_positives` with the reports that we considered as false positives
-  * `not_sorted` for the other reports we did not examine.
+  * `not_sorted` for all the reports.
 
 # Patched bugs
 

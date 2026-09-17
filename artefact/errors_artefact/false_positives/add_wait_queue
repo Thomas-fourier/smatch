@@ -1,0 +1,7 @@
+drivers/gpu/drm/i915/display/intel_display_rps.c:69 warn: Possible function not matched add_wait_queue in interface generated_spec/add_wait_queue
+drivers/gpu/drm/i915/i915_active.c:669 warn: Possible function not matched add_wait_queue in interface generated_spec/add_wait_queue
+drivers/hv/mshv_eventfd.c:251 warn: Possible function not matched remove_wait_queue in interface generated_spec/add_wait_queue
+drivers/md/dm-snap.c:1560 warn: Possible function not matched remove_wait_queue in interface generated_spec/add_wait_queue
+drivers/vfio/virqfd.c:82 warn: Possible function not matched add_wait_queue in interface generated_spec/add_wait_queue
+drivers/virt/acrn/irqfd.c:102 warn: Possible function not matched add_wait_queue in interface generated_spec/add_wait_queue
+fs/jfs/jfs_metapage.c:56 warn: Possible function not matched remove_wait_queue in interface generated_spec/add_wait_queue

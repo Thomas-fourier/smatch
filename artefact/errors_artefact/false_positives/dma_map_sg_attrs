@@ -1,0 +1,7 @@
+drivers/gpu/drm/i915/i915_gem_gtt.c:31 warn: Possible function not matched dma_map_sg_attrs in interface generated_spec/dma_map_sg_attrs
+drivers/gpu/drm/i915/i915_gem_gtt.c:66 warn: Possible function not matched dma_unmap_sg_attrs in interface generated_spec/dma_map_sg_attrs
+drivers/mailbox/bcm-pdc-mailbox.c:607 warn: Possible function not matched dma_unmap_sg_attrs in interface generated_spec/dma_map_sg_attrs
+drivers/mailbox/bcm-pdc-mailbox.c:623 warn: Possible function not matched dma_unmap_sg_attrs in interface generated_spec/dma_map_sg_attrs
+drivers/mailbox/bcm-pdc-mailbox.c:1214 warn: Possible function not matched dma_map_sg_attrs in interface generated_spec/dma_map_sg_attrs
+drivers/mtd/nand/raw/gpmi-nand/gpmi-nand.c:1058 warn: Possible function not matched dma_map_sg_attrs in interface generated_spec/dma_map_sg_attrs
+drivers/mtd/nand/raw/gpmi-nand/gpmi-nand.c:1072 warn: Possible function not matched dma_map_sg_attrs in interface generated_spec/dma_map_sg_attrs

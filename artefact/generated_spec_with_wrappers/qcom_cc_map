@@ -1,0 +1,4 @@
+var var0, var1
+
+var0 = qcom_cc_map(_, var1)
+qcom_cc_really_probe(_, var1, var0)

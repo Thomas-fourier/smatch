@@ -1,0 +1,4 @@
+var var0, var1
+
+amdgpu_device_rreg(var0, _, var1)
+amdgpu_device_wreg(var0, _, _, var1)

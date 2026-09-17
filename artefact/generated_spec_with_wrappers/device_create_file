@@ -1,0 +1,7 @@
+var var0, var1
+
+device_create_file(var0, var1)
+device_remove_file(var0, var1)
+recover_store(var0, var1, _, _)
+device_remove_file_wrapper(var0, var1)
+sdev_store_delete(var0, var1, _, _)

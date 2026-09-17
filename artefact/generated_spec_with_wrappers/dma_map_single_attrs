@@ -1,0 +1,10 @@
+var var0, var1
+
+var1 = dma_map_single_attrs(var0, _, _, _, _)
+dma_mapping_error(var0, var1)
+map_skb(var0, _, var1)
+gve_alloc_page(_, var0, _, var1, _, _)
+cxgb4_map_skb(var0, _, var1)
+var1 = niu_pci_map_single(var0, _, _, _)
+fc_dma_mapping_error(var0, var1)
+debug_dma_map_page(var0, _, _, _, _, var1, _)

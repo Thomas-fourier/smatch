@@ -1,0 +1,8 @@
+drivers/hwmon/f71805f.c:1479 warn: Possible function not matched sysfs_remove_group in interface generated_spec/sysfs_create_group
+drivers/hwmon/f71805f.c:1492 warn: Possible function not matched sysfs_remove_group in interface generated_spec/sysfs_create_group
+drivers/hwmon/pcf8591.c:227 warn: Possible function not matched sysfs_remove_group in interface generated_spec/sysfs_create_group
+drivers/hwmon/pcf8591.c:237 warn: Possible function not matched sysfs_remove_group in interface generated_spec/sysfs_create_group
+drivers/hwmon/w83627hf.c:1827 warn: Possible function not matched sysfs_remove_group in interface generated_spec/sysfs_create_group
+drivers/hwmon/w83627hf.c:1838 warn: Possible function not matched sysfs_remove_group in interface generated_spec/sysfs_create_group
+drivers/hwmon/w83781d.c:1192 warn: Possible function not matched sysfs_remove_group in interface generated_spec/sysfs_create_group
+drivers/misc/apds990x.c:1173 warn: Possible function not matched sysfs_remove_group in interface generated_spec/sysfs_create_group

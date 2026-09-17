@@ -1,0 +1,5 @@
+var var0, var1
+
+sysfs_create_group(var0, var1)
+sysfs_remove_group(var0, var1)
+internal_create_group(var0, _, var1)

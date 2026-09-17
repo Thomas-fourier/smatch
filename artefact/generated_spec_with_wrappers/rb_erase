@@ -1,0 +1,5 @@
+var var0, var1
+
+rb_erase(var0, var1)
+rb_insert_color(var0, var1)
+htb_safe_rb_erase(var0, var1)

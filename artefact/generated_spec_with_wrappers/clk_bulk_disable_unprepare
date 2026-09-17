@@ -1,0 +1,4 @@
+var var0, var1
+
+clk_bulk_disable_unprepare(var0, var1)
+clk_bulk_prepare_enable(var0, var1)

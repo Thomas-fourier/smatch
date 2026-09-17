@@ -1,0 +1,6 @@
+drivers/clk/qcom/apss-ipq6018.c:126 warn: Possible function not matched qcom_cc_really_probe in interface generated_spec/qcom_cc_map
+drivers/clk/qcom/gcc-sdm845.c:3995 warn: Possible function not matched qcom_cc_map in interface generated_spec/qcom_cc_map
+drivers/clk/qcom/gcc-sdm845.c:4009 warn: Possible function not matched qcom_cc_really_probe in interface generated_spec/qcom_cc_map
+drivers/clk/qcom/nsscc-qca8k.c:2201 warn: Possible function not matched qcom_cc_really_probe in interface generated_spec/qcom_cc_map
+drivers/clk/qcom/tcsrcc-sm8550.c:179 warn: Possible function not matched qcom_cc_map in interface generated_spec/qcom_cc_map
+drivers/clk/qcom/tcsrcc-sm8550.c:183 warn: Possible function not matched qcom_cc_really_probe in interface generated_spec/qcom_cc_map

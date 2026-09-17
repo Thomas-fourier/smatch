@@ -1,0 +1,15 @@
+var var0, var1, var2, var3, var4
+
+dma_map_sg_attrs(var0, var2, var4, var3, var1)
+dma_unmap_sg_attrs(var0, var2, var4, var3, var1)
+dma_unmap_sgtable(var0, _, var3, var1)
+cc_map_sg(var0, var2, _, var3, var4, _, _, _)
+put_sg_table(var0, _, var3)
+ccp_init_sg_workarea(_, var0, var2, _, var3)
+ib_dma_unmap_sgtable_attrs(_, _, var3, var1)
+spi_unmap_buf_attrs(_, var0, _, var3, var1)
+pds_vfio_dma_unmap_lm_file(var0, var3, _)
+ib_dma_unmap_sg_attrs(_, var2, var4, var3, var1)
+ib_dma_unmap_sg(_, var2, var4, var3)
+ib_dma_map_sg_attrs(_, var2, var4, var3, var1)
+ib_dma_map_sg(_, var2, var4, var3)
