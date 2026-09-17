@@ -175,7 +175,7 @@ To run the checker on a single file, run it with the makefile of Linux, after re
 make -k --output-sync CHECK="smatch -p=kernel --spammy --file-output --succeed --generic-arg-file=SPEC_FILE --check-api --wrappers" C=2 path/to/file.o
 ```
 
-# Code structure
+## Code structure
 
 The artefact contains all the code for Smatch with minor modifications
 (to fix bugs, to add helpers, etc.)
