@@ -43,7 +43,7 @@ Simply run:
 ```
 run_all_steps
 ```
-This command takes about 1 hour.
+This command takes a few hours to complete.
 
 ## Expected results
 
@@ -69,55 +69,56 @@ To see the commit, run:
 git show fcd431a9627f
 ```
 
-| Patch | Commit header |
+| Patch | Commit header | Interface | Wrong argument |
 |----------|-----------------------------------------------------------------------|
-| fcd431a9627f | RDMA/bnxt_re: fix dma_free_coherent() pointer |
-| 1461209cf813 | platform/x86: msi-laptop: add missing sysfs_remove_group()  |
-| 838d2d51513e | crypto: aspeed - Fix dma_unmap_sg() direction |
-| f5d643156ef6 | crypto: atmel - Fix dma_unmap_sg() direction  |
-| 21140e5caf01 | crypto: rockchip - Fix dma_unmap_sg() nents value |
-| 8ab2f1c35669 | mmc: mvsdio: Fix dma_unmap_sg() nents value |
-| edb35b1ffc68 | scsi: myrs: Fix dma_alloc_coherent() error check  |
-| 3b36f86dc472 | mtd: rawnand: rockchip: Add missing check after DMA map |
-| 79e441ee4794 | mtd: rawnand: renesas: Add missing check after DMA map |
-| c6ee78fc8f3e | dmaengine: nbpfaxi: Add missing check after DMA map |
-| 3a988d0b65d7 | scsi: elx: efct: Fix dma_unmap_sg() nents value |
-| 063bec4444d5 | scsi: isci: Fix dma_unmap_sg() nents value  |
-| 023a293b9cd0 | scsi: ibmvscsi_tgt: Fix dma_unmap_sg() nents value  |
-| 34b283636181 | crypto: img-hash - Fix dma_unmap_sg() nents value |
-| 96a1e15e6021 | net: ag71xx: Add missing check after DMA map  |
-| 1069a4fe637d | media: pci: ivtv: Add missing check after DMA map |
-| 23b53639a793 | media: cx18: Add missing check after DMA map  |
-| cb7fa6b6fc71 | crypto: inside-secure - Fix `dma_unmap_sg()` nents value  |
-| ff09b71bf9da | mmc: bcm2835: Fix dma_unmap_sg() nents value  |
-| 1db50f7b7a79 | Fix dma_unmap_sg() nents value  |
-| c4890963350d | atm: idt77252: Add missing `dma_map_error()`  |
-| 00f452a1b084 | scsi: qla4xxx: Fix missing DMA mapping error in qla4xxx_alloc_pdu() |
-| 85d6fbc47c30 | scsi: fnic: Fix missing DMA mapping error in fnic_send_frame()  |
-| b6cd3cfb5afe | crypto: sun8i-ce - fix nents passed to dma_unmap_sg() |
-| c48c0fd0e196 | firewire: nosy: Fix dma_free_coherent() size  |
-| 0e13150c1a13 | HID: Intel-thc-hid: Intel-thc: fix dma_unmap_sg() nents value |
-| bb97131fbf9b | wifi: ath12k: fix dma_free_coherent() pointer |
-| 9282a1e171ad | wifi: ath10k: fix dma_free_coherent() pointer |
-| 4d984b0574ff | atm: Fix dma_free_coherent() size |
-| b5c23a4d291d | auxdisplay: arm-charlcd: fix release_mem_region() size  |
-| 941676c30ba5 | crypto: cavium - fix dma_free_coherent() size |
-| 624a6760bf84 | crypto: octeontx - fix dma_free_coherent() size |
-| 56bd3c0f749f | scsi: qla2xxx: edif: Fix dma_free_coherent() size |
-| 36bd7d5deef9 | net: wan/fsl_ucc_hdlc: Fix dma_free_coherent() in uhdlc_memclean()  |
-| ffe68c376699 | net: ethernet: ec_bhf: Fix dma_free_coherent() dma handle |
-| 1ee57ab93b75 | crypto: hisilicon - Fix dma_unmap_single() direction  |
+| fcd431a9627f | RDMA/bnxt_re: fix dma_free_coherent() pointer | dma_alloc/free_coherent | buffer |
+| 1461209cf813 | platform/x86: msi-laptop: add missing sysfs_remove_group() | dma_alloc/free_coherent | missing |
+| 838d2d51513e | crypto: aspeed - Fix dma_unmap_sg() direction | dma_map/unmap_sg | direction |
+| f5d643156ef6 | crypto: atmel - Fix dma_unmap_sg() direction  | dma_map/unmap_sg | direction |
+| 21140e5caf01 | crypto: rockchip - Fix dma_unmap_sg() nents value | dma_map/unmap_sg | nents |
+| 8ab2f1c35669 | mmc: mvsdio: Fix dma_unmap_sg() nents value | dma_map/unmap_sg | nents |
+| edb35b1ffc68 | scsi: myrs: Fix dma_alloc_coherent() error check  | dma_map_single/dma_mapping_error | wrong usage |
+| 3b36f86dc472 | mtd: rawnand: rockchip: Add missing check after DMA map | dma_map_single/dma_mapping_error | missing |
+| 79e441ee4794 | mtd: rawnand: renesas: Add missing check after DMA map | dma_map_single/dma_mapping_error | missing |
+| c6ee78fc8f3e | dmaengine: nbpfaxi: Add missing check after DMA map | dma_map_single/dma_mapping_error | missing |
+| 3a988d0b65d7 | scsi: elx: efct: Fix dma_unmap_sg() nents value | dma_map/unmap_sg | nents |
+| 063bec4444d5 | scsi: isci: Fix dma_unmap_sg() nents value  | dma_map/unmap_sg | nents |
+| 023a293b9cd0 | scsi: ibmvscsi_tgt: Fix dma_unmap_sg() nents value  | dma_map/unmap_sg | nents |
+| 34b283636181 | crypto: img-hash - Fix dma_unmap_sg() nents value | dma_map/unmap_sg | nents |
+| 96a1e15e6021 | net: ag71xx: Add missing check after DMA map  | dma_map_single/dma_mapping_error | missing |
+| 1069a4fe637d | media: pci: ivtv: Add missing check after DMA map | dma_map_single/dma_mapping_error | missing |
+| 23b53639a793 | media: cx18: Add missing check after DMA map  | dma_map_single/dma_mapping_error | missing |
+| cb7fa6b6fc71 | crypto: inside-secure - Fix `dma_unmap_sg()` nents value  | dma_map/unmap_sg | nents |
+| ff09b71bf9da | mmc: bcm2835: Fix dma_unmap_sg() nents value  | dma_map/unmap_sg | nents |
+| 1db50f7b7a79 | Fix dma_unmap_sg() nents value  | dma_map/unmap_sg | nents |
+| c4890963350d | atm: idt77252: Add missing `dma_map_error()`  | dma_map_single/dma_mapping_error | missing |
+| 00f452a1b084 | scsi: qla4xxx: Fix missing DMA mapping error in qla4xxx_alloc_pdu() | dma_map_single/dma_mapping_error | missing |
+| 85d6fbc47c30 | scsi: fnic: Fix missing DMA mapping error in fnic_send_frame()  | dma_map_single/dma_mapping_error | missing |
+| b6cd3cfb5afe | crypto: sun8i-ce - fix nents passed to dma_unmap_sg() | dma_map/unmap_sg | nents |
+| c48c0fd0e196 | firewire: nosy: Fix dma_free_coherent() size  | dma_alloc/free_coherent | size |
+| 0e13150c1a13 | HID: Intel-thc-hid: Intel-thc: fix dma_unmap_sg() nents value | dma_map/unmap_sg | nents |
+| bb97131fbf9b | wifi: ath12k: fix dma_free_coherent() pointer | dma_alloc/free_coherent | buffer |
+| 9282a1e171ad | wifi: ath10k: fix dma_free_coherent() pointer | dma_alloc/free_coherent | buffer |
+| 4d984b0574ff | atm: Fix dma_free_coherent() size | dma_alloc/free_coherent | size |
+| b5c23a4d291d | auxdisplay: arm-charlcd: fix release_mem_region() size | request/release_memregion | size |
+| 941676c30ba5 | crypto: cavium - fix dma_free_coherent() size | dma_alloc/free_coherent | size |
+| 624a6760bf84 | crypto: octeontx - fix dma_free_coherent() size | dma_alloc/free_coherent | size |
+| 56bd3c0f749f | scsi: qla2xxx: edif: Fix dma_free_coherent() size | dma_alloc/free_coherent | size |
+| 36bd7d5deef9 | net: wan/fsl_ucc_hdlc: Fix dma_free_coherent() in uhdlc_memclean()  | dma_alloc/free_coherent | size |
+| ffe68c376699 | net: ethernet: ec_bhf: Fix dma_free_coherent() dma handle | dma_alloc/free_coherent | dma |
+| 1ee57ab93b75 | crypto: hisilicon - Fix dma_unmap_single() direction  | dma_map/unmap_sg | direction |
 
 
 ## Confirmed bug fixes
 
 The three remaining patches that are under review are archived on [lore.kernel.org](https://lore.kernel.org). 
 
-https://lore.kernel.org/all/20250623122557.116906-2-fourier.thomas@gmail.com/
 
-https://lore.kernel.org/all/20260330154236.98665-2-fourier.thomas@gmail.com/
-
-https://lore.kernel.org/all/20260330154236.98665-2-fourier.thomas@gmail.com/
+| Patch | Commit header | Interface | Wrong argument |
+|----------|-----------------------------------------------------------------------|
+| https://lore.kernel.org/all/20250623122557.116906-2-fourier.thomas@gmail.com/ | ethernet: cxgb4: Fix dma_unmap_sg() nents value | dma_map/unmap_sg | nents | 
+| https://lore.kernel.org/all/20260330154236.98665-2-fourier.thomas@gmail.com/ | can: sja1000: Fix pci_iounmap() buffer | pci_iomap/unmap | buffer |
+| https://lore.kernel.org/all/20260209151822.136934-2-fourier.thomas@gmail.com/ | net: mtk: wed: Fix dma_free_coherent() size mtk_wed_hwrro_free_buffer() | dma_alloc/free_coherent | size |
 
 
 # Additional information  
@@ -141,6 +142,20 @@ We provide several files, in the `artefact` folder that are generated by the too
 ## Additional scripts
 
 All the commands presented in this section are available in the container. Start the container as presented above.
+
+### Generate the figures
+
+To generate the table one of the paper run:
+```
+generate_table_1.sh
+```
+This script parses the arrays in the `README.md` file and counts each type of bug.
+
+To generate the graph 1, run
+```
+compute_function_pair_scores.py --graph-output graph.pdf --pkl *.pkl
+```
+This script requires the cached data generated by `run_all_steps`. It computes the scores for all the relevant interfaces and uses the hand-sorted interfaces to generate the graph.
 
 ### Run the Smatch step-by-step
 The `run_all_steps` script does multiple passes of Smatch to infer the rules, and run the checker iteratively until no more wrapper is found.

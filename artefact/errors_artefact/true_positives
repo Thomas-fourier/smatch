@@ -116,7 +116,6 @@ drivers/net/wireless/ath/ath10k/ce.c:1765 warn: Possible function not matched dm
 
 drivers/atm/he.c:536 warn: Possible function not matched dma_alloc_coherent in interface generated_spec/dma_alloc_coherent
 drivers/atm/he.c:1590 warn: Possible function not matched dma_free_coherent in interface generated_spec/dma_alloc_coherent
-drivers/atm/he.c:2589 warn: Possible function not matched dma_map_single_attrs in interface generated_spec/dma_map_single_attrs
 4d984b0574ff, atm: Fix dma_free_coherent() size
 
 drivers/auxdisplay/arm-charlcd.c:287 warn: Possible function not matched __request_region in interface generated_spec/__release_region
@@ -161,5 +160,5 @@ https://lore.kernel.org/all/20260330154236.98665-2-fourier.thomas@gmail.com/
 drivers/net/can/sja1000/kvaser_pci.c:189 warn: Possible function not matched pci_iounmap in interface generated_spec/pci_iomap
 
 
-https://lore.kernel.org/all/20260330154236.98665-2-fourier.thomas@gmail.com/
+https://lore.kernel.org/all/20260209151822.136934-2-fourier.thomas@gmail.com/
 drivers/net/ethernet/mediatek/mtk_wed.c:938 warn: Possible function not matched dma_free_coherent in interface generated_spec/dma_alloc_coherent

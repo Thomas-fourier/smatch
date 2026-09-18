@@ -8,6 +8,7 @@ import hashlib
 import os
 from pathlib import Path
 import argparse
+import matplotlib.pyplot as plt
 
 
 def parse(filename):
@@ -161,6 +162,118 @@ def compute_scores(min_occurrences, min_scores, context):
     res.sort()
     return res, functions
 
+def graph_for_nb_calls(point, correct_reports, false_positives, accuracy):
+    width = (point[-1] - point[0]) / len(point)
+
+    fig, ax = plt.subplots()
+    correct_bar = ax.bar(point, correct_reports, width=width, color="blue",
+                         label="correct interfaces")
+    ax.bar_label(correct_bar, labels=correct_reports, label_type="center",
+                 color="white")
+    bars = ax.bar(point, false_positives, width=width, color="orange",
+                  bottom=correct_reports, label="wrong interfaces")
+    ax.bar_label(bars, labels=false_positives, label_type="center")
+    ax.bar_label(bars, labels=accuracy, padding=3, fontsize=8)
+    ax.set_ylim(0, ax.get_ylim()[1] * 1.15)
+
+    ax.legend(loc="upper right")
+    ax.margins(tight=True)
+
+    ax.set_ylabel("Number of reports")
+    ax.set_xlabel("Threshold on the number of files")
+
+    fig.set_size_inches(4.5, 2.5)
+    fig.tight_layout()
+    return fig, ax
+
+def generate_graph(context, graph_file):
+    score_threshold = np.linspace(0.4, 1.0, 12)
+    right_interface = []
+    wrong_interface = []
+    accuracy = []
+    known_wrong_interfaces = {
+        "amdgpu_device_rreg",
+        "amdgpu_device_wreg", 
+        "clear_bit", 
+        "copy_from_user", 
+        "__create_pipe", 
+        "debugfs_create_dir", 
+        "__devm_of_phy_provider_register", 
+        "devm_regulator_bulk_get", 
+        "devm_request_irq", 
+        "hrtimer_setup", 
+        "init_timer_key", 
+        "__iwl_dbg", 
+        "make_kgid", 
+        "netif_set_real_num_rx_queues", 
+        "pci_read_config_dword", 
+        "snd_pcm_new", 
+        "v4l2_ctrl_handler_init_class",
+    }
+
+    interfaces_with_reports = {
+        "add_wait_queue", 
+        "amdgpu_device_rreg", 
+        "amdgpu_device_wreg", 
+        "amdgpu_sriov_rreg", 
+        "clear_bit", 
+        "clk_bulk_disable_unprepare", 
+        "copy_from_user", 
+        "__create_pipe", 
+        "debugfs_create_dir", 
+        "device_create_file", 
+        "__devm_iio_device_register", 
+        "devm_regulator_bulk_get", 
+        "devm_regulator_bulk_get_0", 
+        "devm_request_irq", 
+        "dma_alloc_coherent", 
+        "dma_mapping_error", 
+        "dma_map_sg_attrs", 
+        "dma_map_single_attrs", 
+        "dma_sync_single_for_cpu", 
+        "free_irq", 
+        "i2c_smbus_read_byte_data", 
+        "init_timer_key", 
+        "input_report_abs", 
+        "nla_nest_cancel", 
+        "nla_nest_end", 
+        "pci_iomap", 
+        "pci_read_config_byte", 
+        "pci_read_config_dword", 
+        "pci_read_config_word", 
+        "qcom_cc_map", 
+        "rb_erase", 
+        "regmap_bulk_read", 
+        "regmap_clear_bits", 
+        "regmap_read", 
+        "regmap_read_0", 
+        "regmap_update_bits", 
+        "regulator_bulk_disable", 
+        "__release_region", 
+        "skb_pull", 
+        "sysfs_create_group", 
+        "unsorted", 
+        "usb_alloc_urb", 
+        "vb2_plane_size", 
+        "__wake_up"
+    }
+
+    for x in score_threshold:
+        _, funcs = compute_scores(args.nb_occurrences, x, context)
+
+        print(funcs.keys())
+        right_funcs = interfaces_with_reports.intersection(map(lambda x :x[0], funcs.keys()))
+        wrong_funcs = known_wrong_interfaces.intersection(map(lambda x :x[0], funcs.keys()))
+
+        wrong_interface.append(len(wrong_funcs))
+        right_interface.append(len(right_funcs))
+        acc = round(right_interface[-1] / (wrong_interface[-1] + right_interface[-1]) * 100)
+        accuracy.append(str(acc) + "%")
+
+        print(wrong_interface, right_interface, accuracy)
+
+    graph_for_nb_calls(score_threshold, right_interface,
+                       wrong_interface, accuracy)[0].savefig(graph_file)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -169,6 +282,8 @@ if __name__ == "__main__":
     parser.add_argument("--output")
     parser.add_argument("--nb-occurrences", default=100, type=int)
     parser.add_argument("--min-score", default=.75, type=float)
+    parser.add_argument("--graph-output")
+    parser.add_argument("--tmpdir", default="/tmp/generated_spec")
 
     args = parser.parse_args()
 
@@ -199,9 +314,14 @@ if __name__ == "__main__":
 
     print("Parsing done!")
 
-    res, functions = compute_scores(args.nb_occurrences, args.min_score, context)
+    
     if (args.output):
+        res, functions = compute_scores(args.nb_occurrences, args.min_score, context)
         generate_file(args.output, functions, context)
 
-    for i in res:
-        print(i)
+        for i in res:
+            print(i)
+
+    if (args.graph_output):
+        generate_graph(context, args.graph_output)
+
