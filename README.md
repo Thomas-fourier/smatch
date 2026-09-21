@@ -70,7 +70,7 @@ git show fcd431a9627f
 ```
 
 | Patch | Commit header | Interface | Wrong argument |
-|----------|-----------------------------------------------------------------------|
+|----------|---------------------------------|-|-------------------------------------|
 | fcd431a9627f | RDMA/bnxt_re: fix dma_free_coherent() pointer | dma_alloc/free_coherent | buffer |
 | 1461209cf813 | platform/x86: msi-laptop: add missing sysfs_remove_group() | dma_alloc/free_coherent | missing |
 | 838d2d51513e | crypto: aspeed - Fix dma_unmap_sg() direction | dma_map/unmap_sg | direction |
@@ -115,7 +115,7 @@ The three remaining patches that are under review are archived on [lore.kernel.o
 
 
 | Patch | Commit header | Interface | Wrong argument |
-|----------|-----------------------------------------------------------------------|
+|----------|----------------------------|--|-----------------------------------------|
 | https://lore.kernel.org/all/20250623122557.116906-2-fourier.thomas@gmail.com/ | ethernet: cxgb4: Fix dma_unmap_sg() nents value | dma_map/unmap_sg | nents | 
 | https://lore.kernel.org/all/20260330154236.98665-2-fourier.thomas@gmail.com/ | can: sja1000: Fix pci_iounmap() buffer | pci_iomap/unmap | buffer |
 | https://lore.kernel.org/all/20260209151822.136934-2-fourier.thomas@gmail.com/ | net: mtk: wed: Fix dma_free_coherent() size mtk_wed_hwrro_free_buffer() | dma_alloc/free_coherent | size |
