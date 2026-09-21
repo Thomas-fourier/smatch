@@ -1,4 +1,4 @@
 var var0, var1, var2, var3, var4
 
-dma_map_sg_attrs(var0, var2, var4, var3, var1)
-dma_unmap_sg_attrs(var0, var2, var4, var3, var1)
+dma_map_sg_attrs(var0, var1, var4, var3, var2)
+dma_unmap_sg_attrs(var0, var1, var4, var3, var2)

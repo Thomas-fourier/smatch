@@ -187,7 +187,7 @@ def graph_for_nb_calls(point, correct_reports, false_positives, accuracy):
     return fig, ax
 
 def generate_graph(context, graph_file):
-    score_threshold = np.linspace(0.4, 1.0, 12)
+    score_threshold = np.linspace(0.4, 0.95, 12)
     right_interface = []
     wrong_interface = []
     accuracy = []
@@ -259,18 +259,19 @@ def generate_graph(context, graph_file):
     }
 
     for x in score_threshold:
+        print(f"Computing interfaces for scores greater than {x}")
         _, funcs = compute_scores(args.nb_occurrences, x, context)
 
-        print(funcs.keys())
         right_funcs = interfaces_with_reports.intersection(map(lambda x :x[0], funcs.keys()))
         wrong_funcs = known_wrong_interfaces.intersection(map(lambda x :x[0], funcs.keys()))
 
         wrong_interface.append(len(wrong_funcs))
         right_interface.append(len(right_funcs))
-        acc = round(right_interface[-1] / (wrong_interface[-1] + right_interface[-1]) * 100)
-        accuracy.append(str(acc) + "%")
-
-        print(wrong_interface, right_interface, accuracy)
+        try:
+            acc = round(right_interface[-1] / (wrong_interface[-1] + right_interface[-1]) * 100)
+            accuracy.append(str(acc) + "%")
+        except ZeroDivisionError:
+            accuracy.append("")
 
     graph_for_nb_calls(score_threshold, right_interface,
                        wrong_interface, accuracy)[0].savefig(graph_file)

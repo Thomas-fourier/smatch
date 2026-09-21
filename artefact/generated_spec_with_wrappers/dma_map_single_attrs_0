@@ -1,5 +1,5 @@
 var var0, var1, var2, var3, var4
 
-var0 = dma_map_single_attrs(var1, _, var2, var3, var4)
-dma_unmap_single_attrs(var1, var0, var2, var3, var4)
-fc_dma_unmap_single(var1, var0, var2, var3)
+var1 = dma_map_single_attrs(var0, _, var2, var3, var4)
+dma_unmap_single_attrs(var0, var1, var2, var3, var4)
+fc_dma_unmap_single(var0, var1, var2, var3)

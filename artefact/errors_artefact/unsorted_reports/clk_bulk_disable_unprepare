@@ -1,5 +1,5 @@
+sound/soc/codecs/rk3308_codec.c:925 warn: Possible function not matched clk_bulk_prepare_enable in interface generated_spec/clk_bulk_disable_unprepare
 drivers/i2c/busses/i2c-mt65xx.c:1475 warn: Possible function not matched clk_bulk_prepare_enable in interface generated_spec/clk_bulk_disable_unprepare
 drivers/i2c/busses/i2c-imx-lpi2c.c:1329 warn: Possible function not matched clk_bulk_prepare_enable in interface generated_spec/clk_bulk_disable_unprepare
-drivers/iommu/arm/arm-smmu/arm-smmu.c:2181 warn: Possible function not matched clk_bulk_prepare_enable in interface generated_spec/clk_bulk_disable_unprepare
 drivers/net/ethernet/cadence/macb_main.c:4180 warn: Possible function not matched clk_bulk_disable_unprepare in interface generated_spec/clk_bulk_disable_unprepare
-sound/soc/codecs/rk3308_codec.c:925 warn: Possible function not matched clk_bulk_prepare_enable in interface generated_spec/clk_bulk_disable_unprepare
+drivers/iommu/arm/arm-smmu/arm-smmu.c:2181 warn: Possible function not matched clk_bulk_prepare_enable in interface generated_spec/clk_bulk_disable_unprepare

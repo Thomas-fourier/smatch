@@ -1,0 +1,6 @@
+var var0, var1, var2
+
+__devm_of_phy_provider_register(var0, var1, var2, _)
+devm_phy_create(var0, var2, _)
+bcm_usb_phy_create(var0, var2, _, _)
+qmp_pcie_msm8996_create(var0, var2, _, _, _)
