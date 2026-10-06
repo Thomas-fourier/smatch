@@ -11,6 +11,9 @@ list if found */
 bool is_expr_in_list(const char *expr, char **list, int len, int *index)
 {
     int i;
+    if (!expr)
+        return false;
+
     for (i = 0; i < len; i++) {
         if (list[i] && strcmp(expr, list[i]) == 0) {
             if (index)
