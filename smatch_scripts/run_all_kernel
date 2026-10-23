@@ -1,30 +1,25 @@
 #! /bin/bash
 
-NR_CPU=`nproc`
+if [ -z "$NR_CPU" ] ; then
+	NR_CPU=`nproc`
+fi
 SMATCH_DIR=$(dirname $(dirname $0))
 CMD=$SMATCH_DIR/smatch
-if [ -z "$API_SPECS" ]; then
-	API_SPECS=$SMATCH_DIR/api_spec
-fi
 
 if [ -z "$SMATCH_ARG" ]; then
-	SMATCH_ARG="--wrappers --resemblance --check-api"
+	SMATCH_ARG=""
 fi
 
 find -name \*.c.smatch -exec rm \{\} \;
 rm -f core.*
 make clean
-rm -f core.*
 
-for file in  $(ls $API_SPECS); do
-	dsl_files="$dsl_files --generic-arg-file=$API_SPECS/$file"
-done
 
 find . -type f -name "*.c" | sort | uniq | rev |\
 	cut -d. -f2- |\
 	rev | awk " {printf \$0 ; print \".o\" } " | \
 	xargs make -j${NR_CPU} -k -i --output-sync CHECK="$CMD -p=kernel --spammy --file-output\
-		--succeed $dsl_files $SMATCH_ARG" C=1 2>&1 |\
+		--succeed $SMATCH_ARG" C=1 2>&1 |\
 	tee smatch.log
 
 

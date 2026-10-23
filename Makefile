@@ -129,6 +129,7 @@ cflags += -DGCC_BASE=\"$(GCC_BASE)\"
 MULTIARCH_TRIPLET := $(shell $(CC) -print-multiarch 2>/dev/null)
 cflags += -DMULTIARCH_TRIPLET=\"$(MULTIARCH_TRIPLET)\"
 
+cflags += -I /usr/include/glib-2.0/ -I /usr/lib/x86_64-linux-gnu/glib-2.0/include/
 
 bindir := $(DESTDIR)$(BINDIR)
 man1dir := $(DESTDIR)$(MANDIR)/man1
@@ -145,7 +146,7 @@ HAVE_GCC_DEP:=$(shell touch .gcc-test.c && 				\
 		$(CC) -c -Wp,-MP,-MMD,.gcc-test.d .gcc-test.c 2>/dev/null && \
 		echo 'yes'; rm -f .gcc-test.d .gcc-test.o .gcc-test.c)
 ifeq ($(HAVE_GCC_DEP),yes)
-cflags += -Wp,-MP,-MMD,$(@D)/.$(@F).d -I /usr/include/glib-2.0/ -I /usr/lib/x86_64-linux-gnu/glib-2.0/include/ `pkg-config --cflags --libs glib-2.0`
+cflags += -Wp,-MP,-MMD,$(@D)/.$(@F).d
 endif
 
 # Can we use libxml (needed for c2xml)?
@@ -379,7 +380,6 @@ SMATCH_OBJS += smatch_untracked_param.o
 SMATCH_OBJS += smatch_untracked_var.o
 SMATCH_OBJS += smatch_var_sym.o
 SMATCH_OBJS += stringification.o
-SMATCH_OBJS += dsl.o
 
 CFLAGS+=-D__CHECKNAME__='"$(subst .c,,$(notdir $<))"'
 

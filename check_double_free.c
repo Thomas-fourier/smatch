@@ -1,7 +1,7 @@
+#include "parse.h"
 #include "smatch.h"
 #include "smatch_extra.h"
 #include "stringification.h"
-#include "dsl.h"
 #include <ctype.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -12,7 +12,10 @@
 #include <unistd.h>
 
 static int my_id;
-static struct calls_rep *all_calls;
+static struct string_list* freed_expr;
+static struct string_list* freed_expr_loc;
+static bool in_error_path;
+
 
 #define run_again_filename ".run_smatch_again"
 
@@ -43,6 +46,8 @@ static void assign_list(char **args, struct string_list *params)
 
 static void match_func_start(struct symbol *sm)
 {
+    in_error_path = false;
+
     if (!sm->ident)
         return;
 
@@ -79,6 +84,7 @@ static void match_func_start(struct symbol *sm)
     g_hash_table_insert(function_parameters, sm->ident->name, arguments);
 }
 
+
 static struct string_list *call_to_string_list(struct expression *expr)
 {
     struct string_list *res = NULL;
@@ -96,16 +102,15 @@ static struct string_list *call_to_string_list(struct expression *expr)
 static void match_func_call(struct expression *expr)
 {
     struct string_list *call_expr;
-    char *fn_name = expr_to_str(expr->fn);
-    if (!fn_name)
-        return;
+    char *fn_name;
 
-    for (int i = 0; i < nb_generic_args_file; i++) {
-        if (is_expr_in_list(fn_name, all_calls[i].dsl.func_name,
-            all_calls[i].dsl.nb_func_name, NULL)) {
-            free(fn_name);
-            return;
-        }
+    if (in_error_path)
+        return;
+    
+    fn_name = expr_to_str(expr->fn);
+    if (!fn_name) {
+        free(fn_name);
+        return;
     }
 
     call_expr = call_to_string_list(expr);
@@ -127,6 +132,7 @@ static void match_func_call(struct expression *expr)
 
     assign_list(args, call_expr);
 }
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -333,141 +339,6 @@ static bool two_args_are_same(char *char1, char *char2)
     return false;
 }
 
-/**
- * Returns 0 if half less than half the arguments are the same,
- * returns 1 if more that half are the same,
- * returns 2 if all the arguments are the same.
- */
-static int args_are_same(char **arg_name_1, char **arg_name_2,
-                          struct calls_rep *calls)
-{
-    int nb_args = 0, nb_common_args = 0;
-    for (int i = 0; i < calls->dsl.nb_arg_cat; i++) {
-        if (arg_name_1[i] && arg_name_2[i]) {
-            nb_args += 1;
-            if (two_args_are_same(arg_name_1[i], arg_name_2[i]))
-                nb_common_args += 1;
-        }
-    }
-    if (nb_common_args * 2 < nb_args)
-        return 0;
-
-    if (nb_common_args < nb_args)
-        return 1;
-
-    return 2;
-}
-
-static void print_arg_name(FILE *out, struct calls_rep *calls)
-{
-    if (!calls->nb_arg_name)
-        return;
-
-    fprintf(out, "%s\n", calls->dsl.filename);
-
-    fprintf(out, "\t\t\t\t");
-    for (int i = 0; calls->dsl.arg_cat[i]; i++)
-        fprintf(out, "%16s\t", calls->dsl.arg_cat[i]);
-
-    fprintf(out, "\n");
-
-    for (int i = 0; calls->arg_name[i]; i++) {
-        fprintf(out, "%24s\t", calls->arg_name_function[i]);
-        for (int j = 0; calls->dsl.arg_cat[j]; j++) {
-            if (calls->arg_name[i][j])
-                fprintf(out, "%16s\t", calls->arg_name[i][j]);
-            else
-                fprintf(out, "\t\t\t");
-        }
-        fprintf(out, "\n");
-    }
-    fprintf(out, "\n\n");
-}
-
-// Assume that there is only one ternary pattern in the call
-static char **split_array_if_ternary(char **new_arg_name,
-                                     struct calls_rep *calls)
-{
-    char **new_array = NULL;
-    char *mark_index;
-    char *old_entry;
-
-    for (int i = 0; i < calls->dsl.nb_arg_cat; i++) {
-        if (new_arg_name[i] && (mark_index = strstr(new_arg_name[i], "?"))) {
-            if (new_array) {
-                sm_warning( "Two ternary patterns on the same line");
-                continue;
-            }
-            new_array = malloc(sizeof(*new_array) * calls->dsl.nb_arg_cat);
-            for (int j = 0; j < calls->dsl.nb_arg_cat; j++) {
-                if (j == i) {
-                    char *column = strstr(new_arg_name[i], ":");
-                    if (!column) {
-                        sm_warning( "? without :");
-                        continue;
-                    }
-                    old_entry = new_arg_name[j];
-                    *column = '\0';
-                    new_array[j] = alloc_string(mark_index + 1);
-                    new_arg_name[j] = alloc_string(column + 1);
-                    free(old_entry);
-                } else {
-                    new_array[j] = alloc_string(new_arg_name[j]);
-                }
-
-            }
-        }
-    }
-    return new_array;
-}
-
-static void push_line_or_free(char **new_arg_name, const char* fn_name,
-                              struct calls_rep *calls) 
-{
-    // If the call is not the same as one already done, pass otherwise add
-    push_array((void ***)&calls->arg_name, &calls->nb_arg_name, new_arg_name);
-    calls->nb_arg_name--;
-    push_array((void ***)&calls->arg_name_function, &calls->nb_arg_name, alloc_string(fn_name));
-    calls->nb_arg_name--;
-    char *loc;
-    asprintf(&loc, "%s:%d", get_filename(), get_lineno());
-    push_array((void ***)&calls->arg_name_location, &calls->nb_arg_name,loc);
-}
-
-static void match_func(const char *fn_name, struct expression *expr, void *_calls)
-{
-    struct calls_rep *calls = _calls;
-    if (is_fake_call(expr) || __inline_fn)
-        return;
-
-    // Ignore if we are in the implementation of a function
-    if (is_expr_in_list(get_function(), calls->dsl.func_name, calls->dsl.nb_func_name, NULL))
-        return;
-
-    int fn_id;
-    for (fn_id = 0;
-         strcmp(fn_name, calls->dsl.func_name[fn_id]) &&
-                fn_id < calls->dsl.nb_func_name;
-         fn_id++) {}
-
-
-    char **new_arg_name = calloc(calls->dsl.nb_arg_cat, sizeof(*new_arg_name));
-
-    for (int cur_arg_cat = 0; calls->dsl.arg_cat[cur_arg_cat]; cur_arg_cat++) {
-        if (calls->dsl.arg_pos[fn_id][cur_arg_cat] == -2) continue;
-
-        char *str_arg = get_arg_from_call_expr(expr, calls->dsl.arg_pos[fn_id][cur_arg_cat]);
-        if (!str_arg) continue;
-
-        new_arg_name[cur_arg_cat] = str_arg;
-    }
-
-    char **other_array = split_array_if_ternary(new_arg_name, calls);
-
-    push_line_or_free(new_arg_name, fn_name, calls);
-    if (other_array)
-        push_line_or_free(other_array, fn_name, calls);
-}
 
 static void __match_assign(char *left, char *right)
 {
@@ -520,189 +391,76 @@ static void match_assign(struct expression *expr)
     __match_assign(left_str, right_str);
 }
 
-/**
- *returns 0 if half less than half the arguments are the same at best,
- *returns 1 if more that half are the same at best,
- *returns 2 if all the arguments are the same with one other.
- */
-static int exists_similar_call(int index, struct calls_rep *calls)
+static void match_free_func(const char *_, struct expression* expr, void *__arg)
 {
-    if (!calls->arg_name_function)
-        return true;
-    if (!calls->arg_name)
-        return true;
-    int ret = false;
-    int cur_res = 0;
-    for (int j = 0; j < calls->nb_arg_name; j++) {
-        if (j == index)
-            continue;
+    int arg_index = PTR_INT(__arg);
+    char *freed = get_arg_from_call_expr(expr, arg_index);
+    char *loc;
+    char *old_free;
 
-        if (strcmp(calls->arg_name_function[index], calls->arg_name_function[j]) != 0){
-            cur_res = args_are_same(calls->arg_name[index], calls->arg_name[j], calls);
-
-            if (cur_res == 2) {
-                return 2;
-            } else {
-                ret = cur_res > ret ? cur_res : ret;
-            }
-        }
-    }
-    return ret;
-}
-
-static bool all_funcs_are_same(struct calls_rep *calls)
-{
-    if (0 == calls->nb_arg_name)
-        return false;
-
-    char *fn_name = calls->arg_name_function[0];
-    for (int i = 0; i < calls->nb_arg_name; i++) {
-        if (strcmp(fn_name, calls->arg_name_function[i]) != 0)
-            return false;
-    }
-    return true;
-}
-
-static void print_all_warnings(char **warnings, int nb_warnings)
-{
-    for (int i = 0; i < nb_warnings; i++) {
-        fprintf(sm_outfd, "%s", warnings[i]);
-    }
-}
-
-static bool grep_in_file(char *filename, const char *search)
-{
-    char *line = NULL;
-    size_t len;
-    FILE *file = fopen(filename, "r");
-
-    while (getline(&line, &len, file) > 0) {
-        if (strstr(line, search)) {
-            fclose(file);
-            return true;
-        }
-    }
-
-    fclose(file);
-    return false;
-}
-
-static void add_to_file(char *filename, const char *possible_wrappers,
-                        const char *wrapped_function)
-{
-    // TODO: put lock on the file
-    if (grep_in_file(filename, possible_wrappers) ||
-        !grep_in_file(filename, wrapped_function)) {
-        return;
-    }
-
-    FILE *file = fopen(filename, "a");
-    fprintf(file, "%s\n", possible_wrappers);
-    fclose(file);
-
-    // Create file to note that the analysis must be run again
-    fclose(fopen(run_again_filename, "w"));
-
-}
-
-static bool add_to_wrappers_if_wrapper(struct calls_rep *calls, int i) {
-    for (int j = 0; j < nb_possible_wrappers; j++) {
-        if (strcmp(calls->arg_name_function[i], possible_wrapped_functions[j]) == 0) {
-            add_to_file(calls->dsl.filename, possible_wrappers[j],
-                        possible_wrapped_functions[j]);
-            return true;
-        }
-    }
-    return false;
-}
-
-static void possible_not_match(struct calls_rep *calls, int i, char ***warnings,
-                               int *nb_warnings)
-{
-    if (add_to_wrappers_if_wrapper(calls, i))
+    if (!freed)
         return;
 
-    (*nb_warnings)++;
-    *warnings = realloc(*warnings, (*nb_warnings) * sizeof(**warnings));
-    asprintf(&(*warnings)[*nb_warnings - 1],
-            "%s warn: Possible function not matched %s in interface %s\n",
-            calls->arg_name_location[i], calls->arg_name_function[i],
-            calls->dsl.filename);
+    asprintf(&loc, "%s:%d", get_filename(), get_lineno());
 
-    // print_all_warnings(*warnings, *nb_warnings);
-}
-
-static void match_file_end_calls(struct calls_rep *calls, char ***warns,
-                                 int *nb_warns)
-{
-    if (option_debug) print_arg_name(stderr, calls);
-
-    if (all_funcs_are_same(calls)) {
-        if (option_spammy)
-            possible_not_match(calls, 0, warns, nb_warns);
-        return;
-    }
-
-
-    for (int i = 0; i < calls->nb_arg_name; i++) {
-        switch (exists_similar_call(i, calls)) {
-            case 0:
-            case 2:
-                break;
-            case 1:
-                possible_not_match(calls, i, warns, nb_warns);
-                break;
-            default:
-                sm_warning("Wrong return value of similar call.");
+    for (int i = 0; i < ptr_list_size(freed_expr); i++) {
+        old_free = ptr_list_nth_entry((struct ptr_list *)freed_expr, i);
+        if (old_free && two_args_are_same(freed, old_free)) {
+            sm_warning("Double free of %s at %s", freed,
+                       (char *)ptr_list_nth_entry((struct ptr_list *)freed_expr_loc,
+                                                  i));
+            return;
         }
     }
+
+    add_ptr_list(&freed_expr, freed);
+    add_ptr_list(&freed_expr_loc, loc);
 }
 
-static void match_file_end(void)
+static void register_funcs_from_file(void)
 {
-    char **warnings = NULL;
-    int nb_warnings = 0;
-    for (int i = 0; i < nb_generic_args_file; i++)
-        match_file_end_calls(&all_calls[i], &warnings, &nb_warnings);
+	struct token *token;
+	const char *func;
+	int arg;
 
-    if (access(run_again_filename, F_OK) != 0)
-        print_all_warnings(warnings, nb_warnings);
+	token = get_tokens_file("kernel.frees_argument");
+	if (!token)
+		return;
+	if (token_type(token) != TOKEN_STREAMBEGIN)
+		return;
+	token = token->next;
+	while (token_type(token) != TOKEN_STREAMEND) {
+		if (token_type(token) != TOKEN_IDENT)
+			return;
+		func = show_ident(token->ident);
+		token = token->next;
+		if (token_type(token) != TOKEN_NUMBER)
+			return;
+		arg = atoi(token->number);
+		add_function_hook(func, &match_free_func, INT_PTR(arg));
+		token = token->next;
+	}
+	clear_token_alloc();
 }
 
-static void init_call_rep(int i) {
-    char *filename = option_generic_args_file[i];
-    struct calls_rep *calls = &all_calls[i];
-    parse_file(filename, (struct dsl_representation *)&calls->dsl);
-
-    if (false) print_dsl_representation(stdout, &calls->dsl);
-    
-    init_array((void ***)&calls->arg_name, &calls->nb_arg_name);
-    calls->arg_name_function = calloc(1, sizeof(*calls->arg_name_function));
-    calls->arg_name_location = calloc(1, sizeof(*calls->arg_name_location));
-
-    for (i = 0; i < calls->dsl.nb_func_name; i++)
-        add_function_hook(calls->dsl.func_name[i], &match_func, (void *)calls);
+void match_label(struct statement *stmt)
+{
+    if (stmt->type == STMT_LABEL)
+        in_error_path = true;
 }
 
-void check_generic_args(int id) {
+
+void check_double_free(int id)
+{
     my_id = id;
 
-    if (!option_check_api)
-        return;
-
-    if ((!option_generic_args_file))
-        return;
-
-    all_calls = malloc(sizeof(*all_calls) * nb_generic_args_file);
-
-    for (int i = 0; i < nb_generic_args_file; i++)
-        init_call_rep(i);
+    register_funcs_from_file();
 
     function_parameters = g_hash_table_new(g_str_hash, g_str_equal);
     function_called = g_hash_table_new(g_str_hash, g_str_equal);
 
     add_hook(match_func_start, FUNC_DEF_HOOK);
     add_hook(match_func_call, FUNCTION_CALL_HOOK);
+    add_hook(match_label, STMT_HOOK);
     add_hook(match_assign, ASSIGNMENT_HOOK);
-    add_hook(match_file_end, END_FILE_HOOK);
 }
