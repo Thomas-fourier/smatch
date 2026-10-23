@@ -1741,7 +1741,7 @@ out_cast:
 	if (rl == (void *)-1UL)
 		rl = NULL;
 
-	if (sval.type || (rl && rl_to_sval(rl, &sval))) {
+	if (sval.type || (rl && rl_to_sval(rl, &sval) && sval.type)) {
 		*sval_res = sval;
 		return true;
 	}
